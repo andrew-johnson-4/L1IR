@@ -63,35 +63,35 @@ fn eval_tuples() {
    let b = Value::Literal(0,1,Rc::new(vec!['b']));
    let cd = Value::Literal(0,2,Rc::new(vec!['c','d']));
    assert_eq!(
-      format!("{:?}",Value::Tuple(vec![])),
+      format!("{:?}",Value::tuple(vec![])),
       r#"()"#,
    );
    assert_eq!(
-      format!("{:?}",Value::Tuple(vec![a.clone()])),
+      format!("{:?}",Value::tuple(vec![a.clone()])),
       r#"("a",)"#,
    );
    assert_eq!(
-      format!("{:?}",Value::Tuple(vec![b.clone()])),
+      format!("{:?}",Value::tuple(vec![b.clone()])),
       r#"("b",)"#,
    );
    assert_eq!(
-      format!("{:?}",Value::Tuple(vec![cd.clone()])),
+      format!("{:?}",Value::tuple(vec![cd.clone()])),
       r#"("cd",)"#,
    );
    assert_eq!(
-      format!("{:?}",Value::Tuple(vec![a.clone(),b.clone()])),
+      format!("{:?}",Value::tuple(vec![a.clone(),b.clone()])),
       r#"("a","b")"#,
    );
    assert_eq!(
-      format!("{:?}",Value::Tuple(vec![a.clone(),cd.clone()])),
+      format!("{:?}",Value::tuple(vec![a.clone(),cd.clone()])),
       r#"("a","cd")"#,
    );
    assert_eq!(
-      format!("{:?}",Value::Tuple(vec![b.clone(),cd.clone()])),
+      format!("{:?}",Value::tuple(vec![b.clone(),cd.clone()])),
       r#"("b","cd")"#,
    );
    assert_eq!(
-      format!("{:?}",Value::Tuple(vec![a.clone(),b.clone(),cd.clone()])),
+      format!("{:?}",Value::tuple(vec![a.clone(),b.clone(),cd.clone()])),
       r#"("a","b","cd")"#,
    );
 }
@@ -119,8 +119,8 @@ fn eval_heterogenous() {
    let bc = Value::Literal(1,3,Rc::new(vec!['a','b','c']));
    let f1 = Value::Function(1);
    let f23 = Value::Function(23);
-   let t1 = Value::Tuple(vec![a.clone(),f1.clone(),bc.clone()]);
-   let t2 = Value::Tuple(vec![a0.clone(),t1.clone(),f23.clone()]);
+   let t1 = Value::tuple(vec![a.clone(),f1.clone(),bc.clone()]);
+   let t2 = Value::tuple(vec![a0.clone(),t1.clone(),f23.clone()]);
    assert_eq!(
       format!("{:?}",t1),
       r#"("a",f#1,"bc")"#
