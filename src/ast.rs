@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+#[derive(Clone)]
 pub enum Value {
    Literal(usize,usize,Rc<Vec<char>>), //avoid copy-on-slice
    Tuple(Vec<Value>),
@@ -51,7 +52,7 @@ impl std::fmt::Debug for Value {
          }
          write!(f, r")")
       } else if let Value::Function(fid) = self {
-         write!(f, "#{}", fid)
+         write!(f, "f#{}", fid)
       } else { unreachable!("exhaustive") }
    }
 }
