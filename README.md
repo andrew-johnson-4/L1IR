@@ -26,3 +26,4 @@ Things not in the AST directly
 * Tagged Enum Types (use tagged tuples)
 * Field/Index Access (use a pattern)
 * Polymorphic Functions (monomorphic definitions only)
+* Stateful Closures (use a tuple with custom calling convention)
