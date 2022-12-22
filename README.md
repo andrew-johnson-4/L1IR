@@ -13,6 +13,6 @@ Global AST Nodes
 Expression AST Nodes
 * Literal Introduction
 * Tuple Introduction
-* Function Introduction
+* Variable Reference
 * Function Application
 * Pattern Match
