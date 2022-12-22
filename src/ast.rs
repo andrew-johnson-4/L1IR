@@ -1,9 +1,15 @@
 use std::rc::Rc;
 
+#[derive(Clone)]
 pub enum Value {
    Literal(usize,usize,Rc<Vec<char>>), //avoid copy-on-slice
-   Tuple(Vec<Value>),
+   Tuple(Rc<Vec<Value>>), //avoid expensive clones at all cost
    Function(usize), //all functions are static program indices
+}
+impl Value {
+   pub fn tuple(ts: Vec<Value>) -> Value {
+      Value::Tuple(Rc::new(ts))
+   }
 }
 impl PartialEq for Value {
    fn eq(&self, other: &Self) -> bool {
@@ -51,7 +57,7 @@ impl std::fmt::Debug for Value {
          }
          write!(f, r")")
       } else if let Value::Function(fid) = self {
-         write!(f, "#{}", fid)
+         write!(f, "f#{}", fid)
       } else { unreachable!("exhaustive") }
    }
 }

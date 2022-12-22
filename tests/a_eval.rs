@@ -8,6 +8,6 @@ fn eval_empty() {
          functions: vec![],
          expressions: vec![],
       }),
-      Value::Tuple(vec![])
+      Value::tuple(vec![])
    );
 }
