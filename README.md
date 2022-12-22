@@ -1,4 +1,18 @@
 # L1IR
 Intermediate Representation of [LSTS](https://github.com/andrew-johnson-4/LSTS) L1 Language
 
-The IR here has 3 Types: Literal Strings, Tuples, and Functions.
+Types
+* Literal Strings
+* Tuples
+* Functions
+
+Global AST Nodes
+* Function Definitions
+* Program Expressions
+
+Expression AST Nodes
+* Literal Introduction
+* Tuple Introduction
+* Function Introduction
+* Function Application
+* Pattern Match
