@@ -1,6 +1,6 @@
 [package]
 name = "l1_ir"
-version = "0.0.3"
+version = "0.0.4"
 authors = ["Andrew <andrew@subarctic.org>"]
 license = "MIT"
 description = "L1 Intermediate Representation"
@@ -10,6 +10,6 @@ repository = "https://github.com/andrew-johnson-4/L1IR"
 keywords = ["compiler","interpreter","AST","IR","JIT"]
 
 [dependencies]
-cranelift = "0.85"
-cranelift-module = "0.85"
-cranelift-jit = "0.85"
+cranelift = "0.91"
+cranelift-module = "0.91"
+cranelift-jit = "0.91"
