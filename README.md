@@ -16,7 +16,6 @@ Expression AST Nodes
 * Variable Reference
 * Function Application
 * Pattern Match
-* Tuple Index Access
 * Program Failure, Immediate Exit with possible Message
 
 L1IR's unique contribution is that it does not presume to know everything about literal strings. Types, by definition, are represented as an amalgam of Unicode Characters instead of fixed length bitstrings. This is advantageous to languages like L1 that define their own operators from scratch, but still desire to have an efficient runtime.
@@ -25,4 +24,5 @@ Things not in the AST directly
 * If Expression (use a pattern)
 * Struct Types (use a tuple)
 * Tagged Enum Types (use tagged tuples)
+* Field/Index Access (use a pattern)
 * Polymorphic Functions (monomorphic definitions only)
