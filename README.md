@@ -16,3 +16,4 @@ Expression AST Nodes
 * Variable Reference
 * Function Application
 * Pattern Match
+* Program Failure, Immediate Exit with possible Message
