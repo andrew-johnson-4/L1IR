@@ -36,4 +36,13 @@ fn eval_li() {
       )),
       Value::literal("a")
    );
+   assert_eq!(
+      eval(by_expression(
+         Expression::LiteralIntroduction(vec![
+            LIPart::Linear(Rc::new(vec!['a'])),
+            LIPart::Linear(Rc::new(vec!['b','c']))
+         ])
+      )),
+      Value::literal("abc")
+   );
 }

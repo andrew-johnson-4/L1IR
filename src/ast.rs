@@ -76,9 +76,11 @@ pub struct Program {
 
 pub enum LIPart {
    Linear(Rc<Vec<char>>),
+   Variable(usize),
 }
 pub enum TIPart {
    Linear(Vec<Expression>),
+   Variable(usize),
 }
 pub enum Expression { //Expressions don't need to "clone"?
    LiteralIntroduction(Vec<LIPart>),

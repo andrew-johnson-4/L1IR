@@ -1,9 +1,25 @@
+use std::rc::Rc;
 use std::collections::{HashMap};
-use crate::ast::{Value,Expression,Program};
+use crate::ast::{Value,Expression,Program,LIPart};
 
 pub fn eval_e(_lctx: &mut HashMap<usize,Value>, _pctx: &Program, e: &Expression) -> Value {
    match e {
-      Expression::LiteralIntroduction(_lps) => unimplemented!("eval_e(LiteralIntroduction)"),
+      Expression::LiteralIntroduction(lps) => {
+         if lps.len()==1 {
+         if let LIPart::Linear(lcs) = &lps[0] {
+            return Value::Literal(0,lcs.len(),lcs.clone());
+         }}
+         let mut lcs = Vec::new();
+         for lip in lps.iter() {
+         match lip {
+            LIPart::Linear(cs) => {
+            for c in cs.iter() {
+               lcs.push(*c);
+            }},
+            LIPart::Variable(_v) => {},
+         }}
+         Value::Literal(0,lcs.len(),Rc::new(lcs))
+      },
       Expression::TupleIntroduction(_tps) => unimplemented!("eval_e(TupleIntroduction)"),
       Expression::VariableReference(_l) => unimplemented!("eval_e(VariableReference)"),
       Expression::FunctionApplication(_fx,_pxs) => unimplemented!("eval_e(FunctionApplication)"),
