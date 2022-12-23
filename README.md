@@ -32,3 +32,4 @@ Things not in the AST directly
 * Field/Index Access (use a pattern)
 * Polymorphic Functions (monomorphic definitions only)
 * Stateful Closures (use a tuple with custom calling convention)
+* Let Bindings (use a pattern, bound variables stick around until end of scope)
