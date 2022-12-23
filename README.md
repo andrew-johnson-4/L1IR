@@ -19,6 +19,7 @@ Expression AST Nodes
 * Literal Introduction
 * Tuple Introduction
 * Variable Reference
+* Function Reference
 * Function Application
 * Pattern Match
 * Program Failure, Immediate Exit with possible Message
