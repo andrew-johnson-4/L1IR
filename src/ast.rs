@@ -108,11 +108,11 @@ pub enum TIPart {
 }
 #[derive(Clone)]
 pub enum Expression<S:Debug + Clone> { //Expressions don't need to "clone"?
-   LiteralIntroduction(Vec<LIPart>,S),
-   TupleIntroduction(Vec<TIPart>,S),
+   LiteralIntroduction(Rc<Vec<LIPart>>,S),
+   TupleIntroduction(Rc<Vec<TIPart>>,S),
    VariableReference(usize,S),
    FunctionReference(usize,S),
-   FunctionApplication(usize,Vec<Expression<S>>,S),
+   FunctionApplication(usize,Rc<Vec<Expression<S>>>,S),
    PatternMatch(S),
    Failure(S),
 }
