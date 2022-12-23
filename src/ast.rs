@@ -1,6 +1,24 @@
 use std::rc::Rc;
 use std::fmt::Debug;
 
+pub struct Error<S:Debug + Clone> {
+   error_type: String,
+   error_msg: String,
+   span: S,
+}
+impl<S:Debug + Clone> std::fmt::Debug for Error<S> {
+   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+      write!(f, "{}: {} at {:?}", self.error_type, self.error_msg, self.span)
+   }
+}
+pub fn error<S:Debug + Clone>(t:&str, m:&str, s:&S) -> Error<S> {
+   Error {
+      error_type: t.to_string(),
+      error_msg: m.to_string(),
+      span: s.clone()
+   }
+}
+
 #[derive(Clone)]
 pub enum Value {
    Literal(usize,usize,Rc<Vec<char>>), //avoid copy-on-slice
@@ -67,12 +85,12 @@ impl std::fmt::Debug for Value {
    }
 }
 
-pub struct FunctionDefinition<S:Debug> {
+pub struct FunctionDefinition<S:Debug + Clone> {
    pub args: Vec<usize>,
    pub body: Vec<Expression<S>>,
 }
 
-pub struct Program<S:Debug> {
+pub struct Program<S:Debug + Clone> {
    pub functions: Vec<FunctionDefinition<S>>,
    pub expressions: Vec<Expression<S>>,
 }
@@ -86,7 +104,7 @@ pub enum TIPart {
    Variable(usize),
    InlineVariable(usize),
 }
-pub enum Expression<S:Debug> { //Expressions don't need to "clone"?
+pub enum Expression<S:Debug + Clone> { //Expressions don't need to "clone"?
    LiteralIntroduction(Vec<LIPart>,S),
    TupleIntroduction(Vec<TIPart>,S),
    VariableReference(usize,S),
