@@ -67,6 +67,8 @@ impl std::fmt::Debug for Value {
 }
 
 pub struct FunctionDefinition {
+   pub args: Vec<usize>,
+   pub body: Expression,
 }
 
 pub struct Program {
@@ -76,17 +78,19 @@ pub struct Program {
 
 pub enum LIPart {
    Linear(Rc<Vec<char>>),
-   Variable(usize),
+   InlineVariable(usize),
 }
 pub enum TIPart {
    Linear(Rc<Vec<Value>>),
    Variable(usize),
+   InlineVariable(usize),
 }
 pub enum Expression { //Expressions don't need to "clone"?
    LiteralIntroduction(Vec<LIPart>),
    TupleIntroduction(Vec<TIPart>),
    VariableReference(usize),
-   FunctionApplication(Box<Expression>,Vec<Expression>),
+   FunctionReference(usize),
+   FunctionApplication(usize,Vec<Expression>),
    PatternMatch,
    Failure,
 }
