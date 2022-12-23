@@ -33,3 +33,4 @@ Things not in the AST directly
 * Polymorphic Functions (monomorphic definitions only)
 * Stateful Closures (use a tuple with custom calling convention)
 * Let Bindings (use a pattern, bound variables stick around until end of scope)
+* Jumps or Loops (This is an IR for Functional Programming)
