@@ -95,15 +95,18 @@ pub struct Program<S:Debug + Clone> {
    pub expressions: Vec<Expression<S>>,
 }
 
+#[derive(Clone)]
 pub enum LIPart {
    Linear(Rc<Vec<char>>),
    InlineVariable(usize),
 }
+#[derive(Clone)]
 pub enum TIPart {
    Linear(Rc<Vec<Value>>),
    Variable(usize),
    InlineVariable(usize),
 }
+#[derive(Clone)]
 pub enum Expression<S:Debug + Clone> { //Expressions don't need to "clone"?
    LiteralIntroduction(Vec<LIPart>,S),
    TupleIntroduction(Vec<TIPart>,S),
