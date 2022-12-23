@@ -2,13 +2,13 @@ use std::rc::Rc;
 use l1_ir::ast::{Value,Expression,Program,LIPart,TIPart,FunctionDefinition};
 use l1_ir::eval::{eval};
 
-fn by_expressions(es: Vec<Expression>) -> Program {
+fn by_expressions(es: Vec<Expression<()>>) -> Program<()> {
    Program {
       functions: vec![],
       expressions: es,
    }
 }
-fn by_expression(e: Expression) -> Program {
+fn by_expression(e: Expression<()>) -> Program<()> {
    by_expressions(vec![ e ])
 }
 
@@ -24,7 +24,7 @@ fn eval_empty() {
 fn eval_li() {
    assert_eq!(
       eval(by_expression(
-         Expression::LiteralIntroduction(vec![])
+         Expression::LiteralIntroduction(vec![],())
       )),
       Value::literal("")
    );
@@ -32,7 +32,7 @@ fn eval_li() {
       eval(by_expression(
          Expression::LiteralIntroduction(vec![
             LIPart::Linear(Rc::new(vec!['a']))
-         ])
+         ],())
       )),
       Value::literal("a")
    );
@@ -41,7 +41,7 @@ fn eval_li() {
          Expression::LiteralIntroduction(vec![
             LIPart::Linear(Rc::new(vec!['a'])),
             LIPart::Linear(Rc::new(vec!['b','c']))
-         ])
+         ],())
       )),
       Value::literal("abc")
    );
@@ -51,7 +51,7 @@ fn eval_li() {
 fn eval_ti() {
    assert_eq!(
       format!("{:?}",eval(by_expression(
-         Expression::TupleIntroduction(vec![])
+         Expression::TupleIntroduction(vec![],())
       ))),
       "()"
    );
@@ -61,7 +61,7 @@ fn eval_ti() {
             TIPart::Linear(Rc::new(vec![
                Value::literal("a"),
             ]))
-         ])
+         ],())
       ))),
       r#"("a",)"#
    );
@@ -72,7 +72,7 @@ fn eval_ti() {
                Value::literal("a"),
                Value::literal("bc"),
             ]))
-         ])
+         ],())
       ))),
       r#"("a","bc")"#
    );
@@ -89,7 +89,7 @@ fn eval_function() {
                   Value::literal("a"),
                   Value::literal("bc"),
                ]))
-            ])]
+            ],())]
          }],
          expressions: vec![],
       })),
@@ -102,7 +102,7 @@ fn eval_function() {
             body: vec![],
          }],
          expressions: vec![
-            Expression::FunctionApplication(0,vec![]),
+            Expression::FunctionApplication(0,vec![],()),
          ],
       })),
       r#"()"#
@@ -116,10 +116,10 @@ fn eval_function() {
                   Value::literal("a"),
                   Value::literal("bc"),
                ]))
-            ])]
+            ],())]
          }],
          expressions: vec![
-            Expression::FunctionApplication(0,vec![]),
+            Expression::FunctionApplication(0,vec![],()),
          ],
       })),
       r#"("a","bc")"#
@@ -133,15 +133,15 @@ fn eval_function() {
                   Value::literal("a"),
                ])),
                TIPart::Variable(24),
-            ])]
+            ],())]
          }],
          expressions: vec![
             Expression::FunctionApplication(0,vec![
                Expression::LiteralIntroduction(vec![
                   LIPart::Linear(Rc::new(vec!['b'])),
                   LIPart::Linear(Rc::new(vec!['c','d']))
-               ])
-            ]),
+               ],())
+            ],()),
          ],
       })),
       r#"("a","bcd")"#

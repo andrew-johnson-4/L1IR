@@ -1,4 +1,5 @@
 use std::rc::Rc;
+use std::fmt::Debug;
 
 #[derive(Clone)]
 pub enum Value {
@@ -66,14 +67,14 @@ impl std::fmt::Debug for Value {
    }
 }
 
-pub struct FunctionDefinition {
+pub struct FunctionDefinition<S:Debug> {
    pub args: Vec<usize>,
-   pub body: Vec<Expression>,
+   pub body: Vec<Expression<S>>,
 }
 
-pub struct Program {
-   pub functions: Vec<FunctionDefinition>,
-   pub expressions: Vec<Expression>,
+pub struct Program<S:Debug> {
+   pub functions: Vec<FunctionDefinition<S>>,
+   pub expressions: Vec<Expression<S>>,
 }
 
 pub enum LIPart {
@@ -85,12 +86,12 @@ pub enum TIPart {
    Variable(usize),
    InlineVariable(usize),
 }
-pub enum Expression { //Expressions don't need to "clone"?
-   LiteralIntroduction(Vec<LIPart>),
-   TupleIntroduction(Vec<TIPart>),
-   VariableReference(usize),
-   FunctionReference(usize),
-   FunctionApplication(usize,Vec<Expression>),
-   PatternMatch,
-   Failure,
+pub enum Expression<S:Debug> { //Expressions don't need to "clone"?
+   LiteralIntroduction(Vec<LIPart>,S),
+   TupleIntroduction(Vec<TIPart>,S),
+   VariableReference(usize,S),
+   FunctionReference(usize,S),
+   FunctionApplication(usize,Vec<Expression<S>>,S),
+   PatternMatch(S),
+   Failure(S),
 }

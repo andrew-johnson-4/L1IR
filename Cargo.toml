@@ -10,6 +10,9 @@ repository = "https://github.com/andrew-johnson-4/L1IR"
 keywords = ["compiler","interpreter","AST","IR","JIT"]
 
 [dependencies]
-cranelift = "0.91"
-cranelift-module = "0.91"
-cranelift-jit = "0.91"
+cranelift = { version = "0.91", optional = true }
+cranelift-module = { version = "0.91", optional = true }
+cranelift-jit = { version = "0.91", optional = true }
+
+[features]
+cranelift = ["dep:cranelift", "dep:cranelift-module", "dep:cranelift-jit"]
