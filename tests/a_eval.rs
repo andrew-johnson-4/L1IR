@@ -1,5 +1,5 @@
 use std::rc::Rc;
-use l1_ir::ast::{Value,Expression,Program,LIPart};
+use l1_ir::ast::{Value,Expression,Program,LIPart,TIPart};
 use l1_ir::eval::{eval};
 
 fn by_expressions(es: Vec<Expression>) -> Program {
@@ -44,5 +44,36 @@ fn eval_li() {
          ])
       )),
       Value::literal("abc")
+   );
+}
+
+#[test]
+fn eval_ti() {
+   assert_eq!(
+      format!("{:?}",eval(by_expression(
+         Expression::TupleIntroduction(vec![])
+      ))),
+      "()"
+   );
+   assert_eq!(
+      format!("{:?}",eval(by_expression(
+         Expression::TupleIntroduction(vec![
+            TIPart::Linear(Rc::new(vec![
+               Value::literal("a"),
+            ]))
+         ])
+      ))),
+      r#"("a",)"#
+   );
+   assert_eq!(
+      format!("{:?}",eval(by_expression(
+         Expression::TupleIntroduction(vec![
+            TIPart::Linear(Rc::new(vec![
+               Value::literal("a"),
+               Value::literal("bc"),
+            ]))
+         ])
+      ))),
+      r#"("a","bc")"#
    );
 }

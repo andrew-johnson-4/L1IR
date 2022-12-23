@@ -79,7 +79,7 @@ pub enum LIPart {
    Variable(usize),
 }
 pub enum TIPart {
-   Linear(Vec<Expression>),
+   Linear(Rc<Vec<Value>>),
    Variable(usize),
 }
 pub enum Expression { //Expressions don't need to "clone"?

@@ -1,6 +1,6 @@
 use std::rc::Rc;
 use std::collections::{HashMap};
-use crate::ast::{Value,Expression,Program,LIPart};
+use crate::ast::{Value,Expression,Program,LIPart,TIPart};
 
 pub fn eval_e(_lctx: &mut HashMap<usize,Value>, _pctx: &Program, e: &Expression) -> Value {
    match e {
@@ -20,7 +20,22 @@ pub fn eval_e(_lctx: &mut HashMap<usize,Value>, _pctx: &Program, e: &Expression)
          }}
          Value::Literal(0,lcs.len(),Rc::new(lcs))
       },
-      Expression::TupleIntroduction(_tps) => unimplemented!("eval_e(TupleIntroduction)"),
+      Expression::TupleIntroduction(tps) => {
+         if tps.len()==1 {
+         if let TIPart::Linear(tcs) = &tps[0] {
+            return Value::Tuple(0,tcs.len(),tcs.clone());
+         }}
+         let mut tcs = Vec::new();
+         for tip in tps.iter() {
+         match tip {
+            TIPart::Linear(vs) => {
+            for v in vs.iter() {
+               tcs.push(v.clone());
+            }},
+            TIPart::Variable(_v) => {},
+         }}
+         Value::Tuple(0,tcs.len(),Rc::new(tcs))
+      },
       Expression::VariableReference(_l) => unimplemented!("eval_e(VariableReference)"),
       Expression::FunctionApplication(_fx,_pxs) => unimplemented!("eval_e(FunctionApplication)"),
       Expression::PatternMatch => unimplemented!("eval_e()"),
