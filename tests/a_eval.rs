@@ -15,8 +15,15 @@ fn by_expression(e: Expression<()>) -> Program<()> {
 #[test]
 fn eval_empty() {
    assert_eq!(
-      eval(by_expressions(vec![])),
+      eval(by_expressions(vec![])).unwrap(),
       Value::tuple(vec![])
+   );
+}
+
+#[test]
+fn eval_failure() {
+   assert!(
+      eval(by_expression(Expression::Failure(()))).is_err()
    );
 }
 
@@ -25,7 +32,7 @@ fn eval_li() {
    assert_eq!(
       eval(by_expression(
          Expression::LiteralIntroduction(vec![],())
-      )),
+      )).unwrap(),
       Value::literal("")
    );
    assert_eq!(
@@ -33,7 +40,7 @@ fn eval_li() {
          Expression::LiteralIntroduction(vec![
             LIPart::Linear(Rc::new(vec!['a']))
          ],())
-      )),
+      )).unwrap(),
       Value::literal("a")
    );
    assert_eq!(
@@ -42,7 +49,7 @@ fn eval_li() {
             LIPart::Linear(Rc::new(vec!['a'])),
             LIPart::Linear(Rc::new(vec!['b','c']))
          ],())
-      )),
+      )).unwrap(),
       Value::literal("abc")
    );
 }
@@ -52,7 +59,7 @@ fn eval_ti() {
    assert_eq!(
       format!("{:?}",eval(by_expression(
          Expression::TupleIntroduction(vec![],())
-      ))),
+      )).unwrap()),
       "()"
    );
    assert_eq!(
@@ -62,7 +69,7 @@ fn eval_ti() {
                Value::literal("a"),
             ]))
          ],())
-      ))),
+      )).unwrap()),
       r#"("a",)"#
    );
    assert_eq!(
@@ -73,7 +80,7 @@ fn eval_ti() {
                Value::literal("bc"),
             ]))
          ],())
-      ))),
+      )).unwrap()),
       r#"("a","bc")"#
    );
 }
@@ -92,7 +99,7 @@ fn eval_function() {
             ],())]
          }],
          expressions: vec![],
-      })),
+      }).unwrap()),
       "()"
    );
    assert_eq!(
@@ -104,7 +111,7 @@ fn eval_function() {
          expressions: vec![
             Expression::FunctionApplication(0,vec![],()),
          ],
-      })),
+      }).unwrap()),
       r#"()"#
    );
    assert_eq!(
@@ -121,7 +128,7 @@ fn eval_function() {
          expressions: vec![
             Expression::FunctionApplication(0,vec![],()),
          ],
-      })),
+      }).unwrap()),
       r#"("a","bc")"#
    );
    assert_eq!(
@@ -143,7 +150,7 @@ fn eval_function() {
                ],())
             ],()),
          ],
-      })),
+      }).unwrap()),
       r#"("a","bcd")"#
    );
 }
