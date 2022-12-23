@@ -2,7 +2,7 @@ use std::rc::Rc;
 use std::collections::{HashMap};
 use crate::ast::{Value,Expression,Program,LIPart,TIPart};
 
-pub fn eval_e(_lctx: &mut HashMap<usize,Value>, _pctx: &Program, e: &Expression) -> Value {
+pub fn eval_e(lctx: &mut HashMap<usize,Value>, pctx: &Program, e: &Expression) -> Value {
    match e {
       Expression::LiteralIntroduction(lps) => {
          if lps.len()==1 {
@@ -16,7 +16,12 @@ pub fn eval_e(_lctx: &mut HashMap<usize,Value>, _pctx: &Program, e: &Expression)
             for c in cs.iter() {
                lcs.push(*c);
             }},
-            LIPart::Variable(_v) => {},
+            LIPart::InlineVariable(vi) => {
+               if let Some(Value::Literal(vs,ve,vcs)) = lctx.get(vi) {
+               for ci in *vs..*ve {
+                  lcs.push(vcs[ci]);
+               }} else { panic!("v#{} not found", vi) }
+            },
          }}
          Value::Literal(0,lcs.len(),Rc::new(lcs))
       },
@@ -32,12 +37,41 @@ pub fn eval_e(_lctx: &mut HashMap<usize,Value>, _pctx: &Program, e: &Expression)
             for v in vs.iter() {
                tcs.push(v.clone());
             }},
-            TIPart::Variable(_v) => {},
+            TIPart::Variable(vi) => {
+               if let Some(vt) = lctx.get(vi) {
+                  tcs.push(vt.clone());
+               } else { panic!("v#{} not found", vi) }
+            },
+            TIPart::InlineVariable(vi) => {
+               if let Some(Value::Tuple(vs,ve,vcs)) = lctx.get(vi) {
+               for ti in *vs..*ve {
+                  tcs.push(vcs[ti].clone());
+               }} else { panic!("inline tuple v#{} not found", vi) }
+            },
          }}
          Value::Tuple(0,tcs.len(),Rc::new(tcs))
       },
-      Expression::VariableReference(_l) => unimplemented!("eval_e(VariableReference)"),
-      Expression::FunctionApplication(_fx,_pxs) => unimplemented!("eval_e(FunctionApplication)"),
+      Expression::FunctionReference(fi) => {
+         Value::Function(*fi)
+      },
+      Expression::VariableReference(li) => {
+         if let Some(lv) = lctx.get(li) {
+            lv.clone()
+         } else { panic!("eval_e(v#{})", li) }
+      },
+      Expression::FunctionApplication(fi,pxs) => {
+         if *fi>pctx.functions.len() { panic!("f#{} undefined", fi); }
+         if pxs.len()!=pctx.functions[*fi].args.len() { panic!("f#{} call with wrong arity", fi); }
+         let mut ps = Vec::new();
+         for px in pxs.iter() {
+            ps.push(eval_e(lctx, pctx, px));
+         }
+         let mut new_ctx = HashMap::new();
+         for (pi,pv) in std::iter::zip(&pctx.functions[*fi].args, ps) {
+            new_ctx.insert(*pi, pv);
+         }
+         eval_e(&mut new_ctx, pctx, &pctx.functions[*fi].body)
+      },
       Expression::PatternMatch => unimplemented!("eval_e()"),
       Expression::Failure => panic!("eval_e(Failure)"),
    }
