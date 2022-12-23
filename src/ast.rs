@@ -7,6 +7,10 @@ pub enum Value {
    Function(usize), //all functions are static program indices
 }
 impl Value {
+   pub fn literal(cs: &str) -> Value {
+      let cs = cs.chars().collect::<Vec<char>>();
+      Value::Literal(0,cs.len(),Rc::new(cs))
+   }
    pub fn tuple(ts: Vec<Value>) -> Value {
       Value::Tuple(0,ts.len(),Rc::new(ts))
    }
@@ -70,9 +74,15 @@ pub struct Program {
    pub expressions: Vec<Expression>,
 }
 
-pub enum Expression {
-   LiteralIntroduction,
-   TupleIntroduction,
+pub enum LIPart {
+   Linear(Rc<Vec<char>>),
+}
+pub enum TIPart {
+   Linear(Vec<Expression>),
+}
+pub enum Expression { //Expressions don't need to "clone"?
+   LiteralIntroduction(Vec<LIPart>),
+   TupleIntroduction(Vec<TIPart>),
    VariableReference(usize),
    FunctionApplication(Box<Expression>,Vec<Expression>),
    PatternMatch,
