@@ -3,12 +3,12 @@ use std::rc::Rc;
 #[derive(Clone)]
 pub enum Value {
    Literal(usize,usize,Rc<Vec<char>>), //avoid copy-on-slice
-   Tuple(Rc<Vec<Value>>), //avoid expensive clones at all cost
+   Tuple(usize,usize,Rc<Vec<Value>>), //avoid copy-on-slice
    Function(usize), //all functions are static program indices
 }
 impl Value {
    pub fn tuple(ts: Vec<Value>) -> Value {
-      Value::Tuple(Rc::new(ts))
+      Value::Tuple(0,ts.len(),Rc::new(ts))
    }
 }
 impl PartialEq for Value {
@@ -21,9 +21,9 @@ impl PartialEq for Value {
             }}
             true
          },
-         (Value::Tuple(ls),Value::Tuple(rs)) if ls.len()==rs.len() => {
-            for i in 0..ls.len() {
-            if ls[i] != rs[i] {
+         (Value::Tuple(ls,le,lv),Value::Tuple(rs,re,rv)) if (le-ls)==(re-rs) => {
+            for i in 0..(le-ls) {
+            if lv[ls+i] != rv[rs+i] {
                return false;
             }}
             true
@@ -44,18 +44,18 @@ impl std::fmt::Debug for Value {
             write!(f, "{}", val[i])?;
          }
          write!(f, r#"""#)
-      } else if let Value::Tuple(ts) = self {
-         write!(f, r"(")?;
-         for i in 0..ts.len() {
-            if i>0 {
+      } else if let Value::Tuple(start,end,val) = self {
+         write!(f, r#"("#)?;
+         for i in (*start)..(*end) {
+            if i>(*start) {
                write!(f, r",")?;
             }
-            ts[i].fmt(f)?;
+            write!(f, "{:?}", val[i])?;
          }
-         if ts.len()==1 {
+         if (*end-*start)==1 {
             write!(f, r",")?;
          }
-         write!(f, r")")
+         write!(f, r#")"#)
       } else if let Value::Function(fid) = self {
          write!(f, "f#{}", fid)
       } else { unreachable!("exhaustive") }
