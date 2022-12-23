@@ -70,7 +70,11 @@ pub fn eval_e(lctx: &mut HashMap<usize,Value>, pctx: &Program, e: &Expression) -
          for (pi,pv) in std::iter::zip(&pctx.functions[*fi].args, ps) {
             new_ctx.insert(*pi, pv);
          }
-         eval_e(&mut new_ctx, pctx, &pctx.functions[*fi].body)
+         let mut top_value = Value::tuple(Vec::new());
+         for be in pctx.functions[*fi].body.iter() {
+            top_value = eval_e(&mut new_ctx, pctx, be);
+         }
+         top_value
       },
       Expression::PatternMatch => unimplemented!("eval_e()"),
       Expression::Failure => panic!("eval_e(Failure)"),

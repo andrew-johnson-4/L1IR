@@ -84,12 +84,12 @@ fn eval_function() {
       format!("{:?}",eval(Program {
          functions: vec![FunctionDefinition {
             args: vec![],
-            body: Expression::TupleIntroduction(vec![
+            body: vec![Expression::TupleIntroduction(vec![
                TIPart::Linear(Rc::new(vec![
                   Value::literal("a"),
                   Value::literal("bc"),
                ]))
-            ])
+            ])]
          }],
          expressions: vec![],
       })),
@@ -99,12 +99,24 @@ fn eval_function() {
       format!("{:?}",eval(Program {
          functions: vec![FunctionDefinition {
             args: vec![],
-            body: Expression::TupleIntroduction(vec![
+            body: vec![],
+         }],
+         expressions: vec![
+            Expression::FunctionApplication(0,vec![]),
+         ],
+      })),
+      r#"()"#
+   );
+   assert_eq!(
+      format!("{:?}",eval(Program {
+         functions: vec![FunctionDefinition {
+            args: vec![],
+            body: vec![Expression::TupleIntroduction(vec![
                TIPart::Linear(Rc::new(vec![
                   Value::literal("a"),
                   Value::literal("bc"),
                ]))
-            ])
+            ])]
          }],
          expressions: vec![
             Expression::FunctionApplication(0,vec![]),
@@ -116,12 +128,12 @@ fn eval_function() {
       format!("{:?}",eval(Program {
          functions: vec![FunctionDefinition {
             args: vec![24],
-            body: Expression::TupleIntroduction(vec![
+            body: vec![Expression::TupleIntroduction(vec![
                TIPart::Linear(Rc::new(vec![
                   Value::literal("a"),
                ])),
                TIPart::Variable(24),
-            ])
+            ])]
          }],
          expressions: vec![
             Expression::FunctionApplication(0,vec![

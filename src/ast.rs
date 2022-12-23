@@ -68,7 +68,7 @@ impl std::fmt::Debug for Value {
 
 pub struct FunctionDefinition {
    pub args: Vec<usize>,
-   pub body: Expression,
+   pub body: Vec<Expression>,
 }
 
 pub struct Program {
