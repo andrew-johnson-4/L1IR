@@ -95,7 +95,7 @@ pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<HashMap<usize,Value>>, pctx: &Progra
          lctx = new_ctx;
          e = bes[bes.len()-1].clone();
       },
-      Expression::PatternMatch(span) => unimplemented!("eval_e(PatternMatch) at {:?}", &span),
+      Expression::PatternMatch(_lrs,span) => unimplemented!("eval_e(PatternMatch) at {:?}", &span),
       Expression::Failure(span) => {
          return Err(error("Runtime Error", "Failure", &span));
       },
