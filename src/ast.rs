@@ -110,7 +110,7 @@ pub enum LHSPart {
    Tuple(Vec<LHSPart>),
    Literal(Vec<char>),
    Variable(usize),
-   Ignore,
+   Any,
 }
 #[derive(Clone)]
 pub enum Expression<S:Debug + Clone> { //Expressions don't need to "clone"?
@@ -119,6 +119,6 @@ pub enum Expression<S:Debug + Clone> { //Expressions don't need to "clone"?
    VariableReference(usize,S),
    FunctionReference(usize,S),
    FunctionApplication(usize,Rc<Vec<Expression<S>>>,S),
-   PatternMatch(Rc<Vec<(LHSPart,Rc<Expression<S>>)>>,S),
+   PatternMatch(Rc<Expression<S>>,Rc<Vec<(LHSPart,Rc<Expression<S>>)>>,S),
    Failure(S),
 }
