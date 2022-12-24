@@ -1,8 +1,9 @@
 use std::rc::Rc;
 use std::cell::RefCell;
+use num_bigint::{ToBigUint};
 use std::fmt::Debug;
 use std::collections::{HashMap};
-use crate::ast::{Error,error,Value,Expression,Program,LIPart,TIPart,LHSPart};
+use crate::ast::{Error,error,Value,Expression,Program,LIPart,TIPart,LHSPart,LHSLiteralPart};
 
 pub fn eval_lhs<S:Debug + Clone>(lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx: &Program<S>, lhs: &LHSPart, rval: &Value) -> bool {
    match lhs {
@@ -21,7 +22,43 @@ pub fn eval_lhs<S:Debug + Clone>(lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx: 
                return false;
             }}
             true
+         } else if let Value::Unary(ri) = rval {
+            if &lcs.len().to_biguint().unwrap() != ri { return false; }
+            for li in 0..lcs.len() {
+            if lcs[li] != '0' {
+               return false;
+            }}
+            true
          } else { false }
+      },
+      LHSPart::UnpackLiteral(prel,midl,sufl) => {
+         if let Value::Unary(lu) = rval {
+            let mut lu = lu.clone();
+            for pl in prel.iter() {
+            let LHSLiteralPart::Literal(pcs) = pl;
+               if pcs.len().to_biguint().unwrap() > lu { return false; }
+               for pc in pcs.iter() {
+               if pc != &'0' {
+                  return false;
+               }}
+               lu = lu - pcs.len().to_biguint().unwrap();
+            }
+            for sl in sufl.iter() {
+            let LHSLiteralPart::Literal(scs) = sl;
+               if scs.len().to_biguint().unwrap() > lu { return false; }
+               for sc in scs.iter() {
+               if sc != &'0' {
+                  return false;
+               }}
+               lu = lu - scs.len().to_biguint().unwrap();
+            }
+            if let Some(midl) = midl {
+               lctx.borrow_mut().insert(*midl, Value::Unary(lu));
+            }
+            true
+         } else {
+            unimplemented!("TODO: LHSPart::UnpackLiteral")
+         }
       },
       LHSPart::Tuple(lcs) => {
          if let Value::Tuple(rs,re,rts) = rval {
@@ -39,6 +76,9 @@ pub fn eval_lhs<S:Debug + Clone>(lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx: 
 pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx: &Program<S>, mut e: Expression<S>) -> Result<Value,Error<S>> {
    loop {
    match e {
+      Expression::UnaryIntroduction(ui,_span) => {
+         return Ok(Value::Unary(ui))
+      },
       Expression::LiteralIntroduction(lps,span) => {
          if lps.len()==1 {
          if let LIPart::Linear(lcs) = &lps[0] {
@@ -139,7 +179,7 @@ pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx
          if let Some(ne) = matched {
             e = ne.clone();
          } else {
-            return Err(error("Runtime Error", "pattern did not match", &span));
+            return Err(error("Runtime Error", &format!("pattern did not match on {:?}", rv), &span));
          }
       },
       Expression::Failure(span) => {

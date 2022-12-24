@@ -131,14 +131,19 @@ pub enum TIPart {
    Variable(usize),
    InlineVariable(usize),
 }
+pub enum LHSLiteralPart {
+   Literal(Vec<char>),   
+}
 pub enum LHSPart {
    Tuple(Vec<LHSPart>),
    Literal(Vec<char>),
+   UnpackLiteral(Vec<LHSLiteralPart>,Option<usize>,Vec<LHSLiteralPart>),
    Variable(usize),
    Any,
 }
 #[derive(Clone)]
 pub enum Expression<S:Debug + Clone> { //Expressions don't need to "clone"?
+   UnaryIntroduction(BigUint,S),
    LiteralIntroduction(Rc<Vec<LIPart>>,S),
    TupleIntroduction(Rc<Vec<TIPart>>,S),
    VariableReference(usize,S),
