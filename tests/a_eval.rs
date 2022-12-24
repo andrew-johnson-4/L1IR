@@ -181,9 +181,9 @@ fn eval_pattern() {
             Rc::new(vec![
                (
                   LHSPart::Any,
-                  Rc::new(Expression::LiteralIntroduction(Rc::new(vec![
+                  Expression::LiteralIntroduction(Rc::new(vec![
                      LIPart::Linear(Rc::new(vec!['c'])),
-                  ]),())),
+                  ]),()),
                )
             ]),
             ()
@@ -202,9 +202,9 @@ fn eval_pattern() {
             Rc::new(vec![
                (
                   LHSPart::Literal(vec!['b','c','d']),
-                  Rc::new(Expression::LiteralIntroduction(Rc::new(vec![
+                  Expression::LiteralIntroduction(Rc::new(vec![
                      LIPart::Linear(Rc::new(vec!['e'])),
-                  ]),())),
+                  ]),()),
                )
             ]),
             ()
@@ -223,7 +223,7 @@ fn eval_pattern() {
             Rc::new(vec![
                (
                   LHSPart::Variable(123),
-                  Rc::new(Expression::VariableReference(123,())),
+                  Expression::VariableReference(123,()),
                )
             ]),
             ()
@@ -231,8 +231,27 @@ fn eval_pattern() {
       }).unwrap()),
       r#""bcd""#
    );
-   /*
-      Tuple(Vec<LHSPart>),
-   */
+   assert_eq!(
+      format!("{:?}",eval(Program {
+         functions: vec![],
+         expressions: vec![Expression::PatternMatch(
+            Rc::new(Expression::TupleIntroduction(Rc::new(vec![
+               TIPart::Linear(Rc::new(vec![
+                  Value::literal("mno"),
+               ])),
+            ]),())),
+            Rc::new(vec![
+               (
+                  LHSPart::Tuple(vec![
+                     LHSPart::Variable(123),
+                  ]),
+                  Expression::VariableReference(123,()),
+               )
+            ]),
+            ()
+         )],
+      }).unwrap()),
+      r#""mno""#
+   );
 }
 
