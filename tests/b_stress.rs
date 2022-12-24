@@ -35,7 +35,7 @@ fn eval_recursive_loop() {
          expressions: vec![
             Expression::FunctionApplication(0,Rc::new(vec![
                Expression::UnaryIntroduction(
-                  BigUint::parse_bytes(b"99999999999", 10).expect("unary parse_bytes failed")
+                  BigUint::parse_bytes(b"999999", 10).expect("unary parse_bytes failed")
                ,()),
             ]),()),
          ],
