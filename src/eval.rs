@@ -39,6 +39,9 @@ pub fn eval_lhs<S:Debug + Clone>(lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx: 
 pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx: &Program<S>, mut e: Expression<S>) -> Result<Value,Error<S>> {
    loop {
    match e {
+      Expression::UnaryIntroduction(ui,_span) => {
+         return Ok(Value::Unary(ui))
+      },
       Expression::LiteralIntroduction(lps,span) => {
          if lps.len()==1 {
          if let LIPart::Linear(lcs) = &lps[0] {

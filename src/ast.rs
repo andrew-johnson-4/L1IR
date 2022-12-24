@@ -139,6 +139,7 @@ pub enum LHSPart {
 }
 #[derive(Clone)]
 pub enum Expression<S:Debug + Clone> { //Expressions don't need to "clone"?
+   UnaryIntroduction(BigUint,S),
    LiteralIntroduction(Rc<Vec<LIPart>>,S),
    TupleIntroduction(Rc<Vec<TIPart>>,S),
    VariableReference(usize,S),
