@@ -1,3 +1,4 @@
+use num_bigint::{BigUint,ToBigUint};
 use std::rc::Rc;
 use std::fmt::Debug;
 
@@ -21,11 +22,16 @@ pub fn error<S:Debug + Clone>(t:&str, m:&str, s:&S) -> Error<S> {
 
 #[derive(Clone)]
 pub enum Value {
+   Unary(BigUint), //a unary number, represented as "0"...
    Literal(usize,usize,Rc<Vec<char>>), //avoid copy-on-slice
    Tuple(usize,usize,Rc<Vec<Value>>), //avoid copy-on-slice
    Function(usize), //all functions are static program indices
 }
 impl Value {
+   pub fn unary(buf: &[u8]) -> Value {
+      let ui = BigUint::parse_bytes(buf, 10).expect("unary parse_bytes failed");
+      Value::Unary(ui)
+   }
    pub fn literal(cs: &str) -> Value {
       let cs = cs.chars().collect::<Vec<char>>();
       Value::Literal(0,cs.len(),Rc::new(cs))
@@ -54,6 +60,23 @@ impl PartialEq for Value {
          (Value::Function(lf),Value::Function(rf)) => {
             lf == rf
          },
+         (Value::Unary(li),Value::Unary(ri)) => {
+            li == ri
+         },
+         (Value::Unary(li),Value::Literal(rs,re,rv)) => {
+            for ri in *rs..*re {
+            if rv[ri] != '0' {
+               return false;
+            }}
+            li == &(re-rs).to_biguint().unwrap()
+         },
+         (Value::Literal(ls,le,lv),Value::Unary(ri)) => {
+            for li in *ls..*le {
+            if lv[li] != '0' {
+               return false;
+            }}
+            ri == &(le-ls).to_biguint().unwrap()
+         },
          _ => false,
       }
    }
@@ -81,6 +104,8 @@ impl std::fmt::Debug for Value {
          write!(f, r#")"#)
       } else if let Value::Function(fid) = self {
          write!(f, "f#{}", fid)
+      } else if let Value::Unary(ui) = self {
+         write!(f, "{}", ui)
       } else { unreachable!("exhaustive") }
    }
 }

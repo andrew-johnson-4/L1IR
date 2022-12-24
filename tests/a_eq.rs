@@ -2,6 +2,42 @@ use std::rc::Rc;
 use l1_ir::ast::{Value};
 
 #[test]
+fn eq_unary() {
+   assert_eq!(
+      Value::unary(b"0"),
+      Value::unary(b"0"),
+   );
+   assert_eq!(
+      Value::unary(b"1"),
+      Value::unary(b"1"),
+   );
+   assert_eq!(
+      Value::unary(b"123456789"),
+      Value::unary(b"123456789"),
+   );
+   assert_eq!(
+      Value::unary(b"123456789101112131415161718192021"),
+      Value::unary(b"123456789101112131415161718192021"),
+   );
+   assert_eq!(
+      Value::unary(b"0"),
+      Value::Literal(0,0,Rc::new(vec![])),
+   );
+   assert_eq!(
+      Value::Literal(0,0,Rc::new(vec![])),
+      Value::unary(b"0"),
+   );
+   assert_eq!(
+      Value::unary(b"1"),
+      Value::Literal(0,1,Rc::new(vec!['0'])),
+   );
+   assert_eq!(
+      Value::Literal(0,1,Rc::new(vec!['0'])),
+      Value::unary(b"1"),
+   );
+}
+
+#[test]
 fn eq_literals() {
    assert_eq!(
       Value::Literal(0,1,Rc::new(vec!['a'])),
