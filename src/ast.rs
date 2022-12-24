@@ -131,9 +131,13 @@ pub enum TIPart {
    Variable(usize),
    InlineVariable(usize),
 }
+pub enum LHSLiteralPart {
+   Literal(Vec<char>),   
+}
 pub enum LHSPart {
    Tuple(Vec<LHSPart>),
    Literal(Vec<char>),
+   UnpackLiteral(Vec<LHSLiteralPart>,Option<usize>,Vec<LHSLiteralPart>),
    Variable(usize),
    Any,
 }

@@ -23,6 +23,9 @@ pub fn eval_lhs<S:Debug + Clone>(lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx: 
             true
          } else { false }
       },
+      LHSPart::UnpackLiteral(_prel,_midl,_sufl) => {
+         unimplemented!("TODO: LHSPart::UnpackLiteral")
+      },
       LHSPart::Tuple(lcs) => {
          if let Value::Tuple(rs,re,rts) = rval {
             if lcs.len() != (re-rs) { return false; }
