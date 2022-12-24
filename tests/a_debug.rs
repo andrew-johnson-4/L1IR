@@ -9,11 +9,11 @@ fn eval_literals() {
    );
    assert_eq!(
       format!("{:?}",Value::Literal(0,0,Rc::new(vec!['a']))),
-      r#""""#,
+      r#"0"#,
    );
    assert_eq!(
       format!("{:?}",Value::Literal(1,1,Rc::new(vec!['a']))),
-      r#""""#,
+      r#"0"#,
    );
    assert_eq!(
       format!("{:?}",Value::Literal(0,3,Rc::new(vec!['a','b','c']))),
@@ -29,7 +29,7 @@ fn eval_literals() {
    );
    assert_eq!(
       format!("{:?}",Value::Literal(0,0,Rc::new(vec!['a','b','c']))),
-      r#""""#,
+      r#"0"#,
    );
    assert_eq!(
       format!("{:?}",Value::Literal(1,3,Rc::new(vec!['a','b','c']))),
@@ -41,7 +41,7 @@ fn eval_literals() {
    );
    assert_eq!(
       format!("{:?}",Value::Literal(1,1,Rc::new(vec!['a','b','c']))),
-      r#""""#,
+      r#"0"#,
    );
    assert_eq!(
       format!("{:?}",Value::Literal(2,3,Rc::new(vec!['a','b','c']))),
@@ -49,11 +49,11 @@ fn eval_literals() {
    );
    assert_eq!(
       format!("{:?}",Value::Literal(2,2,Rc::new(vec!['a','b','c']))),
-      r#""""#,
+      r#"0"#,
    );
    assert_eq!(
       format!("{:?}",Value::Literal(3,3,Rc::new(vec!['a','b','c']))),
-      r#""""#,
+      r#"0"#,
    );
 }
 
@@ -127,7 +127,7 @@ fn eval_heterogenous() {
    );
    assert_eq!(
       format!("{:?}",t2),
-      r#"("",("a",f#1,"bc"),f#23)"#
+      r#"(0,("a",f#1,"bc"),f#23)"#
    );
 }
 

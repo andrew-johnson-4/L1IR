@@ -85,6 +85,15 @@ impl Eq for Value {}
 impl std::fmt::Debug for Value {
    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
       if let Value::Literal(start,end,val) = self {
+         let mut unary = true;
+         for i in (*start)..(*end) {
+         if val[i] != '0' {
+            unary = false;
+            break;
+         }}
+         if unary {
+            return write!(f, "{}", end-start);
+         }
          write!(f, r#"""#)?;
          for i in (*start)..(*end) {
             write!(f, "{}", val[i])?;
