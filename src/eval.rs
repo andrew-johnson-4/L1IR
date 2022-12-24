@@ -1,9 +1,42 @@
 use std::rc::Rc;
+use std::cell::RefCell;
 use std::fmt::Debug;
 use std::collections::{HashMap};
-use crate::ast::{Error,error,Value,Expression,Program,LIPart,TIPart};
+use crate::ast::{Error,error,Value,Expression,Program,LIPart,TIPart,LHSPart};
 
-pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<HashMap<usize,Value>>, pctx: &Program<S>, mut e: Expression<S>) -> Result<Value,Error<S>> {
+pub fn eval_lhs<S:Debug + Clone>(lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx: &Program<S>, lhs: &LHSPart, rval: &Value) -> bool {
+   match lhs {
+      LHSPart::Any => true,
+      LHSPart::Variable(lid) => {
+         if let Some(lval) = lctx.borrow().get(lid) {
+            return lval == rval;
+         }
+         lctx.borrow_mut().insert(*lid, rval.clone());
+         true
+      },
+      LHSPart::Literal(lcs) => {
+         if let Value::Literal(rs,re,rcs) = rval {
+            for li in 0..(re-rs) {
+            if lcs[li] != rcs[rs+li] {
+               return false;
+            }}
+            true
+         } else { false }
+      },
+      LHSPart::Tuple(lcs) => {
+         if let Value::Tuple(rs,re,rts) = rval {
+            if lcs.len() != (re-rs) { return false; }
+            for li in 0..lcs.len() {
+            if !eval_lhs(lctx.clone(), pctx, &lcs[li], &rts[rs+li]) {
+               return false;
+            }}
+            true
+         } else { false }
+      },
+   }
+}
+
+pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx: &Program<S>, mut e: Expression<S>) -> Result<Value,Error<S>> {
    loop {
    match e {
       Expression::LiteralIntroduction(lps,span) => {
@@ -19,7 +52,7 @@ pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<HashMap<usize,Value>>, pctx: &Progra
                lcs.push(*c);
             }},
             LIPart::InlineVariable(vi) => {
-               if let Some(Value::Literal(vs,ve,vcs)) = lctx.get(vi) {
+               if let Some(Value::Literal(vs,ve,vcs)) = lctx.borrow().get(vi) {
                for ci in *vs..*ve {
                   lcs.push(vcs[ci]);
                }} else {
@@ -42,14 +75,14 @@ pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<HashMap<usize,Value>>, pctx: &Progra
                tcs.push(v.clone());
             }},
             TIPart::Variable(vi) => {
-               if let Some(vt) = lctx.get(vi) {
+               if let Some(vt) = lctx.borrow().get(vi) {
                   tcs.push(vt.clone());
                } else {
                   return Err(error("Runtime Error", &format!("v#{} not found", vi), &span));
                }
             },
             TIPart::InlineVariable(vi) => {
-               if let Some(Value::Tuple(vs,ve,vcs)) = lctx.get(vi) {
+               if let Some(Value::Tuple(vs,ve,vcs)) = lctx.borrow().get(vi) {
                for ti in *vs..*ve {
                   tcs.push(vcs[ti].clone());
                }} else { 
@@ -63,7 +96,7 @@ pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<HashMap<usize,Value>>, pctx: &Progra
          return Ok(Value::Function(fi));
       },
       Expression::VariableReference(li,span) => {
-         if let Some(lv) = lctx.get(&li) {
+         if let Some(lv) = lctx.borrow().get(&li) {
             return Ok(lv.clone());
          } else {
             return Err(error("Runtime Error", &format!("v#{} not found", li), &span));
@@ -88,23 +121,36 @@ pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<HashMap<usize,Value>>, pctx: &Progra
          if bes.len()==0 {
             return Ok(Value::tuple(Vec::new()));
          }
-         let new_ctx = Rc::new(new_ctx);
+         let new_ctx = Rc::new(RefCell::new(new_ctx));
          for bi in 0..(bes.len()-1) {
             eval_e(new_ctx.clone(), pctx, bes[bi].clone())?;
          }
          lctx = new_ctx;
          e = bes[bes.len()-1].clone();
       },
-      Expression::PatternMatch(span) => unimplemented!("eval_e(PatternMatch) at {:?}", &span),
+      Expression::PatternMatch(re,lrs,span) => {
+         let mut matched: Option<Expression<S>> = None;
+         let rv = eval_e(lctx.clone(), pctx, (*re).clone())?;
+         for (l,r) in lrs.iter() {
+         if eval_lhs(lctx.clone(), pctx, l, &rv) {
+            matched = Some(r.clone());
+         }
+         }
+         if let Some(ne) = matched {
+            e = ne.clone();
+         } else {
+            return Err(error("Runtime Error", "pattern did not match", &span));
+         }
+      },
       Expression::Failure(span) => {
-         return Err(error("Runtime Error", "Failure", &span));
+         return Err(error("Runtime Error", "failure", &span));
       },
    }}
 }
 
 pub fn eval<S:Debug + Clone>(p: Program<S>) -> Result<Value,Error<S>> {
    let mut top_value = Value::tuple(Vec::new());
-   let top_ctx = Rc::new(HashMap::new());
+   let top_ctx = Rc::new(RefCell::new(HashMap::new()));
    for e in p.expressions.iter() {
       top_value = eval_e(top_ctx.clone(), &p, e.clone())?;
    }
