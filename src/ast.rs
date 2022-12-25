@@ -146,16 +146,23 @@ impl<S:Debug + Clone> Program<S> {
 }
 
 #[derive(Clone)]
-pub enum LIPart {
+pub enum LIPart<S:Debug + Clone> {
    Literal(Rc<Vec<char>>),
    InlineVariable(usize),
+   Expression(Expression<S>),
 }
-impl LIPart {
-   pub fn literal(cs: &str) -> LIPart {
+impl<S:Debug + Clone> LIPart<S> {
+   pub fn literal(cs: &str) -> LIPart<S> {
       let cs = cs.chars().collect::<Vec<char>>();
       LIPart::Literal(Rc::new(
          cs
       ))
+   }
+   pub fn variable(vi: usize) -> LIPart<S> {
+      LIPart::InlineVariable(vi)
+   }
+   pub fn expression(ve: Expression<S>) -> LIPart<S> {
+      LIPart::Expression(ve)
    }
 }
 
@@ -215,7 +222,7 @@ impl LHSPart {
 #[derive(Clone)]
 pub enum Expression<S:Debug + Clone> { //Expressions don't need to "clone"?
    UnaryIntroduction(BigUint,S),
-   LiteralIntroduction(Rc<Vec<LIPart>>,S),
+   LiteralIntroduction(Rc<Vec<LIPart<S>>>,S),
    TupleIntroduction(Rc<Vec<TIPart>>,S),
    VariableReference(usize,S),
    FunctionReference(usize,S),
@@ -240,7 +247,7 @@ impl<S:Debug + Clone> Expression<S> {
          LIPart::Literal(Rc::new(cs)),
       ]), span)
    }
-   pub fn li(lps: Vec<LIPart>, span: S) -> Expression<S> {
+   pub fn li(lps: Vec<LIPart<S>>, span: S) -> Expression<S> {
       Expression::LiteralIntroduction(Rc::new(
          lps
       ), span)

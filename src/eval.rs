@@ -1,7 +1,8 @@
 use std::rc::Rc;
 use std::cell::RefCell;
-use num_bigint::{ToBigUint};
+use num_bigint::{BigUint,ToBigUint};
 use std::fmt::Debug;
+use num_traits::cast::ToPrimitive;
 use std::collections::{HashMap};
 use crate::ast::{Error,error,Value,Expression,Program,LIPart,TIPart,LHSPart,LHSLiteralPart};
 
@@ -56,9 +57,9 @@ pub fn eval_lhs<S:Debug + Clone>(lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx: 
                lctx.borrow_mut().insert(*midl, Value::Unary(lu));
             }
             true
-         } else {
-            unimplemented!("TODO: LHSPart::UnpackLiteral")
-         }
+         } else if let Value::Literal(_ls,_le,_lcs) = rval {
+            unimplemented!("TODO: unpack literal {:?}", rval)
+         } else { return false; }
       },
       LHSPart::Tuple(lcs) => {
          if let Value::Tuple(rs,re,rts) = rval {
@@ -73,6 +74,35 @@ pub fn eval_lhs<S:Debug + Clone>(lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx: 
    }
 }
 
+fn ucatcs(lui: &mut BigUint, lcs: &mut Vec<char>, vs:usize, ve:usize, v: &Vec<char>) {
+   let mut unary = lcs.len()==0;
+   if unary {
+      for vi in vs..ve {
+      if v[vi] != '0' {
+         unary = false;
+         break;
+      }}
+      if unary {
+         *lui = lui.clone() + (ve-vs).to_biguint().unwrap();
+      }
+   }
+   if !unary {
+      for vi in vs..ve {
+         lcs.push(v[vi]);
+      }
+   }
+}
+fn ucatu(lui: &mut BigUint, lcs: &mut Vec<char>, u:&BigUint) {
+   if lcs.len()==0 {
+      *lui = lui.clone() + u.clone();
+   } else {
+      let u = u.to_u32().unwrap();
+      for _ in 0..u {
+         lcs.push('0');
+      }
+   }
+}
+
 pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx: &Program<S>, mut e: Expression<S>) -> Result<Value,Error<S>> {
    loop {
    match e {
@@ -84,23 +114,31 @@ pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx
          if let LIPart::Literal(lcs) = &lps[0] {
             return Ok(Value::Literal(0,lcs.len(),lcs.clone()));
          }}
+         let mut lui = 0.to_biguint().unwrap();
          let mut lcs = Vec::new();
          for lip in lps.iter() {
          match lip {
-            LIPart::Literal(cs) => {
-            for c in cs.iter() {
-               lcs.push(*c);
-            }},
+            LIPart::Literal(cs) => { ucatcs(&mut lui, &mut lcs, 0, cs.len(), cs) }
             LIPart::InlineVariable(vi) => {
-               if let Some(Value::Literal(vs,ve,vcs)) = lctx.borrow().get(vi) {
-               for ci in *vs..*ve {
-                  lcs.push(vcs[ci]);
-               }} else {
-                  return Err(error("Runtime Error", &format!("v#{} not found", vi), &span));
+               match lctx.borrow().get(vi) {
+                  Some(Value::Literal(vs,ve,vcs)) => { ucatcs(&mut lui, &mut lcs, *vs, *ve, &vcs) },
+                  Some(Value::Unary(ui)) => { ucatu(&mut lui, &mut lcs, &ui) },
+                  _ => { return Err(error("Runtime Error", &format!("v#{} not found", vi), &span)); }
+               }
+            },
+            LIPart::Expression(pe) => {
+               match eval_e(lctx.clone(), pctx, pe.clone())? {
+                  Value::Literal(vs,ve,vcs) => { ucatcs(&mut lui, &mut lcs, vs, ve, &vcs) },
+                  Value::Unary(ui) => { ucatu(&mut lui, &mut lcs, &ui) },
+                  _ => { return Err(error("Runtime Error", "invalid literal expression", &span)) }
                }
             },
          }}
-         return Ok(Value::Literal(0,lcs.len(),Rc::new(lcs)));
+         if lcs.len()==0 {
+            return Ok(Value::Unary(lui))
+         } else {
+            return Ok(Value::Literal(0,lcs.len(),Rc::new(lcs)));
+         }
       },
       Expression::TupleIntroduction(tps,span) => {
          if tps.len()==1 {
