@@ -3,9 +3,9 @@ use std::rc::Rc;
 use std::fmt::Debug;
 
 pub struct Error<S:Debug + Clone> {
-   error_type: String,
-   error_msg: String,
-   span: S,
+   pub error_type: String,
+   pub error_msg: String,
+   pub span: S,
 }
 impl<S:Debug + Clone> std::fmt::Debug for Error<S> {
    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
