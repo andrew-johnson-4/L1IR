@@ -81,13 +81,13 @@ pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx
       },
       Expression::LiteralIntroduction(lps,span) => {
          if lps.len()==1 {
-         if let LIPart::Linear(lcs) = &lps[0] {
+         if let LIPart::Literal(lcs) = &lps[0] {
             return Ok(Value::Literal(0,lcs.len(),lcs.clone()));
          }}
          let mut lcs = Vec::new();
          for lip in lps.iter() {
          match lip {
-            LIPart::Linear(cs) => {
+            LIPart::Literal(cs) => {
             for c in cs.iter() {
                lcs.push(*c);
             }},
@@ -104,13 +104,13 @@ pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx
       },
       Expression::TupleIntroduction(tps,span) => {
          if tps.len()==1 {
-         if let TIPart::Linear(tcs) = &tps[0] {
+         if let TIPart::Tuple(tcs) = &tps[0] {
             return Ok(Value::Tuple(0,tcs.len(),tcs.clone()));
          }}
          let mut tcs = Vec::new();
          for tip in tps.iter() {
          match tip {
-            TIPart::Linear(vs) => {
+            TIPart::Tuple(vs) => {
             for v in vs.iter() {
                tcs.push(v.clone());
             }},

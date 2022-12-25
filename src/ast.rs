@@ -123,26 +123,69 @@ pub struct FunctionDefinition<S:Debug + Clone> {
    pub args: Vec<usize>,
    pub body: Vec<Expression<S>>,
 }
+impl<S:Debug + Clone> FunctionDefinition<S> {
+   pub fn define(args: Vec<usize>, body: Vec<Expression<S>>) -> FunctionDefinition<S> {
+      FunctionDefinition {
+         args: args,
+         body: body,
+      }
+   }
+}
 
 pub struct Program<S:Debug + Clone> {
    pub functions: Vec<FunctionDefinition<S>>,
    pub expressions: Vec<Expression<S>>,
 }
+impl<S:Debug + Clone> Program<S> {
+   pub fn program(functions: Vec<FunctionDefinition<S>>, expressions: Vec<Expression<S>>) -> Program<S> {
+      Program {
+         functions: functions,
+         expressions: expressions,
+      }
+   }
+}
 
 #[derive(Clone)]
 pub enum LIPart {
-   Linear(Rc<Vec<char>>),
+   Literal(Rc<Vec<char>>),
    InlineVariable(usize),
 }
+impl LIPart {
+   pub fn literal(cs: &str) -> LIPart {
+      let cs = cs.chars().collect::<Vec<char>>();
+      LIPart::Literal(Rc::new(
+         cs
+      ))
+   }
+}
+
 #[derive(Clone)]
 pub enum TIPart {
-   Linear(Rc<Vec<Value>>),
+   Tuple(Rc<Vec<Value>>),
    Variable(usize),
    InlineVariable(usize),
 }
+impl TIPart {
+   pub fn tuple(ts: Vec<Value>) -> TIPart {
+      TIPart::Tuple(Rc::new(
+         ts
+      ))
+   }
+   pub fn variable(vi: usize) -> TIPart {
+      TIPart::Variable(vi)
+   }
+}
+
 pub enum LHSLiteralPart {
    Literal(Vec<char>),   
 }
+impl LHSLiteralPart {
+   pub fn literal(cs: &str) -> LHSLiteralPart {
+      let cs = cs.chars().collect::<Vec<char>>();
+      LHSLiteralPart::Literal(cs)
+   }
+}
+
 pub enum LHSPart {
    Tuple(Vec<LHSPart>),
    Literal(Vec<char>),
@@ -150,6 +193,25 @@ pub enum LHSPart {
    Variable(usize),
    Any,
 }
+impl LHSPart {
+   pub fn ul(pre: Vec<LHSLiteralPart>, mid: Option<usize>, suf: Vec<LHSLiteralPart>) -> LHSPart {
+      LHSPart::UnpackLiteral(pre, mid, suf)
+   }
+   pub fn any() -> LHSPart {
+      LHSPart::Any
+   }
+   pub fn variable(vi: usize) -> LHSPart {
+      LHSPart::Variable(vi)
+   }
+   pub fn tuple(ts: Vec<LHSPart>) -> LHSPart {
+      LHSPart::Tuple(ts)
+   }
+   pub fn literal(cs: &str) -> LHSPart {
+      let cs = cs.chars().collect::<Vec<char>>();
+      LHSPart::Literal(cs)
+   }
+}
+
 #[derive(Clone)]
 pub enum Expression<S:Debug + Clone> { //Expressions don't need to "clone"?
    UnaryIntroduction(BigUint,S),
@@ -160,4 +222,48 @@ pub enum Expression<S:Debug + Clone> { //Expressions don't need to "clone"?
    FunctionApplication(usize,Rc<Vec<Expression<S>>>,S),
    PatternMatch(Rc<Expression<S>>,Rc<Vec<(LHSPart,Expression<S>)>>,S),
    Failure(S),
+}
+impl<S:Debug + Clone> Expression<S> {
+   pub fn unary(ui: &[u8], span: S) -> Expression<S> {
+      let ui = BigUint::parse_bytes(ui, 10).unwrap();
+      Expression::UnaryIntroduction(ui, span)
+   }
+   pub fn variable(vi: usize, span: S) -> Expression<S> {
+      Expression::VariableReference(vi,span)
+   }
+   pub fn failure(span: S) -> Expression<S> {
+      Expression::Failure(span)
+   }
+   pub fn literal(cs: &str, span: S) -> Expression<S> {
+      let cs = cs.chars().collect::<Vec<char>>();
+      Expression::LiteralIntroduction(Rc::new(vec![
+         LIPart::Literal(Rc::new(cs)),
+      ]), span)
+   }
+   pub fn li(lps: Vec<LIPart>, span: S) -> Expression<S> {
+      Expression::LiteralIntroduction(Rc::new(
+         lps
+      ), span)
+   }
+   pub  fn tuple(tps: Vec<Value>, span: S) -> Expression<S> {
+      Expression::TupleIntroduction(Rc::new(vec![
+         TIPart::tuple(tps)
+      ]), span)
+   }
+   pub fn ti(tps: Vec<TIPart>, span: S) -> Expression<S> {
+      Expression::TupleIntroduction(Rc::new(
+         tps
+      ), span)
+   }
+   pub fn apply(fi: usize, args: Vec<Expression<S>>, span: S) -> Expression<S> {
+      Expression::FunctionApplication(fi,Rc::new(
+         args
+      ), span)
+   }
+   pub fn pattern(v: Expression<S>, lrs: Vec<(LHSPart,Expression<S>)>, span: S) -> Expression<S> {
+      Expression::PatternMatch(
+         Rc::new(v),
+         Rc::new(lrs),
+         span)
+   }
 }

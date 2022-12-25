@@ -1,21 +1,10 @@
-use std::rc::Rc;
 use l1_ir::ast::{Value,Expression,Program,LIPart,TIPart,FunctionDefinition,LHSPart};
 use l1_ir::eval::{eval};
-
-fn by_expressions(es: Vec<Expression<()>>) -> Program<()> {
-   Program {
-      functions: vec![],
-      expressions: es,
-   }
-}
-fn by_expression(e: Expression<()>) -> Program<()> {
-   by_expressions(vec![ e ])
-}
 
 #[test]
 fn eval_empty() {
    assert_eq!(
-      eval(by_expressions(vec![])).unwrap(),
+      eval(Program::<()>::program(vec![],vec![])).unwrap(),
       Value::tuple(vec![])
    );
 }
@@ -23,32 +12,38 @@ fn eval_empty() {
 #[test]
 fn eval_failure() {
    assert!(
-      eval(by_expression(Expression::Failure(()))).is_err()
+      eval(Program::program(
+         vec![],
+         vec![Expression::failure(())]
+      )).is_err()
    );
 }
 
 #[test]
 fn eval_li() {
    assert_eq!(
-      eval(by_expression(
-         Expression::LiteralIntroduction(Rc::new(vec![]),())
+      eval(Program::program(
+         vec![],
+         vec![Expression::literal("",())],
       )).unwrap(),
       Value::literal("")
    );
    assert_eq!(
-      eval(by_expression(
-         Expression::LiteralIntroduction(Rc::new(vec![
-            LIPart::Linear(Rc::new(vec!['a']))
-         ]),())
+      eval(Program::program(
+         vec![],
+         vec![Expression::li(vec![
+            LIPart::literal("a")
+         ],())],
       )).unwrap(),
       Value::literal("a")
    );
    assert_eq!(
-      eval(by_expression(
-         Expression::LiteralIntroduction(Rc::new(vec![
-            LIPart::Linear(Rc::new(vec!['a'])),
-            LIPart::Linear(Rc::new(vec!['b','c']))
-         ]),())
+      eval(Program::program(
+         vec![],
+         vec![Expression::li(vec![
+            LIPart::literal("a"),
+            LIPart::literal("bc"),
+         ],())],
       )).unwrap(),
       Value::literal("abc")
    );
@@ -57,29 +52,32 @@ fn eval_li() {
 #[test]
 fn eval_ti() {
    assert_eq!(
-      format!("{:?}",eval(by_expression(
-         Expression::TupleIntroduction(Rc::new(vec![]),())
+      format!("{:?}",eval(Program::program(
+         vec![],
+         vec![Expression::ti(vec![],())],
       )).unwrap()),
       "()"
    );
    assert_eq!(
-      format!("{:?}",eval(by_expression(
-         Expression::TupleIntroduction(Rc::new(vec![
-            TIPart::Linear(Rc::new(vec![
+      format!("{:?}",eval(Program::program(
+         vec![],
+         vec![Expression::ti(vec![
+            TIPart::tuple(vec![
                Value::literal("a"),
-            ]))
-         ]),())
+            ])
+         ],())],
       )).unwrap()),
       r#"("a",)"#
    );
    assert_eq!(
-      format!("{:?}",eval(by_expression(
-         Expression::TupleIntroduction(Rc::new(vec![
-            TIPart::Linear(Rc::new(vec![
+      format!("{:?}",eval(Program::program(
+         vec![],
+         vec![Expression::ti(vec![
+            TIPart::tuple(vec![
                Value::literal("a"),
                Value::literal("bc"),
-            ]))
-         ]),())
+            ])
+         ],())],
       )).unwrap()),
       r#"("a","bc")"#
    );
@@ -88,69 +86,69 @@ fn eval_ti() {
 #[test]
 fn eval_function() {
    assert_eq!(
-      format!("{:?}",eval(Program {
-         functions: vec![FunctionDefinition {
-            args: vec![],
-            body: vec![Expression::TupleIntroduction(Rc::new(vec![
-               TIPart::Linear(Rc::new(vec![
+      format!("{:?}",eval(Program::program(
+         vec![FunctionDefinition::define(
+            vec![],
+            vec![Expression::ti(vec![
+               TIPart::tuple(vec![
                   Value::literal("a"),
                   Value::literal("bc"),
-               ]))
-            ]),())]
-         }],
-         expressions: vec![],
-      }).unwrap()),
+               ])
+            ],())]
+         )],
+         vec![],
+      )).unwrap()),
       "()"
    );
    assert_eq!(
-      format!("{:?}",eval(Program {
-         functions: vec![FunctionDefinition {
-            args: vec![],
-            body: vec![],
-         }],
-         expressions: vec![
-            Expression::FunctionApplication(0,Rc::new(vec![]),()),
+      format!("{:?}",eval(Program::program(
+         vec![FunctionDefinition::define(
+            vec![],
+            vec![],
+         )],
+         vec![
+            Expression::apply(0,vec![],()),
          ],
-      }).unwrap()),
+      )).unwrap()),
       r#"()"#
    );
    assert_eq!(
-      format!("{:?}",eval(Program {
-         functions: vec![FunctionDefinition {
-            args: vec![],
-            body: vec![Expression::TupleIntroduction(Rc::new(vec![
-               TIPart::Linear(Rc::new(vec![
+      format!("{:?}",eval(Program::program(
+         vec![FunctionDefinition::define(
+            vec![],
+            vec![Expression::ti(vec![
+               TIPart::tuple(vec![
                   Value::literal("a"),
                   Value::literal("bc"),
-               ]))
-            ]),())]
-         }],
-         expressions: vec![
-            Expression::FunctionApplication(0,Rc::new(vec![]),()),
+               ])
+            ],())]
+         )],
+         vec![
+            Expression::apply(0,vec![],()),
          ],
-      }).unwrap()),
+      )).unwrap()),
       r#"("a","bc")"#
    );
    assert_eq!(
-      format!("{:?}",eval(Program {
-         functions: vec![FunctionDefinition {
-            args: vec![24],
-            body: vec![Expression::TupleIntroduction(Rc::new(vec![
-               TIPart::Linear(Rc::new(vec![
+      format!("{:?}",eval(Program::program(
+         vec![FunctionDefinition::define(
+            vec![24],
+            vec![Expression::ti(vec![
+               TIPart::tuple(vec![
                   Value::literal("a"),
-               ])),
-               TIPart::Variable(24),
-            ]),())]
-         }],
-         expressions: vec![
-            Expression::FunctionApplication(0,Rc::new(vec![
-               Expression::LiteralIntroduction(Rc::new(vec![
-                  LIPart::Linear(Rc::new(vec!['b'])),
-                  LIPart::Linear(Rc::new(vec!['c','d']))
-               ]),())
-            ]),()),
+               ]),
+               TIPart::variable(24),
+            ],())]
+         )],
+         vec![
+            Expression::apply(0,vec![
+               Expression::li(vec![
+                  LIPart::literal("b"),
+                  LIPart::literal("cd"),
+               ],())
+            ],()),
          ],
-      }).unwrap()),
+      )).unwrap()),
       r#"("a","bcd")"#
    );
 }
@@ -158,100 +156,80 @@ fn eval_function() {
 #[test]
 fn eval_pattern() {
    assert!(
-      eval(Program {
-         functions: vec![],
-         expressions: vec![Expression::PatternMatch(
-            Rc::new(Expression::LiteralIntroduction(Rc::new(vec![
-               LIPart::Linear(Rc::new(vec!['b'])),
-               LIPart::Linear(Rc::new(vec!['c','d']))
-            ]),())),
-            Rc::new(vec![]),
-            ()
-         )],
-      }).is_err(),
+      eval(Program::program(
+         vec![],
+         vec![Expression::pattern(
+            Expression::li(vec![
+               LIPart::literal("b"),
+               LIPart::literal("cd"),
+            ],()),
+            vec![],
+         ())],
+      )).is_err(),
    );
    assert_eq!(
-      format!("{:?}",eval(Program {
-         functions: vec![],
-         expressions: vec![Expression::PatternMatch(
-            Rc::new(Expression::LiteralIntroduction(Rc::new(vec![
-               LIPart::Linear(Rc::new(vec!['b'])),
-               LIPart::Linear(Rc::new(vec!['c','d']))
-            ]),())),
-            Rc::new(vec![
-               (
-                  LHSPart::Any,
-                  Expression::LiteralIntroduction(Rc::new(vec![
-                     LIPart::Linear(Rc::new(vec!['c'])),
-                  ]),()),
-               )
-            ]),
-            ()
-         )],
-      }).unwrap()),
+      format!("{:?}",eval(Program::program(
+         vec![],
+         vec![Expression::pattern(
+            Expression::li(vec![
+               LIPart::literal("b"),
+               LIPart::literal("cd"),
+            ],()),
+            vec![(
+               LHSPart::any(),
+               Expression::literal("c",())
+            )],
+         ())],
+      )).unwrap()),
       r#""c""#
    );
    assert_eq!(
-      format!("{:?}",eval(Program {
-         functions: vec![],
-         expressions: vec![Expression::PatternMatch(
-            Rc::new(Expression::LiteralIntroduction(Rc::new(vec![
-               LIPart::Linear(Rc::new(vec!['b'])),
-               LIPart::Linear(Rc::new(vec!['c','d']))
-            ]),())),
-            Rc::new(vec![
-               (
-                  LHSPart::Literal(vec!['b','c','d']),
-                  Expression::LiteralIntroduction(Rc::new(vec![
-                     LIPart::Linear(Rc::new(vec!['e'])),
-                  ]),()),
-               )
-            ]),
-            ()
-         )],
-      }).unwrap()),
+      format!("{:?}",eval(Program::program(
+         vec![],
+         vec![Expression::pattern(
+            Expression::li(vec![
+               LIPart::literal("b"),
+               LIPart::literal("cd"),
+            ],()),
+            vec![(
+               LHSPart::literal("bcd"),
+               Expression::literal("e",())
+            )],
+         ())],
+      )).unwrap()),
       r#""e""#
    );
    assert_eq!(
-      format!("{:?}",eval(Program {
-         functions: vec![],
-         expressions: vec![Expression::PatternMatch(
-            Rc::new(Expression::LiteralIntroduction(Rc::new(vec![
-               LIPart::Linear(Rc::new(vec!['b'])),
-               LIPart::Linear(Rc::new(vec!['c','d']))
-            ]),())),
-            Rc::new(vec![
-               (
-                  LHSPart::Variable(123),
-                  Expression::VariableReference(123,()),
-               )
-            ]),
-            ()
-         )],
-      }).unwrap()),
+      format!("{:?}",eval(Program::program(
+         vec![],
+         vec![Expression::pattern(
+            Expression::li(vec![
+               LIPart::literal("b"),
+               LIPart::literal("cd"),
+            ],()),
+            vec![(
+               LHSPart::variable(123),
+               Expression::variable(123,())
+            )],
+         ())],
+      )).unwrap()),
       r#""bcd""#
    );
    assert_eq!(
-      format!("{:?}",eval(Program {
-         functions: vec![],
-         expressions: vec![Expression::PatternMatch(
-            Rc::new(Expression::TupleIntroduction(Rc::new(vec![
-               TIPart::Linear(Rc::new(vec![
-                  Value::literal("mno"),
-               ])),
-            ]),())),
-            Rc::new(vec![
-               (
-                  LHSPart::Tuple(vec![
-                     LHSPart::Variable(123),
-                  ]),
-                  Expression::VariableReference(123,()),
-               )
-            ]),
-            ()
-         )],
-      }).unwrap()),
+      format!("{:?}",eval(Program::program(
+         vec![],
+         vec![Expression::pattern(
+            Expression::tuple(vec![
+               Value::literal("mno"),
+            ],()),
+            vec![(
+               LHSPart::tuple(vec![
+                  LHSPart::variable(123)
+               ]),
+               Expression::variable(123,())
+            )],
+         ())],
+      )).unwrap()),
       r#""mno""#
    );
 }
-
