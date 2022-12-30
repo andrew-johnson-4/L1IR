@@ -23,24 +23,53 @@ pub fn error<S:Debug + Clone>(t:&str, m:&str, s:&S) -> Error<S> {
 
 #[derive(Clone)]
 pub struct Type {
-   pub name: Option<(String,Vec<String>)>,
+   pub name: Option<String>,
    pub regex: Option<Rc<Regex>>,
    pub strct: Option<Vec<Type>>,
    pub fnid: Option<usize>,
    pub invariants: Vec<usize>,
 }
+impl std::fmt::Debug for Type {
+   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+      if let Some(n) = &self.name {
+         write!(f, "{}", n)?
+      }
+      write!(f, "")
+   }
+}
 impl Type {
-   pub fn nominal(n: &str, nps: Vec<String>) -> Type {
+   pub fn nominal(n: &str) -> Type {
       Type {
-         name: Some((n.to_string(), nps)),
+         name: Some(n.to_string()),
          regex: None,
          strct: None,
          fnid: None,
          invariants: vec![],
       }
    }
-   pub fn accepts(v: Value, _tt: Type) -> Result<Value,Error<()>> {
-      Ok(v)
+   pub fn reject(msg: &str) -> Error<()> {
+      Error {
+         error_type: "Dynamic Type Error".to_string(),
+         error_msg: msg.to_string(),
+         span: ()
+      }
+   }
+   pub fn accepts(v: &Value, constraint: &Type) -> Result<(),Error<()>> {
+      let vt = if let Some(vt) = v.typof() {
+         vt
+      } else { return Err(Type::reject(
+         &format!("Type ? does not satisfy constraint: {:?}", constraint)
+      )); };
+      if let Some(ref nom) = constraint.name {
+         if let Some(ref vnom) = vt.name {
+            if nom != vnom { return Err(Type::reject(
+               &format!("Type {:?} does not satisfy constraint: {:?}", vt, constraint)
+            )); }
+         } else { return Err(Type::reject(
+            &format!("Type {:?} does not satisfy constraint: {:?}", vt, constraint)
+         )); }
+      }
+      Ok(())
    }
 }
 
@@ -52,6 +81,14 @@ pub enum Value {
    Function(usize,Option<Type>), //all functions are static program indices
 }
 impl Value {
+   pub fn typof<'a>(&'a self) -> &'a Option<Type> {
+      match self {
+         Value::Unary(_,tt) => tt,
+         Value::Literal(_,_,_,tt) => tt,
+         Value::Tuple(_,_,_,tt) => tt,
+         Value::Function(_,tt) => tt,
+      }
+   }
    pub fn unary(buf: &[u8]) -> Value {
       let ui = BigUint::parse_bytes(buf, 10).expect("unary parse_bytes failed");
       Value::Unary(ui,None)
