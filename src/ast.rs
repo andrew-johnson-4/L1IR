@@ -27,7 +27,7 @@ pub struct Type {
    pub regex: Option<Rc<Regex>>,
    pub strct: Option<Vec<Type>>,
    pub fnid: Option<usize>,
-   pub invariants: Vec<()>,
+   pub invariants: Vec<usize>,
 }
 
 #[derive(Clone)]
