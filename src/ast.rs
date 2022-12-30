@@ -47,6 +47,24 @@ impl Type {
          invariants: vec![],
       }
    }
+   pub fn regex(r: &str) -> Type {
+      Type {
+         name: None,
+         regex: Some(Rc::new(Regex::new(r).unwrap())),
+         strct: None,
+         fnid: None,
+         invariants: vec![],
+      }
+   }
+   pub fn function(f: usize) -> Type {
+      Type {
+         name: None,
+         regex: None,
+         strct: None,
+         fnid: Some(f),
+         invariants: vec![],
+      }
+   }
    pub fn reject(msg: &str) -> Error<()> {
       Error {
          error_type: "Dynamic Type Error".to_string(),
@@ -55,18 +73,27 @@ impl Type {
       }
    }
    pub fn accepts(v: &Value, constraint: &Type) -> Result<(),Error<()>> {
-      let vt = if let Some(vt) = v.typof() {
-         vt
-      } else { return Err(Type::reject(
-         &format!("Type ? does not satisfy constraint: {:?}", constraint)
-      )); };
-      if let Some(ref nom) = constraint.name {
-         if let Some(ref vnom) = vt.name {
-            if nom != vnom { return Err(Type::reject(
-               &format!("Type {:?} does not satisfy constraint: {:?}", vt, constraint)
+      if let Some(ref _cr) = constraint.regex {
+         unimplemented!("Check literal constraint")
+      }
+      if let Some(ref _cstrct) = constraint.strct {
+         unimplemented!("Check structural constraint")
+      }
+      if let Some(cfi) = constraint.fnid {
+         if let Value::Function(vfi,_) = v {
+         if cfi != *vfi { return Err(Type::reject(
+            &format!("Function #{} does not satisfy constraint: {:?}", vfi, constraint)
+         )); }} else { return Err(Type::reject(
+            &format!("Value {:?} is not a function", v)
+         )); }
+      }
+      if let Some(ref cnom) = constraint.name {
+         if let Some(ref vnom) = v.typof() {
+            if cnom != vnom { return Err(Type::reject(
+               &format!("Type {:?} does not satisfy constraint: {:?}", vnom, constraint)
             )); }
          } else { return Err(Type::reject(
-            &format!("Type {:?} does not satisfy constraint: {:?}", vt, constraint)
+            &format!("Type ? does not satisfy constraint: {:?}", constraint)
          )); }
       }
       Ok(())
@@ -75,13 +102,13 @@ impl Type {
 
 #[derive(Clone)]
 pub enum Value {
-   Unary(BigUint,Option<Type>), //a unary number, represented as "0"...
-   Literal(usize,usize,Rc<Vec<char>>,Option<Type>), //avoid copy-on-slice
-   Tuple(usize,usize,Rc<Vec<Value>>,Option<Type>), //avoid copy-on-slice
-   Function(usize,Option<Type>), //all functions are static program indices
+   Unary(BigUint,Option<String>), //a unary number, represented as "0"...
+   Literal(usize,usize,Rc<Vec<char>>,Option<String>), //avoid copy-on-slice
+   Tuple(usize,usize,Rc<Vec<Value>>,Option<String>), //avoid copy-on-slice
+   Function(usize,Option<String>), //all functions are static program indices
 }
 impl Value {
-   pub fn typof<'a>(&'a self) -> &'a Option<Type> {
+   pub fn typof<'a>(&'a self) -> &'a Option<String> {
       match self {
          Value::Unary(_,tt) => tt,
          Value::Literal(_,_,_,tt) => tt,
@@ -100,7 +127,11 @@ impl Value {
    pub fn tuple(ts: Vec<Value>) -> Value {
       Value::Tuple(0,ts.len(),Rc::new(ts),None)
    }
-   pub fn typed(self, tt: Type) -> Value {
+   pub fn function(fid: usize) -> Value {
+      Value::Function(fid,None)
+   }
+   pub fn typed(self, tt: &str) -> Value {
+      let tt = tt.to_string();
       match self {
          Value::Unary(ui,_) => Value::Unary(ui,Some(tt)),
          Value::Literal(cs,ce,cvs,_) => Value::Literal(cs,ce,cvs,Some(tt)),
