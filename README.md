@@ -12,7 +12,7 @@ Terms
 * Functions
 
 Gradual Types (optional)
-* `T<A,B,C>` type decorations for nominal accept/reject
+* `T<A,B,C>` decorations for nominal accept/reject
 * Regex for literal accept/reject
 * Tuple/Functions for structural accept/reject
 * Invariant properties accept/reject
