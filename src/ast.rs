@@ -1,4 +1,5 @@
 use num_bigint::{BigUint,ToBigUint};
+use regex::Regex;
 use std::rc::Rc;
 use std::fmt::Debug;
 
@@ -18,6 +19,15 @@ pub fn error<S:Debug + Clone>(t:&str, m:&str, s:&S) -> Error<S> {
       error_msg: m.to_string(),
       span: s.clone()
    }
+}
+
+#[derive(Clone)]
+pub struct Type {
+   pub name: Option<(String,Vec<String>)>,
+   pub regex: Option<Rc<Regex>>,
+   pub strct: Option<Vec<Type>>,
+   pub fnid: Option<usize>,
+   pub invariants: Vec<usize>,
 }
 
 #[derive(Clone)]
@@ -119,19 +129,23 @@ impl std::fmt::Debug for Value {
    }
 }
 
+#[derive(Clone)]
 pub struct FunctionDefinition<S:Debug + Clone> {
    pub args: Vec<usize>,
    pub body: Vec<Expression<S>>,
+   pub entry_points: Vec<()>,
 }
 impl<S:Debug + Clone> FunctionDefinition<S> {
    pub fn define(args: Vec<usize>, body: Vec<Expression<S>>) -> FunctionDefinition<S> {
       FunctionDefinition {
          args: args,
          body: body,
+         entry_points: Vec::new(),
       }
    }
 }
 
+#[derive(Clone)]
 pub struct Program<S:Debug + Clone> {
    pub functions: Vec<FunctionDefinition<S>>,
    pub expressions: Vec<Expression<S>>,
