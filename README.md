@@ -6,10 +6,16 @@
 
 Intermediate Representation of [LSTS](https://github.com/andrew-johnson-4/LSTS) [L1 Language](https://github.com/andrew-johnson-4/LSTS/blob/main/preludes/l1.tlc)
 
-Types
+Terms
 * Literal Strings
 * Tuples
 * Functions
+
+Gradual Types (optional)
+* `T<A,B,C>` type decorations for nominal accept/reject
+* Regex for literal accept/reject
+* Tuple/Functions for structural accept/reject
+* Invariant properties accept/reject
 
 Global AST Nodes
 * Function Definitions
