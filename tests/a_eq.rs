@@ -21,18 +21,18 @@ fn eq_unary() {
    );
    assert_eq!(
       Value::unary(b"0"),
-      Value::Literal(0,0,Rc::new(vec![])),
+      Value::Literal(0,0,Rc::new(vec![]),None),
    );
    assert_eq!(
-      Value::Literal(0,0,Rc::new(vec![])),
+      Value::Literal(0,0,Rc::new(vec![]),None),
       Value::unary(b"0"),
    );
    assert_eq!(
       Value::unary(b"1"),
-      Value::Literal(0,1,Rc::new(vec!['0'])),
+      Value::Literal(0,1,Rc::new(vec!['0']),None),
    );
    assert_eq!(
-      Value::Literal(0,1,Rc::new(vec!['0'])),
+      Value::Literal(0,1,Rc::new(vec!['0']),None),
       Value::unary(b"1"),
    );
 }
@@ -40,64 +40,64 @@ fn eq_unary() {
 #[test]
 fn eq_literals() {
    assert_eq!(
-      Value::Literal(0,1,Rc::new(vec!['a'])),
-      Value::Literal(0,1,Rc::new(vec!['a'])),
+      Value::Literal(0,1,Rc::new(vec!['a']),None),
+      Value::Literal(0,1,Rc::new(vec!['a']),None),
    );
    assert_eq!(
-      Value::Literal(0,0,Rc::new(vec!['a'])),
-      Value::Literal(0,0,Rc::new(vec!['a'])),
+      Value::Literal(0,0,Rc::new(vec!['a']),None),
+      Value::Literal(0,0,Rc::new(vec!['a']),None),
    );
    assert_eq!(
-      Value::Literal(1,1,Rc::new(vec!['a'])),
-      Value::Literal(1,1,Rc::new(vec!['a'])),
+      Value::Literal(1,1,Rc::new(vec!['a']),None),
+      Value::Literal(1,1,Rc::new(vec!['a']),None),
    );
    assert_eq!(
-      Value::Literal(0,3,Rc::new(vec!['a','b','c'])),
-      Value::Literal(0,3,Rc::new(vec!['a','b','c'])),
+      Value::Literal(0,3,Rc::new(vec!['a','b','c']),None),
+      Value::Literal(0,3,Rc::new(vec!['a','b','c']),None),
    );
    assert_eq!(
-      Value::Literal(0,2,Rc::new(vec!['a','b','c'])),
-      Value::Literal(0,2,Rc::new(vec!['a','b','c'])),
+      Value::Literal(0,2,Rc::new(vec!['a','b','c']),None),
+      Value::Literal(0,2,Rc::new(vec!['a','b','c']),None),
    );
    assert_eq!(
-      Value::Literal(0,1,Rc::new(vec!['a','b','c'])),
-      Value::Literal(0,1,Rc::new(vec!['a','b','c'])),
+      Value::Literal(0,1,Rc::new(vec!['a','b','c']),None),
+      Value::Literal(0,1,Rc::new(vec!['a','b','c']),None),
    );
    assert_eq!(
-      Value::Literal(0,0,Rc::new(vec!['a','b','c'])),
-      Value::Literal(0,0,Rc::new(vec!['a','b','c'])),
+      Value::Literal(0,0,Rc::new(vec!['a','b','c']),None),
+      Value::Literal(0,0,Rc::new(vec!['a','b','c']),None),
    );
    assert_eq!(
-      Value::Literal(1,3,Rc::new(vec!['a','b','c'])),
-      Value::Literal(1,3,Rc::new(vec!['a','b','c'])),
+      Value::Literal(1,3,Rc::new(vec!['a','b','c']),None),
+      Value::Literal(1,3,Rc::new(vec!['a','b','c']),None),
    );
    assert_eq!(
-      Value::Literal(1,2,Rc::new(vec!['a','b','c'])),
-      Value::Literal(1,2,Rc::new(vec!['a','b','c'])),
+      Value::Literal(1,2,Rc::new(vec!['a','b','c']),None),
+      Value::Literal(1,2,Rc::new(vec!['a','b','c']),None),
    );
    assert_eq!(
-      Value::Literal(1,1,Rc::new(vec!['a','b','c'])),
-      Value::Literal(1,1,Rc::new(vec!['a','b','c'])),
+      Value::Literal(1,1,Rc::new(vec!['a','b','c']),None),
+      Value::Literal(1,1,Rc::new(vec!['a','b','c']),None),
    );
    assert_eq!(
-      Value::Literal(2,3,Rc::new(vec!['a','b','c'])),
-      Value::Literal(2,3,Rc::new(vec!['a','b','c'])),
+      Value::Literal(2,3,Rc::new(vec!['a','b','c']),None),
+      Value::Literal(2,3,Rc::new(vec!['a','b','c']),None),
    );
    assert_eq!(
-      Value::Literal(2,2,Rc::new(vec!['a','b','c'])),
-      Value::Literal(2,2,Rc::new(vec!['a','b','c'])),
+      Value::Literal(2,2,Rc::new(vec!['a','b','c']),None),
+      Value::Literal(2,2,Rc::new(vec!['a','b','c']),None),
    );
    assert_eq!(
-      Value::Literal(3,3,Rc::new(vec!['a','b','c'])),
-      Value::Literal(3,3,Rc::new(vec!['a','b','c'])),
+      Value::Literal(3,3,Rc::new(vec!['a','b','c']),None),
+      Value::Literal(3,3,Rc::new(vec!['a','b','c']),None),
    );
 }
 
 #[test]
 fn eq_tuples() {
-   let a = Value::Literal(0,1,Rc::new(vec!['a']));
-   let b = Value::Literal(0,1,Rc::new(vec!['b']));
-   let cd = Value::Literal(0,2,Rc::new(vec!['c','d']));
+   let a = Value::Literal(0,1,Rc::new(vec!['a']),None);
+   let b = Value::Literal(0,1,Rc::new(vec!['b']),None);
+   let cd = Value::Literal(0,2,Rc::new(vec!['c','d']),None);
    assert_eq!(
       Value::tuple(vec![]),
       Value::tuple(vec![]),
@@ -135,26 +135,26 @@ fn eq_tuples() {
 #[test]
 fn eq_functions() {
    assert_eq!(
-      Value::Function(0),
-      Value::Function(0),
+      Value::Function(0,None),
+      Value::Function(0,None),
    );
    assert_eq!(
-      Value::Function(23),
-      Value::Function(23),
+      Value::Function(23,None),
+      Value::Function(23,None),
    );
    assert_eq!(
-      Value::Function(456),
-      Value::Function(456),
+      Value::Function(456,None),
+      Value::Function(456,None),
    );
 }
 
 #[test]
 fn eq_heterogenous() {
-   let a = Value::Literal(0,1,Rc::new(vec!['a']));
-   let a0 = Value::Literal(0,0,Rc::new(vec!['a']));
-   let bc = Value::Literal(1,3,Rc::new(vec!['a','b','c']));
-   let f1 = Value::Function(1);
-   let f23 = Value::Function(23);
+   let a = Value::Literal(0,1,Rc::new(vec!['a']),None);
+   let a0 = Value::Literal(0,0,Rc::new(vec!['a']),None);
+   let bc = Value::Literal(1,3,Rc::new(vec!['a','b','c']),None);
+   let f1 = Value::Function(1,None);
+   let f23 = Value::Function(23,None);
    let t1 = Value::tuple(vec![a.clone(),f1.clone(),bc.clone()]);
    let t2 = Value::tuple(vec![a0.clone(),t1.clone(),f23.clone()]);
    assert_eq!(

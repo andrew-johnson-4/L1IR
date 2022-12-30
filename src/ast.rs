@@ -29,58 +29,80 @@ pub struct Type {
    pub fnid: Option<usize>,
    pub invariants: Vec<usize>,
 }
+impl Type {
+   pub fn nominal(n: &str, nps: Vec<String>) -> Type {
+      Type {
+         name: Some((n.to_string(), nps)),
+         regex: None,
+         strct: None,
+         fnid: None,
+         invariants: vec![],
+      }
+   }
+   pub fn accepts(v: Value, _tt: Type) -> Result<Value,Error<()>> {
+      Ok(v)
+   }
+}
 
 #[derive(Clone)]
 pub enum Value {
-   Unary(BigUint), //a unary number, represented as "0"...
-   Literal(usize,usize,Rc<Vec<char>>), //avoid copy-on-slice
-   Tuple(usize,usize,Rc<Vec<Value>>), //avoid copy-on-slice
-   Function(usize), //all functions are static program indices
+   Unary(BigUint,Option<Type>), //a unary number, represented as "0"...
+   Literal(usize,usize,Rc<Vec<char>>,Option<Type>), //avoid copy-on-slice
+   Tuple(usize,usize,Rc<Vec<Value>>,Option<Type>), //avoid copy-on-slice
+   Function(usize,Option<Type>), //all functions are static program indices
 }
 impl Value {
    pub fn unary(buf: &[u8]) -> Value {
       let ui = BigUint::parse_bytes(buf, 10).expect("unary parse_bytes failed");
-      Value::Unary(ui)
+      Value::Unary(ui,None)
    }
    pub fn literal(cs: &str) -> Value {
       let cs = cs.chars().collect::<Vec<char>>();
-      Value::Literal(0,cs.len(),Rc::new(cs))
+      Value::Literal(0,cs.len(),Rc::new(cs),None)
    }
    pub fn tuple(ts: Vec<Value>) -> Value {
-      Value::Tuple(0,ts.len(),Rc::new(ts))
+      Value::Tuple(0,ts.len(),Rc::new(ts),None)
+   }
+   pub fn typed(self, tt: Type) -> Value {
+      match self {
+         Value::Unary(ui,_) => Value::Unary(ui,Some(tt)),
+         Value::Literal(cs,ce,cvs,_) => Value::Literal(cs,ce,cvs,Some(tt)),
+         Value::Tuple(ts,te,tvs,_) => Value::Tuple(ts,te,tvs,Some(tt)),
+         Value::Function(fi,_) => Value::Function(fi,Some(tt)),
+      }
    }
 }
 impl PartialEq for Value {
    fn eq(&self, other: &Self) -> bool {
       match (self, other) {
-         (Value::Literal(ls,le,lv),Value::Literal(rs,re,rv)) if (le-ls)==(re-rs) => {
+         (Value::Literal(ls,le,lv,_ltt),Value::Literal(rs,re,rv,_rtt)) if (le-ls)==(re-rs) => {
             for i in 0..(le-ls) {
             if lv[ls+i] != rv[rs+i] {
                return false;
             }}
             true
          },
-         (Value::Tuple(ls,le,lv),Value::Tuple(rs,re,rv)) if (le-ls)==(re-rs) => {
+         (Value::Tuple(ls,le,lv,_ltt),Value::Tuple(rs,re,rv,_rtt)) if (le-ls)==(re-rs) => {
             for i in 0..(le-ls) {
             if lv[ls+i] != rv[rs+i] {
                return false;
             }}
             true
          },
-         (Value::Function(lf),Value::Function(rf)) => {
+         (Value::Function(lf,_ltt),Value::Function(rf,_rtt)) => {
             lf == rf
          },
-         (Value::Unary(li),Value::Unary(ri)) => {
+         (Value::Unary(li,_ltt),Value::Unary(ri,_rtt)) => {
             li == ri
          },
-         (Value::Unary(li),Value::Literal(rs,re,rv)) => {
+         (Value::Unary(li,_ltt),Value::Literal(rs,re,rv,_rtt)) => {
             for ri in *rs..*re {
             if rv[ri] != '0' {
                return false;
             }}
             li == &(re-rs).to_biguint().unwrap()
          },
-         (Value::Literal(ls,le,lv),Value::Unary(ri)) => {
+         (Value::Literal(ls,le,lv,_ltt),Value::Unary(ri,_rtt)) => {
             for li in *ls..*le {
             if lv[li] != '0' {
                return false;
@@ -94,7 +116,7 @@ impl PartialEq for Value {
 impl Eq for Value {}
 impl std::fmt::Debug for Value {
    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-      if let Value::Literal(start,end,val) = self {
+      if let Value::Literal(start,end,val,_tt) = self {
          let mut unary = true;
          for i in (*start)..(*end) {
          if val[i] != '0' {
@@ -109,7 +131,7 @@ impl std::fmt::Debug for Value {
             write!(f, "{}", val[i])?;
          }
          write!(f, r#"""#)
-      } else if let Value::Tuple(start,end,val) = self {
+      } else if let Value::Tuple(start,end,val,_tt) = self {
          write!(f, r#"("#)?;
          for i in (*start)..(*end) {
             if i>(*start) {
@@ -121,9 +143,9 @@ impl std::fmt::Debug for Value {
             write!(f, r",")?;
          }
          write!(f, r#")"#)
-      } else if let Value::Function(fid) = self {
+      } else if let Value::Function(fid,_tt) = self {
          write!(f, "f#{}", fid)
-      } else if let Value::Unary(ui) = self {
+      } else if let Value::Unary(ui,_tt) = self {
          write!(f, "{}", ui)
       } else { unreachable!("exhaustive") }
    }
