@@ -2,6 +2,7 @@ use l1_ir::ast::{Expression,Program,FunctionDefinition,LIPart};
 use l1_ir::eval::{eval};
 use l1_ir::opt::{jsweep};
 
+#[test]
 fn eval_add() {
    for x in 0..20 {
    for y in 0..20 {
