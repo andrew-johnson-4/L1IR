@@ -65,14 +65,14 @@ impl Type {
          invariants: vec![],
       }
    }
-   pub fn reject(msg: &str) -> Error<()> {
+   pub fn reject<S:Debug + Clone>(msg: &str, span: S) -> Error<S> {
       Error {
          error_type: "Dynamic Type Error".to_string(),
          error_msg: msg.to_string(),
-         span: ()
+         span: span
       }
    }
-   pub fn accepts(v: &Value, constraint: &Type) -> Result<(),Error<()>> {
+   pub fn accepts<S:Debug + Clone>(v: &Value, constraint: &Type, span: S) -> Result<(),Error<S>> {
       if let Some(ref _cr) = constraint.regex {
          unimplemented!("Check literal constraint")
       }
@@ -82,32 +82,37 @@ impl Type {
       if let Some(cfi) = constraint.fnid {
          if let Value::Function(vfi,_) = v {
          if cfi != *vfi { return Err(Type::reject(
-            &format!("Function #{} does not satisfy constraint: {:?}", vfi, constraint)
+            &format!("Function #{} does not satisfy constraint: {:?}", vfi, constraint),
+            span
          )); }} else { return Err(Type::reject(
-            &format!("Value {:?} is not a function", v)
+            &format!("Value {:?} is not a function", v),
+            span
          )); }
       }
       if let Some(ref cnom) = constraint.name {
          if let Some(ref vnom) = v.typof() {
             if cnom != vnom { return Err(Type::reject(
-               &format!("Type {:?} does not satisfy constraint: {:?}", vnom, constraint)
+               &format!("Type {:?} does not satisfy constraint: {:?}", vnom, constraint),
+               span
             )); }
          } else { return Err(Type::reject(
-            &format!("Type ? does not satisfy constraint: {:?}", constraint)
+            &format!("Type ? does not satisfy constraint: {:?}", constraint),
+            span
          )); }
       }
       Ok(())
    }
-   pub fn accepts_any(v: &Value, constraints: &Vec<Type>) -> Result<(),Error<()>> {
+   pub fn accepts_any<S:Debug + Clone>(v: &Value, constraints: &Vec<Type>, span: S) -> Result<(),Error<S>> {
       let mut accepts = false;
       for cc in constraints.iter() {
-      if Type::accepts(v, cc).is_ok() {
+      if Type::accepts(v, cc, span.clone()).is_ok() {
          accepts = true;
       }}
       if accepts {
          Ok(())
       } else { Err(Type::reject(
-         &format!("Value {:?} does not satisfy any constraint", v)
+         &format!("Value {:?} does not satisfy any constraint", v),
+         span
       )) }
    }
 }
