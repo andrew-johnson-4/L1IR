@@ -1,6 +1,6 @@
 [package]
 name = "l1_ir"
-version = "0.0.14"
+version = "0.0.15"
 authors = ["Andrew <andrew@subarctic.org>"]
 license = "MIT"
 description = "L1 Intermediate Representation"
@@ -15,6 +15,7 @@ num-bigint = { version = "0.4" }
 cranelift = { version = "0.91", optional = true }
 cranelift-module = { version = "0.91", optional = true }
 cranelift-jit = { version = "0.91", optional = true }
+regex = { version = "1" }
 
 [features]
 cranelift = ["dep:cranelift", "dep:cranelift-module", "dep:cranelift-jit"]
