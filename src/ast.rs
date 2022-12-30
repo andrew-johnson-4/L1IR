@@ -98,6 +98,18 @@ impl Type {
       }
       Ok(())
    }
+   pub fn accepts_any(v: &Value, constraints: &Vec<Type>) -> Result<(),Error<()>> {
+      let mut accepts = false;
+      for cc in constraints.iter() {
+      if Type::accepts(v, cc).is_ok() {
+         accepts = true;
+      }}
+      if accepts {
+         Ok(())
+      } else { Err(Type::reject(
+         &format!("Value {:?} does not satisfy any constraint", v)
+      )) }
+   }
 }
 
 #[derive(Clone)]

@@ -68,6 +68,26 @@ fn reject_function() {
    ).is_err());
 }
 
+#[test]
+fn accepts_any() {
+   assert!(Type::accepts_any(
+      &Value::function(0),
+      &vec![ Type::function(0), Type::function(1) ],
+   ).is_ok());
+   assert!(Type::accepts_any(
+      &Value::function(1),
+      &vec![ Type::function(0), Type::function(1) ],
+   ).is_ok());
+}
+
+#[test]
+fn rejects_any() {
+   assert!(Type::accepts_any(
+      &Value::function(2),
+      &vec![ Type::function(0), Type::function(1) ],
+   ).is_err());
+}
+
 /* TODO gradual DFAs
 #[test]
 fn accept_regex() {
