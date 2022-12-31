@@ -17,13 +17,13 @@ pub fn eval_lhs<S:Debug + Clone>(lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx: 
          true
       },
       LHSPart::Literal(lcs) => {
-         if let Value::Literal(rs,re,rcs) = rval {
+         if let Value::Literal(rs,re,rcs,_tt) = rval {
             for li in 0..(re-rs) {
             if lcs[li] != rcs[rs+li] {
                return false;
             }}
             true
-         } else if let Value::Unary(ri) = rval {
+         } else if let Value::Unary(ri,_tt) = rval {
             if &lcs.len().to_biguint().unwrap() != ri { return false; }
             for li in 0..lcs.len() {
             if lcs[li] != '0' {
@@ -33,7 +33,7 @@ pub fn eval_lhs<S:Debug + Clone>(lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx: 
          } else { false }
       },
       LHSPart::UnpackLiteral(prel,midl,sufl) => {
-         if let Value::Unary(lu) = rval {
+         if let Value::Unary(lu,_tt) = rval {
             let mut lu = lu.clone();
             for pl in prel.iter() {
             let LHSLiteralPart::Literal(pcs) = pl;
@@ -54,15 +54,15 @@ pub fn eval_lhs<S:Debug + Clone>(lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx: 
                lu = lu - scs.len().to_biguint().unwrap();
             }
             if let Some(midl) = midl {
-               lctx.borrow_mut().insert(*midl, Value::Unary(lu));
+               lctx.borrow_mut().insert(*midl, Value::Unary(lu,None));
             }
             true
-         } else if let Value::Literal(_ls,_le,_lcs) = rval {
+         } else if let Value::Literal(_ls,_le,_lcs,_tt) = rval {
             unimplemented!("TODO: unpack literal {:?}", rval)
          } else { return false; }
       },
       LHSPart::Tuple(lcs) => {
-         if let Value::Tuple(rs,re,rts) = rval {
+         if let Value::Tuple(rs,re,rts,_tt) = rval {
             if lcs.len() != (re-rs) { return false; }
             for li in 0..lcs.len() {
             if !eval_lhs(lctx.clone(), pctx, &lcs[li], &rts[rs+li]) {
@@ -107,12 +107,12 @@ pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx
    loop {
    match e {
       Expression::UnaryIntroduction(ui,_span) => {
-         return Ok(Value::Unary(ui))
+         return Ok(Value::Unary(ui,None))
       },
       Expression::LiteralIntroduction(lps,span) => {
          if lps.len()==1 {
          if let LIPart::Literal(lcs) = &lps[0] {
-            return Ok(Value::Literal(0,lcs.len(),lcs.clone()));
+            return Ok(Value::Literal(0,lcs.len(),lcs.clone(),None));
          }}
          let mut lui = 0.to_biguint().unwrap();
          let mut lcs = Vec::new();
@@ -121,29 +121,29 @@ pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx
             LIPart::Literal(cs) => { ucatcs(&mut lui, &mut lcs, 0, cs.len(), cs) }
             LIPart::InlineVariable(vi) => {
                match lctx.borrow().get(vi) {
-                  Some(Value::Literal(vs,ve,vcs)) => { ucatcs(&mut lui, &mut lcs, *vs, *ve, &vcs) },
-                  Some(Value::Unary(ui)) => { ucatu(&mut lui, &mut lcs, &ui) },
+                  Some(Value::Literal(vs,ve,vcs,_tt)) => { ucatcs(&mut lui, &mut lcs, *vs, *ve, &vcs) },
+                  Some(Value::Unary(ui,_tt)) => { ucatu(&mut lui, &mut lcs, &ui) },
                   _ => { return Err(error("Runtime Error", &format!("v#{} not found", vi), &span)); }
                }
             },
             LIPart::Expression(pe) => {
                match eval_e(lctx.clone(), pctx, pe.clone())? {
-                  Value::Literal(vs,ve,vcs) => { ucatcs(&mut lui, &mut lcs, vs, ve, &vcs) },
-                  Value::Unary(ui) => { ucatu(&mut lui, &mut lcs, &ui) },
+                  Value::Literal(vs,ve,vcs,_tt) => { ucatcs(&mut lui, &mut lcs, vs, ve, &vcs) },
+                  Value::Unary(ui,_tt) => { ucatu(&mut lui, &mut lcs, &ui) },
                   _ => { return Err(error("Runtime Error", "invalid literal expression", &span)) }
                }
             },
          }}
          if lcs.len()==0 {
-            return Ok(Value::Unary(lui))
+            return Ok(Value::Unary(lui,None))
          } else {
-            return Ok(Value::Literal(0,lcs.len(),Rc::new(lcs)));
+            return Ok(Value::Literal(0,lcs.len(),Rc::new(lcs),None));
          }
       },
       Expression::TupleIntroduction(tps,span) => {
          if tps.len()==1 {
          if let TIPart::Tuple(tcs) = &tps[0] {
-            return Ok(Value::Tuple(0,tcs.len(),tcs.clone()));
+            return Ok(Value::Tuple(0,tcs.len(),tcs.clone(),None));
          }}
          let mut tcs = Vec::new();
          for tip in tps.iter() {
@@ -160,7 +160,7 @@ pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx
                }
             },
             TIPart::InlineVariable(vi) => {
-               if let Some(Value::Tuple(vs,ve,vcs)) = lctx.borrow().get(vi) {
+               if let Some(Value::Tuple(vs,ve,vcs,None)) = lctx.borrow().get(vi) {
                for ti in *vs..*ve {
                   tcs.push(vcs[ti].clone());
                }} else { 
@@ -168,10 +168,10 @@ pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx
                }
             },
          }}
-         return Ok(Value::Tuple(0,tcs.len(),Rc::new(tcs)));
+         return Ok(Value::Tuple(0,tcs.len(),Rc::new(tcs),None));
       },
       Expression::FunctionReference(fi,_span) => {
-         return Ok(Value::Function(fi));
+         return Ok(Value::Function(fi,None));
       },
       Expression::VariableReference(li,span) => {
          if let Some(lv) = lctx.borrow().get(&li) {
