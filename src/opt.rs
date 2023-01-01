@@ -56,8 +56,7 @@ impl JProgram {
    //functions will not be compiled until referenced
    pub fn compile<S: Clone + Debug>(&mut self, p: &Program<S>) {
       //int main(int *args, size_t args_count);
-      let pointer_type = self.module.target_config().pointer_type();
-      self.ctx.func.signature.params.push(AbiParam::new(pointer_type));
+      self.ctx.func.signature.params.push(AbiParam::new(types::I64));
       self.ctx.func.signature.params.push(AbiParam::new(types::I64));
       self.ctx.func.signature.returns.push(AbiParam::new(types::I64));
 
