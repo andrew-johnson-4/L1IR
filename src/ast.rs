@@ -240,14 +240,12 @@ impl std::fmt::Debug for Value {
 pub struct FunctionDefinition<S:Debug + Clone> {
    pub args: Vec<usize>,
    pub body: Vec<Expression<S>>,
-   pub entry_points: Vec<()>,
 }
 impl<S:Debug + Clone> FunctionDefinition<S> {
    pub fn define(args: Vec<usize>, body: Vec<Expression<S>>) -> FunctionDefinition<S> {
       FunctionDefinition {
          args: args,
          body: body,
-         entry_points: Vec::new(),
       }
    }
 }
