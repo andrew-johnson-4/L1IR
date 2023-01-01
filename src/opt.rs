@@ -57,7 +57,8 @@ impl JProgram {
    pub fn compile<S: Clone + Debug>(&mut self, p: &Program<S>) {
       let mut main = FunctionBuilder::new(&mut self.ctx.func, &mut self.builder_context);
 
-      //int main();
+      //int main(int *args, size_t args_count);
+      //cranelift main: (i32,i32) -> i32
       let entry_block = main.create_block();
       main.append_block_params_for_function_params(entry_block);
       main.switch_to_block(entry_block);
