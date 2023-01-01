@@ -55,10 +55,13 @@ pub fn apply_fn<S: Clone + Debug>(p: &Program<S>, fi: usize, args: Vec<JType>) -
 impl JProgram {
    //functions will not be compiled until referenced
    pub fn compile<S: Clone + Debug>(&mut self, p: &Program<S>) {
-      let mut main = FunctionBuilder::new(&mut self.ctx.func, &mut self.builder_context);
-
       //int main(int *args, size_t args_count);
-      //cranelift main: (i32,i32) -> i32
+      let pointer_type = self.module.target_config().pointer_type();
+      self.ctx.func.signature.params.push(AbiParam::new(pointer_type));
+      self.ctx.func.signature.params.push(AbiParam::new(types::I64));
+      self.ctx.func.signature.returns.push(AbiParam::new(types::I64));
+
+      let mut main = FunctionBuilder::new(&mut self.ctx.func, &mut self.builder_context);
       let entry_block = main.create_block();
       main.append_block_params_for_function_params(entry_block);
       main.switch_to_block(entry_block);
