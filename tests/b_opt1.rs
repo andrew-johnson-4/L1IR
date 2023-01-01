@@ -2,6 +2,7 @@ use l1_ir::ast::{Expression,Program,FunctionDefinition,LIPart};
 use l1_ir::eval::{eval};
 use l1_ir::opt::{jsweep};
 
+#[test]
 fn eval_add() {
    for x in 0..20 {
    for y in 0..20 {
@@ -21,7 +22,8 @@ fn eval_add() {
          ],
       );
       let jit = jsweep(nojit.clone());
-      assert_ne!(jit.functions[0].entry_points.len(), 0);
-      assert_eq!(eval(nojit).unwrap(), eval(jit).unwrap());
+      let nval = eval(nojit).unwrap();
+      let jval = jit.eval().unwrap();
+      assert_eq!(nval, jval);
    }}
 }

@@ -6,4 +6,5 @@ pub mod ast;
 pub mod eval;
 
 //Optimizing Compiler, JIT and Otherwise
+#[cfg(feature = "cranelift")]
 pub mod opt;

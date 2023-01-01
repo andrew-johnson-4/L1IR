@@ -19,3 +19,8 @@ regex = { version = "1" }
 
 [features]
 cranelift = ["dep:cranelift", "dep:cranelift-module", "dep:cranelift-jit"]
+
+[[test]]
+name = "b_opt1"
+path = "tests/b_opt1.rs"
+required-features = ["cranelift"]
