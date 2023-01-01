@@ -133,6 +133,10 @@ impl Value {
          Value::Function(_,tt) => tt,
       }
    }
+   pub fn from_u64(v: u64) -> Value {
+      let ui = BigUint::from(v);
+      Value::Unary(ui,None)
+   }
    pub fn unary(buf: &[u8]) -> Value {
       let ui = BigUint::parse_bytes(buf, 10).expect("unary parse_bytes failed");
       Value::Unary(ui,None)

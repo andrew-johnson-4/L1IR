@@ -1,6 +1,6 @@
 use l1_ir::ast::{Expression,Program,FunctionDefinition,LIPart};
 use l1_ir::eval::{eval};
-use l1_ir::opt::{jsweep};
+use l1_ir::opt::{JProgram};
 
 #[test]
 fn eval_add() {
@@ -21,7 +21,7 @@ fn eval_add() {
             ],()),
          ],
       );
-      let jit = jsweep(nojit.clone());
+      let jit = JProgram::compile(&nojit);
       let nval = eval(nojit).unwrap();
       let jval = jit.eval().unwrap();
       assert_eq!(nval, jval);
