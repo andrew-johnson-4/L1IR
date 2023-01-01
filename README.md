@@ -42,3 +42,4 @@ Things not in the AST directly
 * Let Bindings (use a pattern, bound variables stick around until end of scope)
 * Jumps or Loops (this is an IR for Functional Programming)
 * Integers (use unary encoding "000"==3)
+* Recursive Data
