@@ -68,7 +68,6 @@ impl JProgram {
         .declare_function("main", Linkage::Local, &sig_main)
         .unwrap();
       ctx.func.signature = sig_main;
-      //self.ctx.func.name = UserFuncName::user(0, 0); //0::0 = main
 
       let mut main = FunctionBuilder::new(&mut ctx.func, &mut builder_context);
       let entry_block = main.create_block();
