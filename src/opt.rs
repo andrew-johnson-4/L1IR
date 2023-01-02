@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 use crate::ast;
-use crate::ast::{Program,Error,Expression};
+use crate::ast::{Program,Error,Expression,FunctionDefinition,LIPart};
 use cranelift::prelude::*;
 use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{DataContext, Linkage, Module};
@@ -35,8 +35,8 @@ pub fn compile_expr<'f,S: Clone + Debug>(p: &Program<S>, f: &mut FunctionBuilder
       Expression::FunctionApplication(fi,args,_span) => {
          let mut arg_types = Vec::new();
          for a in args.iter() {
-            let (je,jt) = compile_expr(p, f, a);
-            arg_types.push(jt);
+            let jejt = compile_expr(p, f, a);
+            arg_types.push(jejt);
          }
          apply_fn(p, *fi, arg_types)
       },
@@ -45,7 +45,10 @@ pub fn compile_expr<'f,S: Clone + Debug>(p: &Program<S>, f: &mut FunctionBuilder
    }
 }
 
-pub fn apply_fn<S: Clone + Debug>(p: &Program<S>, fi: usize, args: Vec<JType>) -> (JExpr,JType) {
+pub fn apply_fn<S: Clone + Debug>(p: &Program<S>, fi: usize, args: Vec<(JExpr,JType)>) -> (JExpr,JType) {
+   if let Some((je,jt)) = check_hardcoded_call(p, fi, &args) {
+      unimplemented!("apply hardcoded function call: f#{}", fi);
+   }
    unimplemented!("apply function: f#{}", fi)
 }
 
@@ -97,4 +100,17 @@ impl JProgram {
       let res = ptr_main(1,2);
       Ok(ast::Value::from_u64(res))
    }
+}
+
+pub fn check_hardcoded_call<S: Clone + Debug>(p: &Program<S>, fi: usize, args: &Vec<(JExpr,JType)>) -> Option<(JExpr,JType)> {
+   let hardcoded = vec![
+      (FunctionDefinition::define(
+         vec![24,27],
+         vec![Expression::li(vec![
+            LIPart::variable(24),
+            LIPart::variable(27),
+         ],())]
+      ),()) 
+   ];
+   None
 }
