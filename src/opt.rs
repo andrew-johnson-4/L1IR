@@ -13,16 +13,17 @@ pub struct JExpr {
    pub value: Value,
 }
 
+#[derive(Clone,Eq,PartialEq)]
 pub struct JType {
    pub name: String,
    pub jtype: types::Type,
 }
 
-pub fn compile_expr<'f,S: Clone + Debug>(p: &Program<S>, f: &mut FunctionBuilder<'f>, e: &Expression<S>) -> (JExpr,JType) {
+pub fn compile_expr<'f,S: Clone + Debug>(ctx: &mut FunctionBuilder<'f>, p: &Program<S>, e: &Expression<S>) -> (JExpr,JType) {
    match e {
       Expression::UnaryIntroduction(_ui,_span) => {
          (JExpr {
-            value: f.ins().iconst(types::I64, i64::from(0))
+            value: ctx.ins().iconst(types::I64, i64::from(0))
          }, JType {
             name: "Unary".to_string(),
             jtype: types::I64,
@@ -35,18 +36,18 @@ pub fn compile_expr<'f,S: Clone + Debug>(p: &Program<S>, f: &mut FunctionBuilder
       Expression::FunctionApplication(fi,args,_span) => {
          let mut arg_types = Vec::new();
          for a in args.iter() {
-            let jejt = compile_expr(p, f, a);
+            let jejt = compile_expr(ctx, p, a);
             arg_types.push(jejt);
          }
-         apply_fn(p, *fi, arg_types)
+         apply_fn(ctx, p, *fi, arg_types)
       },
       Expression::PatternMatch(_pe,_lrs,_span) => unimplemented!("compile expression: PatternMatch"),
       Expression::Failure(_span) => unimplemented!("compile expression: Failure"),
    }
 }
 
-pub fn apply_fn<S: Clone + Debug>(p: &Program<S>, fi: usize, args: Vec<(JExpr,JType)>) -> (JExpr,JType) {
-   if let Some((je,jt)) = check_hardcoded_call(p, fi, &args) {
+pub fn apply_fn<'f, S: Clone + Debug>(ctx: &mut FunctionBuilder<'f>, p: &Program<S>, fi: usize, args: Vec<(JExpr,JType)>) -> (JExpr,JType) {
+   if let Some((je,jt)) = check_hardcoded_call(ctx, p, fi, &args) {
       unimplemented!("apply hardcoded function call: f#{}", fi);
    }
    unimplemented!("apply function: f#{}", fi)
@@ -76,6 +77,11 @@ impl JProgram {
       let entry_block = main.create_block();
       main.append_block_params_for_function_params(entry_block);
       main.switch_to_block(entry_block);
+
+      for pe in p.expressions.iter() {
+         compile_expr(&mut main, p, pe);
+      }
+
       let rval = main.ins().iconst(types::I64, i64::from(12345));
       main.ins().return_(&[rval]);
       main.seal_block(entry_block);
@@ -84,12 +90,6 @@ impl JProgram {
       module.define_function(fn_main, &mut ctx).unwrap();
       module.clear_context(&mut ctx);
       module.finalize_definitions();
-
-      /*
-      for pe in p.expressions.iter() {
-         compile_expr(p, &mut main, pe);
-      }
-      */
 
       JProgram {
          main: module.get_finalized_function(fn_main),
@@ -102,15 +102,22 @@ impl JProgram {
    }
 }
 
-pub fn check_hardcoded_call<S: Clone + Debug>(p: &Program<S>, fi: usize, args: &Vec<(JExpr,JType)>) -> Option<(JExpr,JType)> {
+pub fn check_hardcoded_call<'f, S: Clone + Debug>(ctx: &mut FunctionBuilder<'f>, p: &Program<S>, fi: usize, args: &Vec<(JExpr,JType)>) -> Option<(JExpr,JType)> {
+   let sig = args.iter().map(|(_je,jt)| jt.jtype).collect::<Vec<types::Type>>();
    let hardcoded = vec![
-      (FunctionDefinition::define(
-         vec![24,27],
+      (vec![types::I64,types::I64],
+       FunctionDefinition::define(
+         vec![0,1],
          vec![Expression::li(vec![
-            LIPart::variable(24),
-            LIPart::variable(27),
+            LIPart::variable(0),
+            LIPart::variable(1),
          ],())]
       ),()) 
    ];
+   for (hsig,hdef,_hexpr) in hardcoded.iter() {
+      if &sig == hsig && p.functions[fi].equals(hdef) {
+         unimplemented!("compile hardcoded function call to f#{}", fi)
+      }
+   }
    None
 }

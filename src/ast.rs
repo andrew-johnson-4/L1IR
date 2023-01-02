@@ -252,6 +252,11 @@ impl<S:Debug + Clone> FunctionDefinition<S> {
          body: body,
       }
    }
+   pub fn equals(&self, other: &FunctionDefinition<()>) -> bool {
+      self.args == other.args &&
+      self.body.len() == other.body.len() &&
+      std::iter::zip(self.body.iter(),other.body.iter()).all(|(l,r)| l.equals(r))
+   }
 }
 
 #[derive(Clone)]
@@ -275,6 +280,14 @@ pub enum LIPart<S:Debug + Clone> {
    Expression(Expression<S>),
 }
 impl<S:Debug + Clone> LIPart<S> {
+   pub fn equals(&self, other: &LIPart<()>) -> bool {
+      match (self,other) {
+         (LIPart::Literal(lcs),LIPart::Literal(rcs)) => { *lcs == *rcs },
+         (LIPart::InlineVariable(lv),LIPart::InlineVariable(rv)) => { lv == rv },
+         (LIPart::Expression(le),LIPart::Expression(re)) => { le.equals(re) },
+         _ => false,
+      }
+   }
    pub fn literal(cs: &str) -> LIPart<S> {
       let cs = cs.chars().collect::<Vec<char>>();
       LIPart::Literal(Rc::new(
@@ -296,6 +309,17 @@ pub enum TIPart {
    InlineVariable(usize),
 }
 impl TIPart {
+   pub fn equals(&self, other: &TIPart) -> bool {
+      match (self,other) {
+         (TIPart::InlineVariable(lv),TIPart::InlineVariable(rv)) => { lv == rv },
+         (TIPart::Variable(lv),TIPart::Variable(rv)) => { lv == rv },
+         (TIPart::Tuple(lts),TIPart::Tuple(rts)) => {
+            lts.len() == rts.len() &&
+            std::iter::zip(lts.iter(),rts.iter()).all(|(l,r)| l == r)
+         },
+         _ => false,
+      }
+   }
    pub fn tuple(ts: Vec<Value>) -> TIPart {
       TIPart::Tuple(Rc::new(
          ts
@@ -310,6 +334,11 @@ pub enum LHSLiteralPart {
    Literal(Vec<char>),   
 }
 impl LHSLiteralPart {
+   pub fn equals(&self, other: &LHSLiteralPart) -> bool {
+      match (self,other) {
+         (LHSLiteralPart::Literal(lcs),LHSLiteralPart::Literal(rcs)) => { lcs == rcs },
+      }
+   }
    pub fn literal(cs: &str) -> LHSLiteralPart {
       let cs = cs.chars().collect::<Vec<char>>();
       LHSLiteralPart::Literal(cs)
@@ -324,6 +353,25 @@ pub enum LHSPart {
    Any,
 }
 impl LHSPart {
+   pub fn equals(&self, other: &LHSPart) -> bool {
+      match (self,other) {
+         (LHSPart::Any,LHSPart::Any) => true,
+         (LHSPart::Variable(lv),LHSPart::Variable(rv)) => { lv==rv },
+         (LHSPart::Literal(lv),LHSPart::Literal(rv)) => { lv==rv },
+         (LHSPart::Tuple(lv),LHSPart::Tuple(rv)) => {
+            lv.len() == rv.len() &&
+            std::iter::zip(lv.iter(),rv.iter()).all(|(l,r)| l.equals(r))
+         },
+         (LHSPart::UnpackLiteral(lpre,lmid,lsuf),LHSPart::UnpackLiteral(rpre,rmid,rsuf)) => {
+            lpre.len() == rpre.len() &&
+            std::iter::zip(lpre.iter(),rpre.iter()).all(|(l,r)| l.equals(r)) &&
+            lmid == rmid &&
+            lsuf.len() == rsuf.len() &&
+            std::iter::zip(lsuf.iter(),rsuf.iter()).all(|(l,r)| l.equals(r))
+         },
+         _ => false,
+      }
+   }
    pub fn ul(pre: Vec<LHSLiteralPart>, mid: Option<usize>, suf: Vec<LHSLiteralPart>) -> LHSPart {
       LHSPart::UnpackLiteral(pre, mid, suf)
    }
@@ -354,6 +402,33 @@ pub enum Expression<S:Debug + Clone> { //Expressions don't need to "clone"?
    Failure(S),
 }
 impl<S:Debug + Clone> Expression<S> {
+   pub fn equals(&self, other: &Expression<()>) -> bool {
+      match (self,other) {
+         (Expression::UnaryIntroduction(lui,_),Expression::UnaryIntroduction(rui,_)) => { lui == rui },
+         (Expression::VariableReference(lui,_),Expression::VariableReference(rui,_)) => { lui == rui },
+         (Expression::FunctionReference(lui,_),Expression::FunctionReference(rui,_)) => { lui == rui },
+         (Expression::LiteralIntroduction(lli,_),Expression::LiteralIntroduction(rli,_)) => {
+            lli.len() == rli.len() &&
+            std::iter::zip(lli.iter(),rli.iter()).all(|(l,r)| l.equals(r))
+         },
+         (Expression::TupleIntroduction(lli,_),Expression::TupleIntroduction(rli,_)) => {
+            lli.len() == rli.len() &&
+            std::iter::zip(lli.iter(),rli.iter()).all(|(l,r)| l.equals(r))
+         },
+         (Expression::FunctionApplication(lf,lps,_),Expression::FunctionApplication(rf,rps,_)) => {
+            lf == rf &&
+            lps.len() == rps.len() &&
+            std::iter::zip(lps.iter(),rps.iter()).all(|(l,r)| l.equals(r))
+         },
+         (Expression::PatternMatch(le,lps,_),Expression::PatternMatch(re,rps,_)) => {
+            le.equals(re) &&
+            lps.len() == rps.len() &&
+            std::iter::zip(lps.iter(),rps.iter()).all(|((ll,le),(rl,re))| ll.equals(rl) && le.equals(re))
+         },
+         (Expression::Failure(_),Expression::Failure(_)) => { true },
+         _ => false
+      }
+   }
    pub fn unary(ui: &[u8], span: S) -> Expression<S> {
       let ui = BigUint::parse_bytes(ui, 10).unwrap();
       Expression::UnaryIntroduction(ui, span)

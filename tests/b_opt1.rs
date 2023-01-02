@@ -8,10 +8,10 @@ fn eval_add() {
    for y in 0..20 {
       let nojit = Program::program(
          vec![FunctionDefinition::define(
-            vec![24,27],
+            vec![0,1],
             vec![Expression::li(vec![
-               LIPart::variable(24),
-               LIPart::variable(27),
+               LIPart::variable(0),
+               LIPart::variable(1),
             ],())]
          )],
          vec![
