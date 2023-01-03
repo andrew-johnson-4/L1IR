@@ -331,17 +331,23 @@ impl TIPart {
 }
 
 pub enum LHSLiteralPart {
-   Literal(Vec<char>),   
+   Literal(Vec<char>),
+   Variable(usize),
 }
 impl LHSLiteralPart {
    pub fn equals(&self, other: &LHSLiteralPart) -> bool {
       match (self,other) {
          (LHSLiteralPart::Literal(lcs),LHSLiteralPart::Literal(rcs)) => { lcs == rcs },
+         (LHSLiteralPart::Variable(lcs),LHSLiteralPart::Variable(rcs)) => { lcs == rcs },
+         _ => false,
       }
    }
    pub fn literal(cs: &str) -> LHSLiteralPart {
       let cs = cs.chars().collect::<Vec<char>>();
       LHSLiteralPart::Literal(cs)
+   }
+   pub fn variable(v: usize) -> LHSLiteralPart {
+      LHSLiteralPart::Variable(v)
    }
 }
 

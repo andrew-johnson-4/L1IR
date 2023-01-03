@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 use crate::ast;
-use crate::ast::{Program,Error,Expression,FunctionDefinition,LIPart};
+use crate::ast::{Program,Error,Expression,FunctionDefinition,LIPart,LHSPart,LHSLiteralPart};
 use cranelift::prelude::*;
 use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{DataContext, Linkage, Module};
@@ -125,7 +125,26 @@ pub fn check_hardcoded_call<'f, S: Clone + Debug>(ctx: &mut FunctionBuilder<'f>,
          let val0 = val[0].clone();
          let val1 = val[1].clone();
          ctx.ins().iadd(val0, val1)
-      })
+      }),
+      (vec![types::I64,types::I64],
+       FunctionDefinition::define(
+          vec![0,1],
+          vec![Expression::pattern(
+             Expression::variable(0,()),
+             vec![(
+                LHSPart::ul(
+                   vec![LHSLiteralPart::variable(1)],
+                   Some(2),
+                   vec![],
+                ),
+                Expression::variable(2,()),
+             )],
+          ())],
+      ),|ctx,val| {
+         let val0 = val[0].clone();
+         let val1 = val[1].clone();
+         ctx.ins().isub(val0, val1)
+      }),
    ];
    for (hsig,hdef,hexpr) in hardcoded.iter() {
       if &sig == hsig && p.functions[fi].equals(hdef) {

@@ -36,23 +36,23 @@ pub fn eval_lhs<S:Debug + Clone>(lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx: 
          if let Value::Unary(lu,_tt) = rval {
             let mut lu = lu.clone();
             for pl in prel.iter() {
-            let LHSLiteralPart::Literal(pcs) = pl;
+            if let LHSLiteralPart::Literal(pcs) = pl {
                if pcs.len().to_biguint().unwrap() > lu { return false; }
                for pc in pcs.iter() {
                if pc != &'0' {
                   return false;
                }}
                lu = lu - pcs.len().to_biguint().unwrap();
-            }
+            }}
             for sl in sufl.iter() {
-            let LHSLiteralPart::Literal(scs) = sl;
+            if let LHSLiteralPart::Literal(scs) = sl {
                if scs.len().to_biguint().unwrap() > lu { return false; }
                for sc in scs.iter() {
                if sc != &'0' {
                   return false;
                }}
                lu = lu - scs.len().to_biguint().unwrap();
-            }
+            }}
             if let Some(midl) = midl {
                lctx.borrow_mut().insert(*midl, Value::Unary(lu,None));
             }
