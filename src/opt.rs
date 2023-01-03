@@ -4,6 +4,8 @@ use crate::ast::{Program,Error,Expression,FunctionDefinition,LIPart};
 use cranelift::prelude::*;
 use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{DataContext, Linkage, Module};
+use num_bigint::BigUint;
+use num_traits::ToPrimitive;
 
 pub struct JProgram {
    main: *const u8,
@@ -21,9 +23,10 @@ pub struct JType {
 
 pub fn compile_expr<'f,S: Clone + Debug>(ctx: &mut FunctionBuilder<'f>, p: &Program<S>, e: &Expression<S>) -> (JExpr,JType) {
    match e {
-      Expression::UnaryIntroduction(_ui,_span) => {
+      Expression::UnaryIntroduction(ui,_span) => {
+         let ui = ui.to_i64().unwrap();
          (JExpr {
-            value: ctx.ins().iconst(types::I64, i64::from(0))
+            value: ctx.ins().iconst(types::I64, ui)
          }, JType {
             name: "Unary".to_string(),
             jtype: types::I64,
@@ -48,7 +51,7 @@ pub fn compile_expr<'f,S: Clone + Debug>(ctx: &mut FunctionBuilder<'f>, p: &Prog
 
 pub fn apply_fn<'f, S: Clone + Debug>(ctx: &mut FunctionBuilder<'f>, p: &Program<S>, fi: usize, args: Vec<(JExpr,JType)>) -> (JExpr,JType) {
    if let Some((je,jt)) = check_hardcoded_call(ctx, p, fi, &args) {
-      unimplemented!("apply hardcoded function call: f#{}", fi);
+      return (je, jt);
    }
    unimplemented!("apply function: f#{}", fi)
 }
@@ -78,12 +81,17 @@ impl JProgram {
       main.append_block_params_for_function_params(entry_block);
       main.switch_to_block(entry_block);
 
-      for pe in p.expressions.iter() {
-         compile_expr(&mut main, p, pe);
+      if p.expressions.len()==0 {
+         let rval = main.ins().iconst(types::I64, i64::from(12345));
+         main.ins().return_(&[rval]);
+      } else {
+         for pi in 0..(p.expressions.len()-1) {
+            compile_expr(&mut main, p, &p.expressions[pi]);
+         }
+         let (je,jt) = compile_expr(&mut main, p, &p.expressions[p.expressions.len()-1]);
+         main.ins().return_(&[je.value]);
       }
 
-      let rval = main.ins().iconst(types::I64, i64::from(12345));
-      main.ins().return_(&[rval]);
       main.seal_block(entry_block);
       main.finalize();
 
@@ -104,7 +112,8 @@ impl JProgram {
 
 pub fn check_hardcoded_call<'f, S: Clone + Debug>(ctx: &mut FunctionBuilder<'f>, p: &Program<S>, fi: usize, args: &Vec<(JExpr,JType)>) -> Option<(JExpr,JType)> {
    let sig = args.iter().map(|(_je,jt)| jt.jtype).collect::<Vec<types::Type>>();
-   let hardcoded = vec![
+   let val = args.iter().map(|(je,_jt)| je.value).collect::<Vec<Value>>();
+   let hardcoded: Vec<(Vec<types::Type>,FunctionDefinition<()>,fn(&mut FunctionBuilder<'f>,Vec<Value>) -> Value)> = vec![
       (vec![types::I64,types::I64],
        FunctionDefinition::define(
          vec![0,1],
@@ -112,11 +121,19 @@ pub fn check_hardcoded_call<'f, S: Clone + Debug>(ctx: &mut FunctionBuilder<'f>,
             LIPart::variable(0),
             LIPart::variable(1),
          ],())]
-      ),()) 
+      ),|ctx,val| {
+         let val0 = val[0].clone();
+         let val1 = val[1].clone();
+         ctx.ins().iadd(val0, val1)
+      })
    ];
-   for (hsig,hdef,_hexpr) in hardcoded.iter() {
+   for (hsig,hdef,hexpr) in hardcoded.iter() {
       if &sig == hsig && p.functions[fi].equals(hdef) {
-         unimplemented!("compile hardcoded function call to f#{}", fi)
+         let rval = hexpr(ctx, val);
+         return Some((
+            JExpr { value: rval },
+            JType { name:"".to_string(), jtype: types::I64 },
+         ));
       }
    }
    None
