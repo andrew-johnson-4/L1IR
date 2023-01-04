@@ -102,7 +102,7 @@ impl JProgram {
          main: module.get_finalized_function(fn_main),
       }
    }
-   pub fn eval(&self) -> Result<ast::Value,Error<String>> {
+   pub fn eval(&self, _args: &[u64]) -> Result<ast::Value,Error<String>> {
       let ptr_main = unsafe { std::mem::transmute::<_, fn(u64,u64) -> u64>(self.main) };
       let res = ptr_main(1,2);
       Ok(ast::Value::from_u64(res))
