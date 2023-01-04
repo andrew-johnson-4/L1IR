@@ -134,3 +134,151 @@ fn eval_ne() {
       assert_eq!(nval, jval, "{} != {}", x, y);
    }}
 }
+
+#[test]
+fn eval_lt() {
+   for x in 0..20 {
+   for y in 0..20 {
+      let nojit = Program::program(
+          vec![FunctionDefinition::define(
+             vec![0,1],
+             vec![Expression::pattern(
+                Expression::variable(1,()),
+                vec![(
+                   LHSPart::ul(
+                      vec![LHSLiteralPart::variable(0),
+                           LHSLiteralPart::literal("0")],
+                      Some(2),
+                      vec![],
+                   ),
+                   Expression::unary(b"1",()),
+                ),(
+                   LHSPart::Any,
+                   Expression::unary(b"0",()),
+                )],
+             ())],
+         )],
+         vec![
+            Expression::apply(0,vec![
+               Expression::unary(format!("{}",x).as_bytes(), ()),
+               Expression::unary(format!("{}",y).as_bytes(), ()),
+            ],()),
+         ],
+      );
+      let jit = JProgram::compile(&nojit);
+      let nval = eval(nojit).unwrap();
+      let jval = jit.eval().unwrap();
+      assert_eq!(nval, jval, "{} < {}", x, y);
+   }}
+}
+
+#[test]
+fn eval_gt() {
+   for x in 0..20 {
+   for y in 0..20 {
+      let nojit = Program::program(
+          vec![FunctionDefinition::define(
+             vec![0,1],
+             vec![Expression::pattern(
+                Expression::variable(0,()),
+                vec![(
+                   LHSPart::ul(
+                      vec![LHSLiteralPart::variable(1),
+                           LHSLiteralPart::literal("0")],
+                      Some(2),
+                      vec![],
+                   ),
+                   Expression::unary(b"1",()),
+                ),(
+                   LHSPart::Any,
+                   Expression::unary(b"0",()),
+                )],
+             ())],
+         )],
+         vec![
+            Expression::apply(0,vec![
+               Expression::unary(format!("{}",x).as_bytes(), ()),
+               Expression::unary(format!("{}",y).as_bytes(), ()),
+            ],()),
+         ],
+      );
+      let jit = JProgram::compile(&nojit);
+      let nval = eval(nojit).unwrap();
+      let jval = jit.eval().unwrap();
+      assert_eq!(nval, jval, "{} > {}", x, y);
+   }}
+}
+
+#[test]
+fn eval_gte() {
+   for x in 0..20 {
+   for y in 0..20 {
+      let nojit = Program::program(
+          vec![FunctionDefinition::define(
+             vec![0,1],
+             vec![Expression::pattern(
+                Expression::variable(1,()),
+                vec![(
+                   LHSPart::ul(
+                      vec![LHSLiteralPart::variable(0),
+                           LHSLiteralPart::literal("0")],
+                      Some(2),
+                      vec![],
+                   ),
+                   Expression::unary(b"0",()),
+                ),(
+                   LHSPart::Any,
+                   Expression::unary(b"1",()),
+                )],
+             ())],
+         )],
+         vec![
+            Expression::apply(0,vec![
+               Expression::unary(format!("{}",x).as_bytes(), ()),
+               Expression::unary(format!("{}",y).as_bytes(), ()),
+            ],()),
+         ],
+      );
+      let jit = JProgram::compile(&nojit);
+      let nval = eval(nojit).unwrap();
+      let jval = jit.eval().unwrap();
+      assert_eq!(nval, jval, "{} >= {}", x, y);
+   }}
+}
+
+#[test]
+fn eval_lte() {
+   for x in 0..20 {
+   for y in 0..20 {
+      let nojit = Program::program(
+          vec![FunctionDefinition::define(
+             vec![0,1],
+             vec![Expression::pattern(
+                Expression::variable(0,()),
+                vec![(
+                   LHSPart::ul(
+                      vec![LHSLiteralPart::variable(1),
+                           LHSLiteralPart::literal("0")],
+                      Some(2),
+                      vec![],
+                   ),
+                   Expression::unary(b"0",()),
+                ),(
+                   LHSPart::Any,
+                   Expression::unary(b"1",()),
+                )],
+             ())],
+         )],
+         vec![
+            Expression::apply(0,vec![
+               Expression::unary(format!("{}",x).as_bytes(), ()),
+               Expression::unary(format!("{}",y).as_bytes(), ()),
+            ],()),
+         ],
+      );
+      let jit = JProgram::compile(&nojit);
+      let nval = eval(nojit).unwrap();
+      let jval = jit.eval().unwrap();
+      assert_eq!(nval, jval, "{} <= {}", x, y);
+   }}
+}

@@ -190,6 +190,102 @@ pub fn check_hardcoded_call<'f, S: Clone + Debug>(ctx: &mut FunctionBuilder<'f>,
          let vi8 = ctx.ins().icmp(IntCC::NotEqual, val0, val1);
          ctx.ins().uextend(types::I64, vi8)
       }),
+      (vec![types::I64,types::I64],
+       FunctionDefinition::define(
+          vec![0,1],
+          vec![Expression::pattern(
+             Expression::variable(1,()),
+             vec![(
+                LHSPart::ul(
+                   vec![LHSLiteralPart::variable(0),
+                        LHSLiteralPart::literal("0")],
+                   Some(2),
+                   vec![],
+                ),
+                Expression::unary(b"1",()),
+             ),(
+                LHSPart::Any,
+                Expression::unary(b"0",()),
+             )],
+         ())],
+      ),|ctx,val| {
+         let val0 = val[0].clone();
+         let val1 = val[1].clone();
+         let vi8 = ctx.ins().icmp(IntCC::UnsignedLessThan, val0, val1);
+         ctx.ins().uextend(types::I64, vi8)
+      }),
+      (vec![types::I64,types::I64],
+       FunctionDefinition::define(
+          vec![0,1],
+          vec![Expression::pattern(
+             Expression::variable(0,()),
+             vec![(
+                LHSPart::ul(
+                   vec![LHSLiteralPart::variable(1),
+                        LHSLiteralPart::literal("0")],
+                   Some(2),
+                   vec![],
+                ),
+                Expression::unary(b"1",()),
+             ),(
+                LHSPart::Any,
+                Expression::unary(b"0",()),
+             )],
+         ())],
+      ),|ctx,val| {
+         let val0 = val[0].clone();
+         let val1 = val[1].clone();
+         let vi8 = ctx.ins().icmp(IntCC::UnsignedGreaterThan, val0, val1);
+         ctx.ins().uextend(types::I64, vi8)
+      }),
+      (vec![types::I64,types::I64],
+       FunctionDefinition::define(
+          vec![0,1],
+          vec![Expression::pattern(
+             Expression::variable(1,()),
+             vec![(
+                LHSPart::ul(
+                   vec![LHSLiteralPart::variable(0),
+                        LHSLiteralPart::literal("0")],
+                   Some(2),
+                   vec![],
+                ),
+                Expression::unary(b"0",()),
+             ),(
+                LHSPart::Any,
+                Expression::unary(b"1",()),
+             )],
+         ())],
+      ),|ctx,val| {
+         let val0 = val[0].clone();
+         let val1 = val[1].clone();
+         let vi8 = ctx.ins().icmp(IntCC::UnsignedGreaterThanOrEqual, val0, val1);
+         ctx.ins().uextend(types::I64, vi8)
+      }),
+      (vec![types::I64,types::I64],
+       FunctionDefinition::define(
+          vec![0,1],
+          vec![Expression::pattern(
+             Expression::variable(0,()),
+             vec![(
+                LHSPart::ul(
+                   vec![LHSLiteralPart::variable(1),
+                        LHSLiteralPart::literal("0")],
+                   Some(2),
+                   vec![],
+                ),
+                Expression::unary(b"0",()),
+             ),(
+                LHSPart::Any,
+                Expression::unary(b"1",()),
+             )],
+         ())],
+      ),|ctx,val| {
+         let val0 = val[0].clone();
+         let val1 = val[1].clone();
+         let vi8 = ctx.ins().icmp(IntCC::UnsignedLessThanOrEqual, val0, val1);
+         ctx.ins().uextend(types::I64, vi8)
+      }),
    ];
    for (hsig,hdef,hexpr) in hardcoded.iter() {
       if &sig == hsig && p.functions[fi].equals(hdef) {
