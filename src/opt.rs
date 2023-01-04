@@ -4,7 +4,6 @@ use crate::ast::{Program,Error,Expression,FunctionDefinition,LIPart,LHSPart,LHSL
 use cranelift::prelude::*;
 use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{DataContext, Linkage, Module};
-use num_bigint::BigUint;
 use num_traits::ToPrimitive;
 
 pub struct JProgram {
@@ -59,11 +58,11 @@ pub fn apply_fn<'f, S: Clone + Debug>(ctx: &mut FunctionBuilder<'f>, p: &Program
 impl JProgram {
    //functions will not be compiled until referenced
    pub fn compile<S: Clone + Debug>(p: &Program<S>) -> JProgram {
-      let mut builder = JITBuilder::new(cranelift_module::default_libcall_names());
+      let builder = JITBuilder::new(cranelift_module::default_libcall_names());
       let mut module = JITModule::new(builder.unwrap());
       let mut builder_context = FunctionBuilderContext::new();
       let mut ctx = module.make_context();
-      let mut data_ctx = DataContext::new();
+      let mut _data_ctx = DataContext::new();
 
       //int main(int *args, size_t args_count);
       let mut sig_main = module.make_signature();
@@ -88,7 +87,7 @@ impl JProgram {
          for pi in 0..(p.expressions.len()-1) {
             compile_expr(&mut main, p, &p.expressions[pi]);
          }
-         let (je,jt) = compile_expr(&mut main, p, &p.expressions[p.expressions.len()-1]);
+         let (je,_jt) = compile_expr(&mut main, p, &p.expressions[p.expressions.len()-1]);
          main.ins().return_(&[je.value]);
       }
 
