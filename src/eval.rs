@@ -36,27 +36,44 @@ pub fn eval_lhs<S:Debug + Clone>(lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx: 
          if let Value::Unary(lu,_tt) = rval {
             let mut lu = lu.clone();
             for pl in prel.iter() {
-            let LHSLiteralPart::Literal(pcs) = pl;
+            if let LHSLiteralPart::Literal(pcs) = pl {
                if pcs.len().to_biguint().unwrap() > lu { return false; }
                for pc in pcs.iter() {
                if pc != &'0' {
                   return false;
                }}
                lu = lu - pcs.len().to_biguint().unwrap();
-            }
+            } else if let LHSLiteralPart::Variable(pid) = pl {
+               if let Some(Value::Unary(pu,_)) = lctx.borrow().get(pid) {
+                  if &lu < pu { return false; }
+                  lu = lu - pu;
+               } else {
+                  unimplemented!("UnpackLiteral prefix")
+               }
+            }}
             for sl in sufl.iter() {
-            let LHSLiteralPart::Literal(scs) = sl;
+            if let LHSLiteralPart::Literal(scs) = sl {
                if scs.len().to_biguint().unwrap() > lu { return false; }
                for sc in scs.iter() {
                if sc != &'0' {
                   return false;
                }}
                lu = lu - scs.len().to_biguint().unwrap();
-            }
+            } else if let LHSLiteralPart::Variable(sid) = sl {
+               if let Some(Value::Unary(su,_)) = lctx.borrow().get(sid) {
+                  if &lu < su { return false; }
+                  lu = lu - su;
+               } else {
+                  unimplemented!("UnpackLiteral suffix")
+               }
+            }}
             if let Some(midl) = midl {
                lctx.borrow_mut().insert(*midl, Value::Unary(lu,None));
+               true
+            } else {
+               let lc = lu == (0).to_biguint().unwrap();
+               lc
             }
-            true
          } else if let Value::Literal(_ls,_le,_lcs,_tt) = rval {
             unimplemented!("TODO: unpack literal {:?}", rval)
          } else { return false; }
@@ -212,6 +229,7 @@ pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx
          for (l,r) in lrs.iter() {
          if eval_lhs(lctx.clone(), pctx, l, &rv) {
             matched = Some(r.clone());
+            break;
          }
          }
          if let Some(ne) = matched {
