@@ -113,12 +113,12 @@ pub fn check_hardcoded_call<'f, S: Clone + Debug>(ctx: &mut FunctionBuilder<'f>,
    let sig = args.iter().map(|(_je,jt)| jt.jtype).collect::<Vec<types::Type>>();
    let val = args.iter().map(|(je,_jt)| je.value).collect::<Vec<Value>>();
    let hardcoded = crate::recipes::cranelift::import();
-   for (hsig,hdef,hexpr) in hardcoded.iter() {
+   for (hsig,hdef,hexpr,htype) in hardcoded.iter() {
       if &sig == hsig && p.functions[fi].equals(hdef) {
          let rval = hexpr(ctx, val);
          return Some((
             JExpr { value: rval },
-            JType { name:"".to_string(), jtype: types::I64 },
+            JType { name:"".to_string(), jtype: *htype },
          ));
       }
    }
