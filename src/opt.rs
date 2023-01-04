@@ -33,7 +33,16 @@ pub fn compile_expr<'f,S: Clone + Debug>(ctx: &mut FunctionBuilder<'f>, p: &Prog
       },
       Expression::LiteralIntroduction(_li,_span) => unimplemented!("compile expression: LiteralIntroduction"),
       Expression::TupleIntroduction(_ti,_span) => unimplemented!("compile expression: TupleIntroduction"),
-      Expression::VariableReference(_vi,_span) => unimplemented!("compile expression: VariableReference"),
+      Expression::VariableReference(vi,_span) => {
+         let jv = Variable::from_u32(*vi as u32);
+         let jv = ctx.use_var(jv);
+         (JExpr {
+            value: jv
+         }, JType {
+            name: "Unary".to_string(),
+            jtype: types::I64,
+         })
+      },
       Expression::FunctionReference(_vi,_span) => unimplemented!("compile expression: FunctionReference"),
       Expression::FunctionApplication(fi,args,_span) => {
          let mut arg_types = Vec::new();
@@ -80,6 +89,20 @@ impl JProgram {
       main.append_block_params_for_function_params(entry_block);
       main.switch_to_block(entry_block);
 
+      let mut pars = Vec::new();
+      for pe in p.expressions.iter() {
+         pe.vars(&mut pars);
+      }
+      for pi in pars.iter() {
+         let pv = Variable::from_u32(*pi as u32);
+         main.declare_var(pv, types::I64);
+         let arg_base = main.block_params(entry_block)[0];
+         let arg_offset = (8 * *pi) as i32;
+         let arg_flags = MemFlags::new();
+         let arg_value = main.ins().load(types::I64, arg_flags, arg_base, arg_offset);
+         main.def_var(pv, arg_value);
+      }
+
       if p.expressions.len()==0 {
          let rval = main.ins().iconst(types::I64, i64::from(0));
          main.ins().return_(&[rval]);
@@ -102,9 +125,9 @@ impl JProgram {
          main: module.get_finalized_function(fn_main),
       }
    }
-   pub fn eval(&self, _args: &[u64]) -> Result<ast::Value,Error<String>> {
-      let ptr_main = unsafe { std::mem::transmute::<_, fn(u64,u64) -> u64>(self.main) };
-      let res = ptr_main(1,2);
+   pub fn eval(&self, args: &[u64]) -> Result<ast::Value,Error<String>> {
+      let ptr_main = unsafe { std::mem::transmute::<_, fn(*const u64,u64) -> u64>(self.main) };
+      let res = ptr_main(args.as_ptr(), args.len() as u64);
       Ok(ast::Value::from_u64(res))
    }
 }

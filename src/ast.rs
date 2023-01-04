@@ -280,6 +280,13 @@ pub enum LIPart<S:Debug + Clone> {
    Expression(Expression<S>),
 }
 impl<S:Debug + Clone> LIPart<S> {
+   pub fn vars(&self, vars: &mut Vec<usize>) {
+      match self {
+         LIPart::Literal(_lcs) => {},
+         LIPart::InlineVariable(li) => { vars.push(*li); },
+         LIPart::Expression(le) => { le.vars(vars); },
+      }
+   }
    pub fn equals(&self, other: &LIPart<()>) -> bool {
       match (self,other) {
          (LIPart::Literal(lcs),LIPart::Literal(rcs)) => { *lcs == *rcs },
@@ -309,6 +316,13 @@ pub enum TIPart {
    InlineVariable(usize),
 }
 impl TIPart {
+   pub fn vars(&self, vars: &mut Vec<usize>) {
+      match self {
+         TIPart::Tuple(_ts) => {},
+         TIPart::Variable(ti) => { vars.push(*ti); },
+         TIPart::InlineVariable(ti) => { vars.push(*ti); },
+      }
+   }
    pub fn equals(&self, other: &TIPart) -> bool {
       match (self,other) {
          (TIPart::InlineVariable(lv),TIPart::InlineVariable(rv)) => { lv == rv },
@@ -359,6 +373,8 @@ pub enum LHSPart {
    Any,
 }
 impl LHSPart {
+   pub fn vars(&self, _vars: &mut Vec<usize>) {
+   }
    pub fn equals(&self, other: &LHSPart) -> bool {
       match (self,other) {
          (LHSPart::Any,LHSPart::Any) => true,
@@ -408,6 +424,38 @@ pub enum Expression<S:Debug + Clone> { //Expressions don't need to "clone"?
    Failure(S),
 }
 impl<S:Debug + Clone> Expression<S> {
+   pub fn vars(&self, vars: &mut Vec<usize>) {
+      match self {
+         Expression::VariableReference(vi,_) => {
+            vars.push(*vi);
+         },
+         Expression::UnaryIntroduction(_,_) => {},
+         Expression::Failure(_) => {},
+         Expression::FunctionReference(_,_) => {},
+         Expression::LiteralIntroduction(lis,_) => {
+            for li in lis.iter() {
+               li.vars(vars);
+            }
+         },
+         Expression::TupleIntroduction(tis,_) => {
+            for ti in tis.iter() {
+               ti.vars(vars);
+            }
+         },
+         Expression::FunctionApplication(_,es,_) => {
+            for e in es.iter() {
+               e.vars(vars);
+            }
+         },
+         Expression::PatternMatch(e,lrs,_) => {
+            e.vars(vars);
+            for (l,r) in lrs.iter() {
+               l.vars(vars);
+               r.vars(vars);
+            }
+         },
+      }
+   }
    pub fn equals(&self, other: &Expression<()>) -> bool {
       match (self,other) {
          (Expression::UnaryIntroduction(lui,_),Expression::UnaryIntroduction(rui,_)) => { lui == rui },
