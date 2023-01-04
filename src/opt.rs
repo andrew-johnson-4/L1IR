@@ -81,7 +81,7 @@ impl JProgram {
       main.switch_to_block(entry_block);
 
       if p.expressions.len()==0 {
-         let rval = main.ins().iconst(types::I64, i64::from(12345));
+         let rval = main.ins().iconst(types::I64, i64::from(0));
          main.ins().return_(&[rval]);
       } else {
          for pi in 0..(p.expressions.len()-1) {
