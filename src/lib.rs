@@ -8,3 +8,6 @@ pub mod eval;
 //Optimizing Compiler, JIT and Otherwise
 #[cfg(feature = "cranelift")]
 pub mod opt;
+
+//Hardcoded Equivalence Relations
+pub mod recipes;
