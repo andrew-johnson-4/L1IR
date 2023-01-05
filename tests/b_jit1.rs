@@ -92,3 +92,80 @@ fn l1_fibonacci() -> JProgram {
    );
    JProgram::compile(&l1fib)
 }
+
+#[test]
+fn eval_two_pow_n() {
+   let jit = l1_two_pow_n();
+
+   for x in 0..20 {
+      let jval = jit.eval(&[x]).unwrap();
+      assert_eq!(Value::from_u64(rust_two_pow_n(x)), jval, "fibonacci({})", x);
+   }
+}
+
+fn rust_two_pow_n(n: u64) -> u64 {
+    match n {
+        0 => 1,
+        n => rust_fibonacci(n-1) + rust_fibonacci(n-1),
+    }
+}
+fn l1_two_pow_n() -> JProgram {
+   let l12n = Program::program(
+      vec![
+         FunctionDefinition::define( // 0 = $"+"
+            vec![0,1],
+            vec![Expression::li(vec![
+               LIPart::variable(0),
+               LIPart::variable(1),
+            ],())]
+         ),
+         FunctionDefinition::define( // 1 = $"-"
+            vec![0,1],
+            vec![Expression::pattern(
+               Expression::variable(0,()),
+               vec![
+                  (
+                     LHSPart::ul(
+                        vec![LHSLiteralPart::variable(1)],
+                        Some(2),
+                        vec![],
+                     ),
+                     Expression::variable(2,()),
+                  ),
+               ],
+            ())],
+         ),
+         FunctionDefinition::define(
+            vec![24],
+            vec![Expression::pattern(
+               Expression::variable(24,()),
+               vec![
+                  (
+                     LHSPart::literal(""),
+                     Expression::unary(b"1",()),
+                  ),
+                  (
+                     LHSPart::Any,
+                     Expression::apply(0,vec![
+                        Expression::apply(1,vec![
+                           Expression::variable(24,()),
+                           Expression::unary(b"1",()),
+                        ],()),
+                        Expression::apply(1,vec![
+                           Expression::variable(24,()),
+                           Expression::unary(b"1",()),
+                        ],()),
+                     ],()),
+                  ),
+               ],
+            ())],
+         ),
+      ],
+      vec![
+         Expression::apply(2,vec![
+            Expression::variable(0, ())
+         ],()),
+      ],
+   );
+   JProgram::compile(&l12n)
+}
