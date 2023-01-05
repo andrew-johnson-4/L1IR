@@ -20,6 +20,52 @@ pub struct JType {
    pub jtype: types::Type,
 }
 
+pub fn compile_fn<'f,S: Clone + Debug>(jmod: &mut JITModule, builder_context: &mut FunctionBuilderContext, p: &Program<S>, fi: usize) {
+   let mut ctx = jmod.make_context();
+
+   let mut sig_fn = jmod.make_signature();
+   for _ in p.functions[fi].args.iter() {
+      sig_fn.params.push(AbiParam::new(types::I64));
+   }
+   sig_fn.returns.push(AbiParam::new(types::I64));
+
+   let fn0 = jmod
+      .declare_function(&format!("f#{}", fi), Linkage::Local, &sig_fn)
+      .unwrap();
+   ctx.func.signature = sig_fn;
+
+   let mut fnb = FunctionBuilder::new(&mut ctx.func, builder_context);
+   let entry_block = fnb.create_block();
+   fnb.append_block_params_for_function_params(entry_block);
+   fnb.switch_to_block(entry_block);
+
+   for (pi,vi) in p.functions[fi].args.iter().enumerate() {
+      let pvar = Variable::from_u32(*vi as u32);
+      fnb.declare_var(pvar, types::I64);
+      let pval = fnb.block_params(entry_block)[pi];
+      fnb.def_var(pvar, pval);
+   }
+
+ 
+   let rval = fnb.ins().iconst(types::I64, i64::from(0));
+   fnb.ins().return_(&[rval]);
+   /*
+      } else {
+         for pi in 0..(p.expressions.len()-1) {
+            compile_expr(&mut module, &mut main, p, &p.expressions[pi]);
+         }
+         let (je,_jt) = compile_expr(&mut module, &mut main, p, &p.expressions[p.expressions.len()-1]);
+         main.ins().return_(&[je.value]);
+      }
+   */
+
+   fnb.seal_block(entry_block);
+   fnb.finalize();
+
+   jmod.define_function(fn0, &mut ctx).unwrap();
+   jmod.clear_context(&mut ctx);
+}
+
 pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, p: &Program<S>, e: &Expression<S>) -> (JExpr,JType) {
    match e {
       Expression::UnaryIntroduction(ui,_span) => {
@@ -149,8 +195,12 @@ impl JProgram {
 
       module.define_function(fn_main, &mut ctx).unwrap();
       module.clear_context(&mut ctx);
-      module.finalize_definitions().unwrap();
 
+      for fi in 0..p.functions.len() {
+         compile_fn(&mut module, &mut builder_context, &p, fi);
+      }
+
+      module.finalize_definitions().unwrap();
       JProgram {
          main: module.get_finalized_function(fn_main),
       }
