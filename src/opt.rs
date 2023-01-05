@@ -20,8 +20,14 @@ pub struct JType {
    pub jtype: types::Type,
 }
 
-pub fn compile_fn<'f,S: Clone + Debug>(jmod: &mut JITModule, builder_context: &mut FunctionBuilderContext, p: &Program<S>, fi: usize) {
+pub fn compile_fn<'f,S: Clone + Debug>(jmod: &mut JITModule, p: &Program<S>, fi: usize) {
+   let hpars = p.functions[fi].args.iter().map(|_|types::I64).collect::<Vec<types::Type>>();
+   if is_hardcoded(p, fi, &hpars) {
+      return;
+   }
+
    let mut ctx = jmod.make_context();
+   let mut builder_context = FunctionBuilderContext::new();
 
    let mut sig_fn = jmod.make_signature();
    for _ in p.functions[fi].args.iter() {
@@ -34,7 +40,7 @@ pub fn compile_fn<'f,S: Clone + Debug>(jmod: &mut JITModule, builder_context: &m
       .unwrap();
    ctx.func.signature = sig_fn;
 
-   let mut fnb = FunctionBuilder::new(&mut ctx.func, builder_context);
+   let mut fnb = FunctionBuilder::new(&mut ctx.func, &mut builder_context);
    let entry_block = fnb.create_block();
    fnb.append_block_params_for_function_params(entry_block);
    fnb.switch_to_block(entry_block);
@@ -46,18 +52,16 @@ pub fn compile_fn<'f,S: Clone + Debug>(jmod: &mut JITModule, builder_context: &m
       fnb.def_var(pvar, pval);
    }
 
- 
-   let rval = fnb.ins().iconst(types::I64, i64::from(0));
-   fnb.ins().return_(&[rval]);
-   /*
-      } else {
-         for pi in 0..(p.expressions.len()-1) {
-            compile_expr(&mut module, &mut main, p, &p.expressions[pi]);
-         }
-         let (je,_jt) = compile_expr(&mut module, &mut main, p, &p.expressions[p.expressions.len()-1]);
-         main.ins().return_(&[je.value]);
+   if p.functions[fi].body.len()==0 {
+      let rval = fnb.ins().iconst(types::I64, i64::from(0));
+      fnb.ins().return_(&[rval]);
+   } else {
+      for pi in 0..(p.functions[fi].body.len()-1) {
+         compile_expr(jmod, &mut fnb, p, &p.functions[fi].body[pi]);
       }
-   */
+      let (je,_jt) = compile_expr(jmod, &mut fnb, p, &p.functions[fi].body[p.functions[fi].body.len()-1]);
+      fnb.ins().return_(&[je.value]);
+   }
 
    fnb.seal_block(entry_block);
    fnb.finalize();
@@ -197,9 +201,10 @@ impl JProgram {
       module.clear_context(&mut ctx);
 
       for fi in 0..p.functions.len() {
-         compile_fn(&mut module, &mut builder_context, &p, fi);
+         compile_fn(&mut module, &p, fi);
       }
 
+      println!("compile program 4");
       module.finalize_definitions().unwrap();
       JProgram {
          main: module.get_finalized_function(fn_main),
