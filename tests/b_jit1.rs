@@ -43,7 +43,8 @@ fn rust_fibonacci(n: u64) -> u64 {
         1 => 1,
         n => rust_fibonacci(n-1) + rust_fibonacci(n-2),
     }
-}fn l1_fibonacci() -> JProgram {
+}
+fn l1_fibonacci() -> JProgram {
    let l1fib = Program::program(
       vec![FunctionDefinition::define(
          vec![24],
