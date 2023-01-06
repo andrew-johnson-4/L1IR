@@ -1,5 +1,6 @@
 test_all:
 	cargo test --features cranelift
 
-bench_all:
-	cargo bench --features cranelift
+bench:
+	cargo build --release --features cranelift
+	./target/release/bench
