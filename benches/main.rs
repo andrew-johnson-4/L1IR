@@ -1,4 +1,6 @@
 use std::time::{Instant};
+use std::process::Command;
+use std::{io, io::Write};
 use l1_ir::ast::{Expression,Program,FunctionDefinition,LIPart,LHSPart,LHSLiteralPart};
 use l1_ir::opt::{JProgram};
 
@@ -97,4 +99,10 @@ pub fn main() {
     }}
     let t = start.elapsed();
     println!("(L1) 1M 2^20 in {} seconds", t.as_secs_f32());
+
+    let output = Command::new("python3")
+            .arg("benches/main.py")
+            .output()
+            .expect("failed to execute process");
+    io::stdout().write(&output.stdout).unwrap();
 }
