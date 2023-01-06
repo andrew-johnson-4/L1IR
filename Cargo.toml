@@ -36,7 +36,7 @@ name = "b_jit1"
 path = "tests/b_jit1.rs"
 required-features = ["cranelift"]
 
-[[bench]]
-name = "fibonacci"
-harness = false
+[[bin]]
+name = "bench"
+path = "benches/main.rs"
 required-features = ["cranelift"]

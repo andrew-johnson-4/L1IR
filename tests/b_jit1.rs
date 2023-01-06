@@ -157,14 +157,14 @@ fn eval_two_pow_n() {
 
    for x in 0..20 {
       let jval = jit.eval(&[x]).unwrap();
-      assert_eq!(Value::from_u64(rust_two_pow_n(x)), jval, "fibonacci({})", x);
+      assert_eq!(Value::from_u64(rust_two_pow_n(x)), jval, "2^{}", x);
    }
 }
 
 fn rust_two_pow_n(n: u64) -> u64 {
     match n {
         0 => 1,
-        n => rust_fibonacci(n-1) + rust_fibonacci(n-1),
+        n => rust_two_pow_n(n-1) + rust_two_pow_n(n-1),
     }
 }
 fn l1_two_pow_n() -> JProgram {
@@ -205,13 +205,17 @@ fn l1_two_pow_n() -> JProgram {
                   (
                      LHSPart::Any,
                      Expression::apply(0,vec![
-                        Expression::apply(1,vec![
-                           Expression::variable(24,()),
-                           Expression::unary(b"1",()),
+                        Expression::apply(2,vec![
+                           Expression::apply(1,vec![
+                              Expression::variable(24,()),
+                              Expression::unary(b"1",()),
+                           ],()),
                         ],()),
-                        Expression::apply(1,vec![
-                           Expression::variable(24,()),
-                           Expression::unary(b"1",()),
+                        Expression::apply(2,vec![
+                           Expression::apply(1,vec![
+                              Expression::variable(24,()),
+                              Expression::unary(b"1",()),
+                           ],()),
                         ],()),
                      ],()),
                   ),

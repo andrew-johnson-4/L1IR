@@ -21,14 +21,13 @@ pub struct JType {
    pub jtype: types::Type,
 }
 
-pub fn compile_fn<'f,S: Clone + Debug>(jmod: &mut JITModule, p: &Program<S>, fi: usize) {
+pub fn compile_fn<'f,S: Clone + Debug>(jmod: &mut JITModule, builder_context: &mut FunctionBuilderContext, p: &Program<S>, fi: usize) {
    let hpars = p.functions[fi].args.iter().map(|_|types::I64).collect::<Vec<types::Type>>();
    if is_hardcoded(p, fi, &hpars) {
       return;
    }
 
    let mut ctx = jmod.make_context();
-   let mut builder_context = FunctionBuilderContext::new();
 
    let mut sig_fn = jmod.make_signature();
    for _ in p.functions[fi].args.iter() {
@@ -41,7 +40,7 @@ pub fn compile_fn<'f,S: Clone + Debug>(jmod: &mut JITModule, p: &Program<S>, fi:
       .unwrap();
    ctx.func.signature = sig_fn;
 
-   let mut fnb = FunctionBuilder::new(&mut ctx.func, &mut builder_context);
+   let mut fnb = FunctionBuilder::new(&mut ctx.func, builder_context);
    let mut blk = fnb.create_block();
    fnb.append_block_params_for_function_params(blk);
    fnb.switch_to_block(blk);
@@ -268,13 +267,17 @@ impl JProgram {
       module.clear_context(&mut ctx);
 
       for fi in 0..p.functions.len() {
-         compile_fn(&mut module, &p, fi);
+         compile_fn(&mut module, &mut builder_context, &p, fi);
       }
 
       module.finalize_definitions().unwrap();
       JProgram {
          main: module.get_finalized_function(fn_main),
       }
+   }
+   pub fn ueval(&self, args: &[u64]) -> u64 {
+      let ptr_main = unsafe { std::mem::transmute::<_, fn(*const u64,u64) -> u64>(self.main) };
+      ptr_main(args.as_ptr(), args.len() as u64)
    }
    pub fn eval(&self, args: &[u64]) -> Result<ast::Value,Error<String>> {
       let ptr_main = unsafe { std::mem::transmute::<_, fn(*const u64,u64) -> u64>(self.main) };
