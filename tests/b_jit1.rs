@@ -2,6 +2,64 @@ use l1_ir::ast::{Expression,Program,FunctionDefinition,LIPart,Value,LHSPart,LHSL
 use l1_ir::opt::{JProgram};
 
 #[test]
+fn eval_match1() {
+   let nojit = Program::program(
+      vec![],
+      vec![Expression::pattern(
+         Expression::variable(0,()),
+         vec![
+            (
+               LHSPart::literal("000"),
+               Expression::unary(b"123",()),
+            ),
+            (
+               LHSPart::Any,
+               Expression::unary(b"321",()),
+            ),
+         ],
+      ())],
+   );
+   let jit = JProgram::compile(&nojit);
+
+   for x in 0..20 {
+      let jval = jit.eval(&[x]).unwrap();
+      assert_eq!(Value::from_u64(if x==3 {123} else {321}), jval, "if {}==3 then 123 else 321", x);
+   }
+}
+#[test]
+fn eval_match2() {
+   let nojit = Program::program(
+      vec![FunctionDefinition::define(
+         vec![24],
+         vec![Expression::pattern(
+            Expression::variable(24,()),
+            vec![
+               (
+                  LHSPart::literal("000"),
+                  Expression::unary(b"123",()),
+               ),
+               (
+                  LHSPart::Any,
+                  Expression::unary(b"321",()),
+               ),
+            ],
+         ())],
+      )],
+      vec![
+         Expression::apply(0,vec![
+            Expression::variable(0, ()),
+         ],()),
+      ],
+   );
+   let jit = JProgram::compile(&nojit);
+
+   for x in 0..20 {
+      let jval = jit.eval(&[x]).unwrap();
+      assert_eq!(Value::from_u64(if x==3 {123} else {321}), jval, "if {}==3 then 123 else 321", x);
+   }
+}
+
+#[test]
 fn eval_add() {
    let nojit = Program::program(
       vec![FunctionDefinition::define(

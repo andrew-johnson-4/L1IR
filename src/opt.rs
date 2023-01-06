@@ -73,12 +73,21 @@ pub fn compile_fn<'f,S: Clone + Debug>(jmod: &mut JITModule, p: &Program<S>, fi:
    jmod.clear_context(&mut ctx);
 }
 
-pub fn compile_lhs<'f>(ctx: &mut FunctionBuilder<'f>, lblk: Block, rblk: Block, lhs: &LHSPart, nblk: Block) {
+pub fn compile_lhs<'f>(ctx: &mut FunctionBuilder<'f>, lblk: Block, rblk: Block, lhs: &LHSPart, nblk: Block, val: Value) {
    ctx.switch_to_block(lblk);
    match lhs {
-      _ => unimplemented!("TODO: compile_lhs")
+      LHSPart::Tuple(_lts) => unimplemented!("compile_lhs(Tuple)"),
+      LHSPart::Literal(lts) => {
+         let cond = ctx.ins().icmp_imm(IntCC::Equal, val, lts.len() as i64);
+         ctx.ins().brnz(cond, rblk, &[]);
+         ctx.ins().jump(nblk, &[]);
+      },
+      LHSPart::UnpackLiteral(_pres,_mid,_sufs) => unimplemented!("compile_lhs(UnpackLiteral)"),
+      LHSPart::Variable(_lv) => unimplemented!("compile_lhs(Variable)"),
+      LHSPart::Any => {
+         ctx.ins().jump(rblk, &[]);
+      },
    }
-   ctx.ins().jump(nblk, &[]);
    ctx.seal_block(lblk);
 }
 
@@ -117,7 +126,7 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
          apply_fn(jmod, ctx, blk, p, *fi, arg_types)
       },
       Expression::PatternMatch(pe,lrs,_span) => {
-         let (je,jt) = compile_expr(jmod, ctx, blk, p, pe);
+         let (je,_jt) = compile_expr(jmod, ctx, blk, p, pe);
          blk = je.block;
 
          let failblk = ctx.create_block(); //failure block
@@ -135,7 +144,14 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
          ctx.seal_block(blk);             //seal pattern expression
 
          for (li,(l,_r)) in lrs.iter().enumerate() {
-            compile_lhs(ctx, lblocks[li], rblocks[li], l, lblocks[li+1]);
+            compile_lhs(ctx, lblocks[li], rblocks[li], l, lblocks[li+1], je.value);
+         }
+
+         for (ri,(_l,r)) in lrs.iter().enumerate() {
+            ctx.switch_to_block(rblocks[ri]);
+            let (je,_jt) = compile_expr(jmod, ctx, rblocks[ri], p, r);
+            ctx.ins().jump(succblk, &[je.value]);
+            ctx.seal_block(je.block);
          }
 
          ctx.switch_to_block(failblk); //define failure block
