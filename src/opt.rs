@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 use crate::ast;
-use crate::ast::{Program,Error,Expression};
+use crate::ast::{Program,Error,Expression,LHSPart};
 use cranelift::prelude::*;
 use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{DataContext, Linkage, Module, FuncOrDataId};
@@ -73,7 +73,16 @@ pub fn compile_fn<'f,S: Clone + Debug>(jmod: &mut JITModule, p: &Program<S>, fi:
    jmod.clear_context(&mut ctx);
 }
 
-pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, blk: Block, p: &Program<S>, e: &Expression<S>) -> (JExpr,JType) {
+pub fn compile_lhs<'f>(ctx: &mut FunctionBuilder<'f>, lblk: Block, rblk: Block, lhs: &LHSPart, nblk: Block) {
+   ctx.switch_to_block(lblk);
+   match lhs {
+      _ => unimplemented!("TODO: compile_lhs")
+   }
+   ctx.ins().jump(nblk, &[]);
+   ctx.seal_block(lblk);
+}
+
+pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, mut blk: Block, p: &Program<S>, e: &Expression<S>) -> (JExpr,JType) {
    match e {
       Expression::UnaryIntroduction(ui,_span) => {
          let ui = ui.to_i64().unwrap();
@@ -108,25 +117,35 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
          apply_fn(jmod, ctx, blk, p, *fi, arg_types)
       },
       Expression::PatternMatch(pe,lrs,_span) => {
-         let jejt = compile_expr(jmod, ctx, blk, p, pe);
+         let (je,jt) = compile_expr(jmod, ctx, blk, p, pe);
+         blk = je.block;
 
-         let rblock = ctx.create_block();
-         ctx.append_block_param(rblock, types::I64);
+         let failblk = ctx.create_block(); //failure block
+         let succblk = ctx.create_block(); //success block
+         ctx.append_block_param(succblk, types::I64);
 
-         //let fallback = ctx.create_block();
+         let mut lblocks = Vec::new();
+         let mut rblocks = Vec::new();
+         for _ in lrs.iter() {
+            lblocks.push(ctx.create_block());
+            rblocks.push(ctx.create_block());
+         }
+         lblocks.push(failblk);
+         ctx.ins().jump(lblocks[0], &[]); //jump into first lhs guard
+         ctx.seal_block(blk);             //seal pattern expression
 
-         let ival = ctx.ins().iconst(types::I64, 123);
-         ctx.ins().jump(rblock, &[ival]);
-         ctx.seal_block(blk);
+         for (li,(l,_r)) in lrs.iter().enumerate() {
+            compile_lhs(ctx, lblocks[li], rblocks[li], l, lblocks[li+1]);
+         }
 
-         //ctx.switch_to_block(fallback);
-         //for (l,r) in lrs.iter() {
-         //}
+         ctx.switch_to_block(failblk); //define failure block
+         ctx.ins().trap(TrapCode::UnreachableCodeReached);
+         ctx.seal_block(failblk);
 
-         ctx.switch_to_block(rblock);
+         ctx.switch_to_block(succblk); //return cfg to success block
          (JExpr {
-            block: rblock,
-            value: ctx.block_params(rblock)[0],
+            block: succblk,
+            value: ctx.block_params(succblk)[0],
          }, JType {
             name: "Unary".to_string(),
             jtype: types::I64,
@@ -236,7 +255,6 @@ impl JProgram {
          compile_fn(&mut module, &p, fi);
       }
 
-      println!("compile program 4");
       module.finalize_definitions().unwrap();
       JProgram {
          main: module.get_finalized_function(fn_main),
