@@ -6,6 +6,12 @@
 
 Intermediate Representation of [LSTS](https://github.com/andrew-johnson-4/LSTS) [L1 Language](https://github.com/andrew-johnson-4/LSTS/blob/main/preludes/l1.tlc)
 
+```
+(Rust)   1MM 2^20 in 0.3577648 seconds
+(L1)     1M  2^20 in 3.8083122 seconds
+(Python) 100 2^20 in 13.4526901 seconds
+```
+
 Values
 * Literal Strings
 * Tuples
