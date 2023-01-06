@@ -17,12 +17,6 @@ cranelift-module = { version = "0.91", optional = true }
 cranelift-jit = { version = "0.91", optional = true }
 regex = { version = "1" }
 
-[dev-dependencies]
-criterion = "0.3"
-
-[profile.dev]
-opt-level = 3
-
 [features]
 cranelift = ["dep:cranelift", "dep:cranelift-module", "dep:cranelift-jit"]
 

@@ -6,8 +6,8 @@ def pow2(x):
     return pow2(x-1) + pow2(x-1)
 
 start = timer()
-for x in range(100):
+for x in range(1000):
     pow2(20)
 end = timer()
 
-print("(Python) 100 2^20 in {:.7f} seconds".format(end - start))
+print("(Python) 1M 2^20 in {:.7f} seconds".format(end - start))

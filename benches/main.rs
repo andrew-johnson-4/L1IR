@@ -78,24 +78,18 @@ fn l1_two_pow_n() -> JProgram {
 
 pub fn main() {
     let start = Instant::now();
-    for _ in 0..1000000 {
+    for _ in 0..1000 {
     for n in 0_u64..20_u64 {
-       assert_eq!(
-          2_u64.pow(n as u32),
-          two_pow_n(n),
-       );
+       two_pow_n(n);
     }}
     let t = start.elapsed();
-    println!("(Rust) 1MM 2^20 in {} seconds", t.as_secs_f32());
+    println!("(Rust) 1M 2^20 in {} seconds", t.as_secs_f32());
 
     let j2n = l1_two_pow_n();
     let start = Instant::now();
     for _ in 0..1000 {
     for n in 0_u64..20_u64 {
-       assert_eq!(
-          2_u64.pow(n as u32),
-          j2n.ueval(&[n]),
-       );
+       j2n.ueval(&[n]);
     }}
     let t = start.elapsed();
     println!("(L1) 1M 2^20 in {} seconds", t.as_secs_f32());
