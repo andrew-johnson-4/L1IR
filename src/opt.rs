@@ -1,5 +1,5 @@
-//type Value : U128
-//tag: U64 | Value: U64 aligned
+//type Value : U32[4]
+//tag: U32 | vals
 //`U8      | U8
 //`I8      | I8
 //`U16     | U16
@@ -10,21 +10,13 @@
 //`I64     | I64
 //`F32     | F32
 //`F64     | F64
-//`String  | U64 Offset -> StringHeader
-//`Tuple   | U64 Offset -> TupleHeader
+//`String  | start: U32 | end: U32 | U32 Offset -> StringData
+//`Tuple   | start: U32 | end: U32 | U32 Offset -> TupleData
 
-//type StringHeader: U64[3]
-//  start: U64
-//  end: U64
-//  data: U64 Offset -> StringData
 //type StringData: ?Sized
 //  ref_count: U64
 //  data: U32[SIZE]
 
-//type TupleHeader: U64[]
-//  start: U64
-//  end: U64
-//  data: U64 Offset -> TupleData
 //type TupleData: ?Sized
 //  ref_count: U64
 //  data: Value[SIZE]
