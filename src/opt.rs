@@ -1,4 +1,4 @@
-//Each IR "Type" must have a single unambiguous Value representation with the exception of data segments
+//Each IR "Type" must have a single unambiguous Value representation with the exception `String and `Tuple
 
 //type Value : U128 : U32[4]
 //tag: U32 | vals: U32[3]
