@@ -1,3 +1,34 @@
+//type Value : U128
+//tag: U64 | Value: U64 aligned
+//`U8      | U8
+//`I8      | I8
+//`U16     | U16
+//`I16     | I16
+//`U32     | U32
+//`I32     | I32
+//`U64     | U64
+//`I64     | I64
+//`F32     | F32
+//`F64     | F64
+//`String  | U64 Offset -> StringHeader
+//`Tuple   | U64 Offset -> TupleHeader
+
+//type StringHeader: U64[3]
+//  start: U64
+//  end: U64
+//  data: U64 Offset -> StringData
+//type StringData: ?Sized
+//  ref_count: U64
+//  data: U32[SIZE]
+
+//type TupleHeader: U64[]
+//  start: U64
+//  end: U64
+//  data: U64 Offset -> TupleData
+//type TupleData: ?Sized
+//  ref_count: U64
+//  data: Value[SIZE]
+
 use std::fmt::Debug;
 use crate::ast;
 use crate::ast::{Program,Error,Expression,LHSPart};
