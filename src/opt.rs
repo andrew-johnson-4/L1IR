@@ -1,4 +1,4 @@
-//Each IR "Type" must have a single unambiguous Value representation with the exception `String and `Tuple
+//Each IR "Type" must have a single unambiguous Value representation with the exception of `String and `Tuple
 //i.e. there must exist a unique mapping from any supported Cranelift Type to an L1 Value
 
 //type Value : U128 : U32[4]
