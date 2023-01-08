@@ -1,5 +1,5 @@
 //type Value : U128 : U32[4]
-//tag: U32 | vals
+//tag: U32 | vals: U32[3]
 //`U8      | U8
 //`I8      | I8
 //`U16     | U16
