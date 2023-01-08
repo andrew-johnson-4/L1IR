@@ -2,16 +2,16 @@
 
 //type Value : U128 : U32[4]
 //tag: U32 | vals: U32[3]
-//`U8      | count: U32 | U8[8]
-//`I8      | count: U32 | I8[8]
-//`U16     | count: U32 | U16[4]
-//`I16     | count: U32 | I16[4]
-//`U32     | count: U32 | U32[2]
-//`I32     | count: U32 | I32[2]
-//`U64     |            | U64
-//`I64     |            | I64
-//`F32     | count: U32 | F32[2]
-//`F64     |            | F64
+//`U8      | U8[12]
+//`I8      | I8[12]
+//`U16     | U16[6]
+//`I16     | I16[6]
+//`U32     | U32[3]
+//`I32     | I32[3]
+//`U64     | U64
+//`I64     | I64
+//`F32     | F32[3]
+//`F64     | F64
 //`String  | start: U32 | end: U32 | U32 Offset -> StringData
 //`Tuple   | start: U32 | end: U32 | U32 Offset -> TupleData
 
