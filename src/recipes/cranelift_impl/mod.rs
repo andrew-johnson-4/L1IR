@@ -7,3 +7,4 @@ pub mod lt;
 pub mod lte;
 pub mod gt;
 pub mod gte;
+pub mod mul;
