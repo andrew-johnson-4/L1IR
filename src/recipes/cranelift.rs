@@ -11,5 +11,8 @@ pub fn import<'f>() -> Vec<(Vec<types::Type>,FunctionDefinition<()>,fn(&mut Func
    imported.push(crate::recipes::cranelift_impl::lte::import());
    imported.push(crate::recipes::cranelift_impl::gt::import());
    imported.push(crate::recipes::cranelift_impl::gte::import());
+   imported.push(crate::recipes::cranelift_impl::mul::import());
+   imported.push(crate::recipes::cranelift_impl::div::import());
+   imported.push(crate::recipes::cranelift_impl::rem::import());
    imported
 }

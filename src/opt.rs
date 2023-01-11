@@ -28,7 +28,7 @@
 
 use std::fmt::Debug;
 use crate::ast;
-use crate::ast::{Program,Error,Expression,LHSPart};
+use crate::ast::{Program,Error,Expression,LHSPart,LHSLiteralPart,LIPart};
 use cranelift::prelude::*;
 use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{DataContext, Linkage, Module, FuncOrDataId};
@@ -100,7 +100,7 @@ pub fn compile_fn<'f,S: Clone + Debug>(jmod: &mut JITModule, builder_context: &m
    jmod.clear_context(&mut ctx);
 }
 
-pub fn compile_lhs<'f>(ctx: &mut FunctionBuilder<'f>, lblk: Block, rblk: Block, lhs: &LHSPart, nblk: Block, val: Value) {
+pub fn compile_lhs<'f>(ctx: &mut FunctionBuilder<'f>, mut lblk: Block, rblk: Block, lhs: &LHSPart, nblk: Block, mut val: Value) {
    ctx.switch_to_block(lblk);
    match lhs {
       LHSPart::Tuple(_lts) => unimplemented!("compile_lhs(Tuple)"),
@@ -109,7 +109,60 @@ pub fn compile_lhs<'f>(ctx: &mut FunctionBuilder<'f>, lblk: Block, rblk: Block, 
          ctx.ins().brnz(cond, rblk, &[]);
          ctx.ins().jump(nblk, &[]);
       },
-      LHSPart::UnpackLiteral(_pres,_mid,_sufs) => unimplemented!("compile_lhs(UnpackLiteral)"),
+      LHSPart::UnpackLiteral(pres,mid,sufs) => {
+         for p in pres.iter() {
+         if let LHSLiteralPart::Literal(cs) = p {
+            let cond = ctx.ins().icmp_imm(IntCC::UnsignedLessThan, val, cs.len() as i64);
+            let bb = ctx.create_block(); //basic blocks can't compute after jump
+            ctx.ins().brnz(cond, nblk, &[]);
+            ctx.ins().jump(bb, &[]);
+            ctx.seal_block(lblk);
+            ctx.switch_to_block(bb);
+            lblk = bb;
+            let len = ctx.ins().iconst(types::I64, cs.len() as i64);
+            val = ctx.ins().isub(val, len);
+         } else if let LHSLiteralPart::Variable(vi) = p {
+            let jv = Variable::from_u32(*vi as u32);
+            let jv = ctx.use_var(jv);
+            let cond = ctx.ins().icmp(IntCC::UnsignedLessThan, val, jv);
+            let bb = ctx.create_block(); //basic blocks can't compute after jump
+            ctx.ins().brnz(cond, nblk, &[]);
+            ctx.ins().jump(bb, &[]);
+            ctx.seal_block(lblk);
+            ctx.switch_to_block(bb);
+            lblk = bb;
+            val = ctx.ins().isub(val, jv);
+         }}
+         for s in sufs.iter() {
+         if let LHSLiteralPart::Literal(cs) = s {
+            let cond = ctx.ins().icmp_imm(IntCC::UnsignedLessThan, val, cs.len() as i64);
+            let bb = ctx.create_block(); //basic blocks can't compute after jump
+            ctx.ins().brnz(cond, nblk, &[]);
+            ctx.ins().jump(bb, &[]);
+            ctx.seal_block(lblk);
+            ctx.switch_to_block(bb);
+            lblk = bb;
+            let len = ctx.ins().iconst(types::I64, cs.len() as i64);
+            val = ctx.ins().isub(val, len);
+         } else if let LHSLiteralPart::Variable(vi) = s {
+            let jv = Variable::from_u32(*vi as u32);
+            let jv = ctx.use_var(jv);
+            let cond = ctx.ins().icmp(IntCC::UnsignedLessThan, val, jv);
+            let bb = ctx.create_block(); //basic blocks can't compute after jump
+            ctx.ins().brnz(cond, nblk, &[]);
+            ctx.ins().jump(bb, &[]);
+            ctx.seal_block(lblk);
+            ctx.switch_to_block(bb);
+            lblk = bb;
+            val = ctx.ins().isub(val, jv);
+         }}
+         if let Some(mi) = mid {
+            let jv = Variable::from_u32(*mi as u32);
+            ctx.declare_var(jv, types::I64);
+            ctx.def_var(jv, val);
+         }
+         ctx.ins().jump(rblk, &[]);
+      },
       LHSPart::Variable(_lv) => unimplemented!("compile_lhs(Variable)"),
       LHSPart::Any => {
          ctx.ins().jump(rblk, &[]);
@@ -130,7 +183,32 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
             jtype: types::I64,
          })
       },
-      Expression::LiteralIntroduction(_li,_span) => unimplemented!("compile expression: LiteralIntroduction"),
+      Expression::LiteralIntroduction(lis,_span) => {
+         let mut val = ctx.ins().iconst(types::I64, 0);
+         for li in lis.iter() {
+         match li {
+            LIPart::Expression(e) => {
+               let (je,_jt) = compile_expr(jmod, ctx, blk, p, e);
+               blk = je.block;
+               val = ctx.ins().iadd(val, je.value);
+            },
+            LIPart::Literal(cs) => {
+               val = ctx.ins().iadd_imm(val, cs.len() as i64);
+            },
+            LIPart::InlineVariable(vi) => {
+               let jv = Variable::from_u32(*vi as u32);
+               let jv = ctx.use_var(jv);
+               val = ctx.ins().iadd(val, jv);
+            },
+         }}
+         (JExpr {
+            block: blk,
+            value: val,
+         }, JType {
+            name: "Unary".to_string(),
+            jtype: types::I64,
+         })
+      }
       Expression::TupleIntroduction(_ti,_span) => unimplemented!("compile expression: TupleIntroduction"),
       Expression::VariableReference(vi,_span) => {
          let jv = Variable::from_u32(*vi as u32);

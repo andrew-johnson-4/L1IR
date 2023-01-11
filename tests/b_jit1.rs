@@ -111,7 +111,7 @@ fn l1_fibonacci() -> JProgram {
             vec![
                (
                   LHSPart::literal(""),
-                  Expression::unary(b"0",()),
+                  Expression::unary(b"1",()),
                ),
                (
                   LHSPart::literal("0"),
