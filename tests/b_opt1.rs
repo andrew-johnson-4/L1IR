@@ -324,3 +324,89 @@ fn eval_mul() {
       assert_eq!(nval, jval, "{} * {}", x, y);
    }}
 }
+
+#[test]
+fn eval_rem() {
+   for x in 0..20 {
+   for y in 1..20 {
+      let nojit = Program::program(
+         vec![
+            FunctionDefinition::define(
+               vec![0,1],
+               vec![Expression::pattern(
+                  Expression::variable(0,()),
+                  vec![(
+                     LHSPart::ul(
+                        vec![LHSLiteralPart::variable(1)],
+                        Some(2),
+                        vec![],
+                     ),
+                     Expression::apply(0,vec![
+                        Expression::variable(2,()),
+                        Expression::variable(1,()),
+                     ],())
+                  ),(
+                     LHSPart::Any,
+                     Expression::variable(0,()),
+                  )],
+               ())],
+            )
+
+         ],
+         vec![
+            Expression::apply(0,vec![
+               Expression::unary(format!("{}",x).as_bytes(), ()),
+               Expression::unary(format!("{}",y).as_bytes(), ()),
+            ],()),
+         ],
+      );
+      let jit = JProgram::compile(&nojit);
+      let nval = eval(nojit).unwrap();
+      let jval = jit.eval(&[]).unwrap();
+      assert_eq!(nval, jval, "{} % {}", x, y);
+   }}
+}
+
+#[test]
+fn eval_div() {
+   for x in 0..20 {
+   for y in 1..20 {
+      let nojit = Program::program(
+         vec![
+            FunctionDefinition::define(
+               vec![0,1],
+               vec![Expression::pattern(
+                  Expression::variable(0,()),
+                  vec![(
+                     LHSPart::ul(
+                        vec![LHSLiteralPart::variable(1)],
+                        Some(2),
+                        vec![],
+                     ),
+                     Expression::li(vec![
+                        LIPart::literal("0"),
+                        LIPart::expression(Expression::apply(0,vec![
+                           Expression::variable(2,()),
+                           Expression::variable(1,()),
+                        ],())),
+                     ],())
+                  ),(
+                     LHSPart::Any,
+                     Expression::unary(b"0",())
+                  )],
+               ())],
+            )
+         ],
+         vec![
+            Expression::apply(0,vec![
+               Expression::unary(format!("{}",x).as_bytes(), ()),
+               Expression::unary(format!("{}",y).as_bytes(), ()),
+            ],()),
+         ],
+      );
+      let jit = JProgram::compile(&nojit);
+      let nval = eval(nojit).unwrap();
+      let jval = jit.eval(&[]).unwrap();
+      assert_eq!(nval, jval, "{} % {}", x, y);
+   }}
+}
