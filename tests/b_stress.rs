@@ -32,7 +32,7 @@ fn eval_recursive_loop() {
                Expression::unary(b"999999", ())
             ],()),
          ],
-      )).unwrap()),
+      ),&[]).unwrap()),
       r#""ok""#
    );
 }
@@ -85,7 +85,7 @@ fn eval_fibonacci() {
                Expression::unary(b"25", ())
             ],()),
          ],
-      )).unwrap()),
+      ),&[]).unwrap()),
       r#"75025"#
    );
 }

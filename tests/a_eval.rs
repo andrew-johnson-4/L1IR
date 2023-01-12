@@ -4,7 +4,7 @@ use l1_ir::eval::{eval};
 #[test]
 fn eval_empty() {
    assert_eq!(
-      eval(Program::<()>::program(vec![],vec![])).unwrap(),
+      eval(Program::<()>::program(vec![],vec![]),&[]).unwrap(),
       Value::tuple(vec![])
    );
 }
@@ -15,7 +15,7 @@ fn eval_failure() {
       eval(Program::program(
          vec![],
          vec![Expression::failure(())]
-      )).is_err()
+      ),&[]).is_err()
    );
 }
 
@@ -25,7 +25,7 @@ fn eval_li() {
       eval(Program::program(
          vec![],
          vec![Expression::literal("",())],
-      )).unwrap(),
+      ),&[]).unwrap(),
       Value::literal("")
    );
    assert_eq!(
@@ -34,7 +34,7 @@ fn eval_li() {
          vec![Expression::li(vec![
             LIPart::literal("a")
          ],())],
-      )).unwrap(),
+      ),&[]).unwrap(),
       Value::literal("a")
    );
    assert_eq!(
@@ -44,7 +44,7 @@ fn eval_li() {
             LIPart::literal("a"),
             LIPart::literal("bc"),
          ],())],
-      )).unwrap(),
+      ),&[]).unwrap(),
       Value::literal("abc")
    );
 }
@@ -55,7 +55,7 @@ fn eval_ti() {
       format!("{:?}",eval(Program::program(
          vec![],
          vec![Expression::ti(vec![],())],
-      )).unwrap()),
+      ),&[]).unwrap()),
       "()"
    );
    assert_eq!(
@@ -66,7 +66,7 @@ fn eval_ti() {
                Value::literal("a"),
             ])
          ],())],
-      )).unwrap()),
+      ),&[]).unwrap()),
       r#"("a",)"#
    );
    assert_eq!(
@@ -78,7 +78,7 @@ fn eval_ti() {
                Value::literal("bc"),
             ])
          ],())],
-      )).unwrap()),
+      ),&[]).unwrap()),
       r#"("a","bc")"#
    );
 }
@@ -97,7 +97,7 @@ fn eval_function() {
             ],())]
          )],
          vec![],
-      )).unwrap()),
+      ),&[]).unwrap()),
       "()"
    );
    assert_eq!(
@@ -109,7 +109,7 @@ fn eval_function() {
          vec![
             Expression::apply(0,vec![],()),
          ],
-      )).unwrap()),
+      ),&[]).unwrap()),
       r#"()"#
    );
    assert_eq!(
@@ -126,7 +126,7 @@ fn eval_function() {
          vec![
             Expression::apply(0,vec![],()),
          ],
-      )).unwrap()),
+      ),&[]).unwrap()),
       r#"("a","bc")"#
    );
    assert_eq!(
@@ -148,7 +148,7 @@ fn eval_function() {
                ],())
             ],()),
          ],
-      )).unwrap()),
+      ),&[]).unwrap()),
       r#"("a","bcd")"#
    );
 }
@@ -165,7 +165,7 @@ fn eval_pattern() {
             ],()),
             vec![],
          ())],
-      )).is_err(),
+      ),&[]).is_err(),
    );
    assert_eq!(
       format!("{:?}",eval(Program::program(
@@ -180,7 +180,7 @@ fn eval_pattern() {
                Expression::literal("c",())
             )],
          ())],
-      )).unwrap()),
+      ),&[]).unwrap()),
       r#""c""#
    );
    assert_eq!(
@@ -196,7 +196,7 @@ fn eval_pattern() {
                Expression::literal("e",())
             )],
          ())],
-      )).unwrap()),
+      ),&[]).unwrap()),
       r#""e""#
    );
    assert_eq!(
@@ -212,7 +212,7 @@ fn eval_pattern() {
                Expression::variable(123,())
             )],
          ())],
-      )).unwrap()),
+      ),&[]).unwrap()),
       r#""bcd""#
    );
    assert_eq!(
@@ -229,7 +229,7 @@ fn eval_pattern() {
                Expression::variable(123,())
             )],
          ())],
-      )).unwrap()),
+      ),&[]).unwrap()),
       r#""mno""#
    );
 }

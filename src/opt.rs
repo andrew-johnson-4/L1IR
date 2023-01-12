@@ -28,11 +28,20 @@
 
 use std::fmt::Debug;
 use crate::ast;
-use crate::ast::{Program,Error,Expression,LHSPart,LHSLiteralPart,LIPart};
+use crate::ast::{Program,Error,Expression,LHSPart,LHSLiteralPart,LIPart,TIPart};
 use cranelift::prelude::*;
 use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{DataContext, Linkage, Module, FuncOrDataId};
 use num_traits::ToPrimitive;
+
+static mut UNIQUE_ID: usize = 1000000;
+fn uid() -> usize {
+   unsafe {
+      let id = UNIQUE_ID;
+      UNIQUE_ID += 1;
+      id
+   }
+}
 
 pub struct JProgram {
    main: *const u8,
@@ -172,10 +181,83 @@ pub fn compile_lhs<'f>(ctx: &mut FunctionBuilder<'f>, mut lblk: Block, rblk: Blo
 }
 
 pub fn try_inline_plurals<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, mut blk: Block, p: &Program<S>,
-                                               pe: &Expression<S>, lrs: &Vec<(LHSPart,Expression<S>)>, span: &S) -> Option<(JExpr,JType)> {
-   
-   if let Expression::TupleIntroduction(ti,_span) = pe {
-      unimplemented!("try_inline_plurals |pe| = {}", ti.len());
+                                               pe: &Expression<S>, lrs: &Vec<(LHSPart,Expression<S>)>, _span: &S) -> Option<(JExpr,JType)> {
+   if let Expression::TupleIntroduction(tis,_span) = pe {
+      for ts in tis.iter() {
+      match ts {
+         TIPart::Variable(_) => {},    //ok to inline
+         TIPart::Expression(_) => {},  //ok to inline
+         _ => { return None; }, //can't inline plural
+      }}
+      for (l,_r) in lrs.iter() {
+      match l {
+         LHSPart::Tuple(_) => {},
+         LHSPart::Any => {},
+         _ => { return None; },
+      }}
+      let mut header = Vec::new();
+      for ts in tis.iter() {
+      match ts {
+         TIPart::Variable(vi) => { header.push(*vi); },
+         TIPart::Expression(ve) => {
+            let (je,_jt) = compile_expr(jmod, ctx, blk, p, ve);
+            blk = je.block;
+            let id = uid();
+            let jv = Variable::from_u32(id as u32);
+            ctx.declare_var(jv, types::I64);
+            ctx.def_var(jv, je.value);
+            header.push(id);
+         },
+         _ => { unreachable!() },
+      }}
+
+      let failblk = ctx.create_block(); //failure block
+      let succblk = ctx.create_block(); //success block
+      ctx.append_block_param(succblk, types::I64);
+
+      let mut lblocks = Vec::new();
+      let mut rblocks = Vec::new();
+      for _ in lrs.iter() {
+         lblocks.push(ctx.create_block());
+         rblocks.push(ctx.create_block());
+      }
+      lblocks.push(failblk);
+      let noval = ctx.ins().iconst(types::I64, 0);
+      ctx.ins().jump(lblocks[0], &[]); //jump into first lhs guard
+      ctx.seal_block(blk);             //seal pattern expression
+
+      for (li,(l,_r)) in lrs.iter().enumerate() {
+         match l {
+            LHSPart::Tuple(_lts) => {
+               unimplemented!("TODO: inline tuple")
+               //compile_lhs(ctx, lblocks[li], rblocks[li], l, lblocks[li+1], je.value);
+            },
+            LHSPart::Any => {
+               compile_lhs(ctx, lblocks[li], rblocks[li], l, lblocks[li+1], noval);
+            }
+            _ => unreachable!(),
+         }
+      }
+
+      for (ri,(_l,r)) in lrs.iter().enumerate() {
+         ctx.switch_to_block(rblocks[ri]);
+         let (je,_jt) = compile_expr(jmod, ctx, rblocks[ri], p, r);
+         ctx.ins().jump(succblk, &[je.value]);
+         ctx.seal_block(je.block);
+      }
+
+      ctx.switch_to_block(failblk); //define failure block
+      ctx.ins().trap(TrapCode::UnreachableCodeReached);
+      ctx.seal_block(failblk);
+
+      ctx.switch_to_block(succblk); //return cfg to success block
+      Some((JExpr {
+         block: succblk,
+         value: ctx.block_params(succblk)[0],
+      }, JType {
+         name: "Unary".to_string(),
+         jtype: types::I64,
+      }))
    } else { None }
 }
 

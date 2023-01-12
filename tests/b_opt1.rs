@@ -22,7 +22,7 @@ fn eval_add() {
          ],
       );
       let jit = JProgram::compile(&nojit);
-      let nval = eval(nojit).unwrap();
+      let nval = eval(nojit,&[]).unwrap();
       let jval = jit.eval(&[]).unwrap();
       assert_eq!(nval, jval, "{} + {}", x, y);
    }}
@@ -57,7 +57,7 @@ fn eval_sub() {
          ],
       );
       let jit = JProgram::compile(&nojit);
-      let nval = eval(nojit).unwrap();
+      let nval = eval(nojit,&[]).unwrap();
       let jval = jit.eval(&[]).unwrap();
       assert_eq!(nval, jval, "{} - {}", x, y);
    }}
@@ -93,7 +93,7 @@ fn eval_eq() {
          ],
       );
       let jit = JProgram::compile(&nojit);
-      let nval = eval(nojit).unwrap();
+      let nval = eval(nojit,&[]).unwrap();
       let jval = jit.eval(&[]).unwrap();
       assert_eq!(nval, jval, "{} == {}", x, y);
    }}
@@ -129,7 +129,7 @@ fn eval_ne() {
          ],
       );
       let jit = JProgram::compile(&nojit);
-      let nval = eval(nojit).unwrap();
+      let nval = eval(nojit,&[]).unwrap();
       let jval = jit.eval(&[]).unwrap();
       assert_eq!(nval, jval, "{} != {}", x, y);
    }}
@@ -166,7 +166,7 @@ fn eval_lt() {
          ],
       );
       let jit = JProgram::compile(&nojit);
-      let nval = eval(nojit).unwrap();
+      let nval = eval(nojit,&[]).unwrap();
       let jval = jit.eval(&[]).unwrap();
       assert_eq!(nval, jval, "{} < {}", x, y);
    }}
@@ -203,7 +203,7 @@ fn eval_gt() {
          ],
       );
       let jit = JProgram::compile(&nojit);
-      let nval = eval(nojit).unwrap();
+      let nval = eval(nojit,&[]).unwrap();
       let jval = jit.eval(&[]).unwrap();
       assert_eq!(nval, jval, "{} > {}", x, y);
    }}
@@ -240,7 +240,7 @@ fn eval_gte() {
          ],
       );
       let jit = JProgram::compile(&nojit);
-      let nval = eval(nojit).unwrap();
+      let nval = eval(nojit,&[]).unwrap();
       let jval = jit.eval(&[]).unwrap();
       assert_eq!(nval, jval, "{} >= {}", x, y);
    }}
@@ -277,7 +277,7 @@ fn eval_lte() {
          ],
       );
       let jit = JProgram::compile(&nojit);
-      let nval = eval(nojit).unwrap();
+      let nval = eval(nojit,&[]).unwrap();
       let jval = jit.eval(&[]).unwrap();
       assert_eq!(nval, jval, "{} <= {}", x, y);
    }}
@@ -319,7 +319,7 @@ fn eval_mul() {
          ],
       );
       let jit = JProgram::compile(&nojit);
-      let nval = eval(nojit).unwrap();
+      let nval = eval(nojit,&[]).unwrap();
       let jval = jit.eval(&[]).unwrap();
       assert_eq!(nval, jval, "{} * {}", x, y);
    }}
@@ -361,7 +361,7 @@ fn eval_rem() {
          ],
       );
       let jit = JProgram::compile(&nojit);
-      let nval = eval(nojit).unwrap();
+      let nval = eval(nojit,&[]).unwrap();
       let jval = jit.eval(&[]).unwrap();
       assert_eq!(nval, jval, "{} % {}", x, y);
    }}
@@ -405,7 +405,7 @@ fn eval_div() {
          ],
       );
       let jit = JProgram::compile(&nojit);
-      let nval = eval(nojit).unwrap();
+      let nval = eval(nojit,&[]).unwrap();
       let jval = jit.eval(&[]).unwrap();
       assert_eq!(nval, jval, "{} % {}", x, y);
    }}
