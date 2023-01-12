@@ -184,6 +184,10 @@ pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx
                   return Err(error("Runtime Error", &format!("inline tuple v#{} not found", vi), &span));
                }
             },
+            TIPart::Expression(ve) => {
+               let ev = eval_e(lctx.clone(), pctx, ve.clone())?;
+               tcs.push(ev);
+            },
          }}
          return Ok(Value::Tuple(0,tcs.len(),Rc::new(tcs),None));
       },
