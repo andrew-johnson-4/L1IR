@@ -3,20 +3,20 @@
 //This assertion does not presume that all Types are "Values", just that there exists a relation
 
 //type Value : U128 : U32[4]
-//tag: U32 | vals: U32[3]
-//`Unit    |
-//`U8#     | U8[12]
-//`I8#     | I8[12]
-//`U16#    | U16[6]
-//`I16#    | I16[6]
-//`U32#    | U32[3]
-//`I32#    | I32[3]
-//`U64     | U64
-//`I64     | I64
-//`F32#    | F32[3]
-//`F64     | F64
-//`String  | start: U32 | end: U32 | U32 Offset -> StringData
-//`Tuple   | start: U32 | end: U32 | U32 Offset -> TupleData
+//tag: U16 | nominal_type: U16 | vals: U32[3]
+//`Unit    | `T                |
+//`U8#     | `T                | U8[12]
+//`I8#     | `T                | I8[12]
+//`U16#    | `T                | U16[6]
+//`I16#    | `T                | I16[6]
+//`U32#    | `T                | U32[3]
+//`I32#    | `T                | I32[3]
+//`U64     | `T                | U64
+//`I64     | `T                | I64
+//`F32#    | `T                | F32[3]
+//`F64     | `T                | F64
+//`String  | `T                | start: U32 | end: U32 | U32 Offset -> StringData
+//`Tuple   | `T                | start: U32 | end: U32 | U32 Offset -> TupleData
 
 //type StringData: ?Sized
 //  ref_count: U64
