@@ -171,6 +171,14 @@ pub fn compile_lhs<'f>(ctx: &mut FunctionBuilder<'f>, mut lblk: Block, rblk: Blo
    ctx.seal_block(lblk);
 }
 
+pub fn try_inline_plurals<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, mut blk: Block, p: &Program<S>,
+                                               pe: &Expression<S>, lrs: &Vec<(LHSPart,Expression<S>)>, span: &S) -> Option<(JExpr,JType)> {
+   
+   if let Expression::TupleIntroduction(ti,_span) = pe {
+      unimplemented!("try_inline_plurals |pe| = {}", ti.len());
+   } else { None }
+}
+
 pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, mut blk: Block, p: &Program<S>, e: &Expression<S>) -> (JExpr,JType) {
    match e {
       Expression::UnaryIntroduction(ui,_span) => {
@@ -230,7 +238,10 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
          }
          apply_fn(jmod, ctx, blk, p, *fi, arg_types)
       },
-      Expression::PatternMatch(pe,lrs,_span) => {
+      Expression::PatternMatch(pe,lrs,span) => {
+         if let Some((je,jt)) = try_inline_plurals(jmod, ctx, blk, p, pe.as_ref(), lrs.as_ref(), span) {
+            return (je,jt);
+         }
          let (je,_jt) = compile_expr(jmod, ctx, blk, p, pe);
          blk = je.block;
 
