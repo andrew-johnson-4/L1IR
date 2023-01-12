@@ -14,7 +14,7 @@ fn eval_tuple1() {
             ],()),
             vec![(
                LHSPart::Any,
-               Expression::unary(b"0",())
+               Expression::unary(b"7",())
             )],
          ())],
       )],
@@ -31,7 +31,7 @@ fn eval_tuple1() {
    for y in 0..20 {
       let nval = eval(nojit.clone(),&[Value::from_u64(x),Value::from_u64(y)]).unwrap();
       let jval = jit.eval(&[x,y]).unwrap();
-      assert_eq!(nval, jval, "{} * {}", x, y);
+      assert_eq!(nval, jval, "match ({},{})", x, y);
    }}
 }
 
@@ -82,6 +82,6 @@ fn eval_tuple2() {
    for y in 0..20 {
       let nval = eval(nojit.clone(),&[Value::from_u64(x),Value::from_u64(y)]).unwrap();
       let jval = jit.eval(&[x,y]).unwrap();
-      assert_eq!(nval, jval, "{} * {}", x, y);
+      assert_eq!(nval, jval, "match ({},{})", x, y);
    }}
 }

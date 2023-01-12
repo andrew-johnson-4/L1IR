@@ -198,7 +198,11 @@ pub fn try_inline_plurals<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut F
       let mut header = Vec::new();
       for ts in tis.iter() {
       match ts {
-         TIPart::Variable(vi) => { header.push(*vi); },
+         TIPart::Variable(vi) => {
+            let jv = Variable::from_u32(*vi as u32);
+            let jv = ctx.use_var(jv);
+            header.push(jv);
+         },
          TIPart::Expression(ve) => {
             let (je,_jt) = compile_expr(jmod, ctx, blk, p, ve);
             blk = je.block;
@@ -206,7 +210,8 @@ pub fn try_inline_plurals<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut F
             let jv = Variable::from_u32(id as u32);
             ctx.declare_var(jv, types::I64);
             ctx.def_var(jv, je.value);
-            header.push(id);
+            let jv = ctx.use_var(jv);
+            header.push(jv);
          },
          _ => { unreachable!() },
       }}
@@ -228,9 +233,17 @@ pub fn try_inline_plurals<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut F
 
       for (li,(l,_r)) in lrs.iter().enumerate() {
          match l {
-            LHSPart::Tuple(_lts) => {
-               unimplemented!("TODO: inline tuple")
-               //compile_lhs(ctx, lblocks[li], rblocks[li], l, lblocks[li+1], je.value);
+            LHSPart::Tuple(lts) => {
+               let mut current = lblocks[li];
+               for (lti,lt) in lts.iter().enumerate() {
+                  let next = if lti == (lts.len()-1) {
+                     rblocks[li]
+                  } else {
+                     ctx.create_block()
+                  };
+                  compile_lhs(ctx, current, next, lt, lblocks[li+1], header[lti]);
+                  current = next;
+               }
             },
             LHSPart::Any => {
                compile_lhs(ctx, lblocks[li], rblocks[li], l, lblocks[li+1], noval);
