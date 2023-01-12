@@ -1,5 +1,5 @@
 test_all:
-	cargo test --features cranelift
+	cargo test --features cranelift -- --nocapture
 
 bench:
 	cargo build --features cranelift

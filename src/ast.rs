@@ -310,20 +310,22 @@ impl<S:Debug + Clone> LIPart<S> {
 }
 
 #[derive(Clone)]
-pub enum TIPart {
+pub enum TIPart<S: Debug + Clone> {
    Tuple(Rc<Vec<Value>>),
    Variable(usize),
    InlineVariable(usize),
+   Expression(Expression<S>),
 }
-impl TIPart {
+impl<S: Debug + Clone> TIPart<S> {
    pub fn vars(&self, vars: &mut Vec<usize>) {
       match self {
          TIPart::Tuple(_ts) => {},
          TIPart::Variable(ti) => { vars.push(*ti); },
          TIPart::InlineVariable(ti) => { vars.push(*ti); },
+         TIPart::Expression(e) => { e.vars(vars); },
       }
    }
-   pub fn equals(&self, other: &TIPart) -> bool {
+   pub fn equals(&self, other: &TIPart<()>) -> bool {
       match (self,other) {
          (TIPart::InlineVariable(lv),TIPart::InlineVariable(rv)) => { lv == rv },
          (TIPart::Variable(lv),TIPart::Variable(rv)) => { lv == rv },
@@ -331,15 +333,23 @@ impl TIPart {
             lts.len() == rts.len() &&
             std::iter::zip(lts.iter(),rts.iter()).all(|(l,r)| l == r)
          },
+         (TIPart::Expression(le),TIPart::Expression(re)) => {
+            le.equals(re)
+         },
          _ => false,
       }
    }
-   pub fn tuple(ts: Vec<Value>) -> TIPart {
+   pub fn tuple(ts: Vec<Value>) -> TIPart<S> {
       TIPart::Tuple(Rc::new(
          ts
       ))
    }
-   pub fn variable(vi: usize) -> TIPart {
+   pub fn expression(e: Expression<S>) -> TIPart<S> {
+      TIPart::Expression(
+         e
+      )
+   }
+   pub fn variable(vi: usize) -> TIPart<S> {
       TIPart::Variable(vi)
    }
 }
@@ -416,7 +426,7 @@ impl LHSPart {
 pub enum Expression<S:Debug + Clone> { //Expressions don't need to "clone"?
    UnaryIntroduction(BigUint,S),
    LiteralIntroduction(Rc<Vec<LIPart<S>>>,S),
-   TupleIntroduction(Rc<Vec<TIPart>>,S),
+   TupleIntroduction(Rc<Vec<TIPart<S>>>,S),
    VariableReference(usize,S),
    FunctionReference(usize,S),
    FunctionApplication(usize,Rc<Vec<Expression<S>>>,S),
@@ -504,12 +514,12 @@ impl<S:Debug + Clone> Expression<S> {
          lps
       ), span)
    }
-   pub  fn tuple(tps: Vec<Value>, span: S) -> Expression<S> {
+   pub fn tuple(tps: Vec<Value>, span: S) -> Expression<S> {
       Expression::TupleIntroduction(Rc::new(vec![
          TIPart::tuple(tps)
       ]), span)
    }
-   pub fn ti(tps: Vec<TIPart>, span: S) -> Expression<S> {
+   pub fn ti(tps: Vec<TIPart<S>>, span: S) -> Expression<S> {
       Expression::TupleIntroduction(Rc::new(
          tps
       ), span)

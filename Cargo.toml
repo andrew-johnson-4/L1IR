@@ -1,6 +1,6 @@
 [package]
 name = "l1_ir"
-version = "0.0.20"
+version = "0.0.21"
 authors = ["Andrew <andrew@subarctic.org>"]
 license = "MIT"
 description = "L1 Intermediate Representation"
@@ -23,6 +23,11 @@ cranelift = ["dep:cranelift", "dep:cranelift-module", "dep:cranelift-jit"]
 [[test]]
 name = "b_opt1"
 path = "tests/b_opt1.rs"
+required-features = ["cranelift"]
+
+[[test]]
+name = "b_opt2"
+path = "tests/b_opt2.rs"
 required-features = ["cranelift"]
 
 [[test]]

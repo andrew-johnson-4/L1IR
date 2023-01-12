@@ -184,6 +184,10 @@ pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx
                   return Err(error("Runtime Error", &format!("inline tuple v#{} not found", vi), &span));
                }
             },
+            TIPart::Expression(ve) => {
+               let ev = eval_e(lctx.clone(), pctx, ve.clone())?;
+               tcs.push(ev);
+            },
          }}
          return Ok(Value::Tuple(0,tcs.len(),Rc::new(tcs),None));
       },
@@ -244,9 +248,13 @@ pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx
    }}
 }
 
-pub fn eval<S:Debug + Clone>(p: Program<S>) -> Result<Value,Error<S>> {
+pub fn eval<S:Debug + Clone>(p: Program<S>, args: &[Value]) -> Result<Value,Error<S>> {
    let mut top_value = Value::tuple(Vec::new());
-   let top_ctx = Rc::new(RefCell::new(HashMap::new()));
+   let mut top_ctx = HashMap::new();
+   for ai in 0..args.len() {
+      top_ctx.insert(ai, args[ai].clone());
+   }
+   let top_ctx = Rc::new(RefCell::new(top_ctx));
    for e in p.expressions.iter() {
       top_value = eval_e(top_ctx.clone(), &p, e.clone())?;
    }
