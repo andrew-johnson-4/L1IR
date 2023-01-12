@@ -26,6 +26,11 @@ path = "tests/b_opt1.rs"
 required-features = ["cranelift"]
 
 [[test]]
+name = "b_opt2"
+path = "tests/b_opt2.rs"
+required-features = ["cranelift"]
+
+[[test]]
 name = "b_jit1"
 path = "tests/b_jit1.rs"
 required-features = ["cranelift"]
