@@ -2,8 +2,8 @@ use l1_ir::value::{Value};
 
 #[test]
 fn value_nil() {
-   let v = Value::nil("T#0");
-   assert_eq!(v.tag(), "Nil");
+   let v = Value::unit("T#0");
+   assert_eq!(v.tag(), "Unit");
    assert_eq!(v.name(), "T#0");
 }
 
