@@ -90,7 +90,7 @@ impl Value {
          if slots.len()>=4  { v += std::mem::transmute::<i8,u8>(slots[3])  as u128; } v <<= 8;
          if slots.len()>=3  { v += std::mem::transmute::<i8,u8>(slots[2])  as u128; } v <<= 8;
          if slots.len()>=2  { v += std::mem::transmute::<i8,u8>(slots[1])  as u128; } v <<= 8;
-         if slots.len()>=1  { v += std::mem::transmute::<i8,u8>(slots[0])  as u128; } v <<= 8;
+         if slots.len()>=1  { v += std::mem::transmute::<i8,u8>(slots[0])  as u128; }
       }
       match slots.len() {
          0 => Value::from_parts(Tag::Unit as u16, Value::push_name(nom), v),
@@ -122,7 +122,7 @@ impl Value {
       if slots.len()>=4  { v += slots[3]  as u128; } v <<= 8;
       if slots.len()>=3  { v += slots[2]  as u128; } v <<= 8;
       if slots.len()>=2  { v += slots[1]  as u128; } v <<= 8;
-      if slots.len()>=1  { v += slots[0]  as u128; } v <<= 8;
+      if slots.len()>=1  { v += slots[0]  as u128; }
       match slots.len() {
          0 => Value::from_parts(Tag::Unit as u16, Value::push_name(nom), v),
          1 => Value::from_parts(Tag::U8 as u16, Value::push_name(nom), v),
