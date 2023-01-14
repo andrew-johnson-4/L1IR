@@ -212,3 +212,16 @@ fn value_number_f64() {
    assert_eq!(v.name(), "T#4");
    assert_eq!(v.slot(Tag::F64, 0), 13860022453216687040);
 }
+
+#[test]
+fn value_string() {
+   let v = Value::string("abc", "T#2");
+   assert_eq!(v.tag(), "String");
+   assert_eq!(v.name(), "T#2");
+   assert_eq!(v.string(), "abc");
+
+   let v2 = v.slice(1,2);
+   assert_eq!(v.tag(), "String");
+   assert_eq!(v.name(), "T#2");
+   assert_eq!(v.string(), "b");
+}
