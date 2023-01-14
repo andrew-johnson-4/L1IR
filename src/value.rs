@@ -37,11 +37,11 @@ pub enum Tag {
    Unit,
    I8, I82, I83, I84, I85, I86, I87, I88, I89, I810, I811, I812,
    U8, U82, U83, U84, U85, U86, U87, U88, U89, U810, U811, U812,
-   U16,
-   I16,
-   U32,
-   I32,
-   F32,
+   U16, U162, U163, U164, U165, U166,
+   I16, I162, I163, I164, I165, I166,
+   U32, U322, U323,
+   I32, I322, I323,
+   F32, F322, F323,
    U64,
    I64,
    F64,
@@ -71,10 +71,10 @@ impl Value {
       Value::from_parts(Tag::Unit as u16, Value::push_name(nom), 0)
    }
    pub fn i8(slot: i8, nom: &str) -> Value {
-      Value::from_parts(Tag::I8 as u16, Value::push_name(nom), (slot as u16) as u128)
+      Value::from_parts(Tag::I8 as u16, Value::push_name(nom), (slot as u8) as u128)
    }
    pub fn u8(slot: u8, nom: &str) -> Value {
-      Value::from_parts(Tag::U8 as u16, Value::push_name(nom), (slot as u16) as u128)
+      Value::from_parts(Tag::U8 as u16, Value::push_name(nom), (slot as u8) as u128)
    }
    pub fn i8s(slots: &[i8], nom: &str) -> Value {
       let mut v: u128 = 0;
@@ -140,6 +140,115 @@ impl Value {
          _ => unreachable!(),
       }
    }
+   pub fn i16(slot: i16, nom: &str) -> Value {
+      Value::from_parts(Tag::I16 as u16, Value::push_name(nom), (slot as u16) as u128)
+   }
+   pub fn u16(slot: u16, nom: &str) -> Value {
+      Value::from_parts(Tag::U16 as u16, Value::push_name(nom), (slot as u16) as u128)
+   }
+   pub fn i16s(slots: &[i16], nom: &str) -> Value {
+      let mut v: u128 = 0;
+      unsafe {
+         if slots.len()>=6  { v += std::mem::transmute::<i16,u16>(slots[5])  as u128; } v <<= 16;
+         if slots.len()>=5  { v += std::mem::transmute::<i16,u16>(slots[4])  as u128; } v <<= 16;
+         if slots.len()>=4  { v += std::mem::transmute::<i16,u16>(slots[3])  as u128; } v <<= 16;
+         if slots.len()>=3  { v += std::mem::transmute::<i16,u16>(slots[2])  as u128; } v <<= 16;
+         if slots.len()>=2  { v += std::mem::transmute::<i16,u16>(slots[1])  as u128; } v <<= 16;
+         if slots.len()>=1  { v += std::mem::transmute::<i16,u16>(slots[0])  as u128; }
+      }
+      match slots.len() {
+         0 => Value::from_parts(Tag::Unit as u16, Value::push_name(nom), v),
+         1 => Value::from_parts(Tag::I16 as u16, Value::push_name(nom), v),
+         2 => Value::from_parts(Tag::I162 as u16, Value::push_name(nom), v),
+         3 => Value::from_parts(Tag::I163 as u16, Value::push_name(nom), v),
+         4 => Value::from_parts(Tag::I164 as u16, Value::push_name(nom), v),
+         5 => Value::from_parts(Tag::I165 as u16, Value::push_name(nom), v),
+         6 => Value::from_parts(Tag::I166 as u16, Value::push_name(nom), v),
+         _ => unreachable!(),
+      }
+   }
+   pub fn u16s(slots: &[u16], nom: &str) -> Value {
+      let mut v: u128 = 0;
+      if slots.len()>=6  { v += slots[5]  as u128; } v <<= 16;
+      if slots.len()>=5  { v += slots[4]  as u128; } v <<= 16;
+      if slots.len()>=4  { v += slots[3]  as u128; } v <<= 16;
+      if slots.len()>=3  { v += slots[2]  as u128; } v <<= 16;
+      if slots.len()>=2  { v += slots[1]  as u128; } v <<= 16;
+      if slots.len()>=1  { v += slots[0]  as u128; }
+      match slots.len() {
+         0 => Value::from_parts(Tag::Unit as u16, Value::push_name(nom), v),
+         1 => Value::from_parts(Tag::U16 as u16, Value::push_name(nom), v),
+         2 => Value::from_parts(Tag::U162 as u16, Value::push_name(nom), v),
+         3 => Value::from_parts(Tag::U163 as u16, Value::push_name(nom), v),
+         4 => Value::from_parts(Tag::U164 as u16, Value::push_name(nom), v),
+         5 => Value::from_parts(Tag::U165 as u16, Value::push_name(nom), v),
+         6 => Value::from_parts(Tag::U166 as u16, Value::push_name(nom), v),
+         _ => unreachable!(),
+      }
+   }
+   pub fn i32(slot: i32, nom: &str) -> Value {
+      Value::from_parts(Tag::I32 as u16, Value::push_name(nom), (slot as u32) as u128)
+   }
+   pub fn u32(slot: u32, nom: &str) -> Value {
+      Value::from_parts(Tag::U32 as u16, Value::push_name(nom), (slot as u32) as u128)
+   }
+   pub fn i32s(slots: &[i32], nom: &str) -> Value {
+      let mut v: u128 = 0;
+      unsafe {
+         if slots.len()>=3  { v += std::mem::transmute::<i32,u32>(slots[2])  as u128; } v <<= 32;
+         if slots.len()>=2  { v += std::mem::transmute::<i32,u32>(slots[1])  as u128; } v <<= 32;
+         if slots.len()>=1  { v += std::mem::transmute::<i32,u32>(slots[0])  as u128; }
+      }
+      match slots.len() {
+         0 => Value::from_parts(Tag::Unit as u16, Value::push_name(nom), v),
+         1 => Value::from_parts(Tag::I32 as u16, Value::push_name(nom), v),
+         2 => Value::from_parts(Tag::I322 as u16, Value::push_name(nom), v),
+         3 => Value::from_parts(Tag::I323 as u16, Value::push_name(nom), v),
+         _ => unreachable!(),
+      }
+   }
+   pub fn u32s(slots: &[u32], nom: &str) -> Value {
+      let mut v: u128 = 0;
+      if slots.len()>=3  { v += slots[2]  as u128; } v <<= 32;
+      if slots.len()>=2  { v += slots[1]  as u128; } v <<= 32;
+      if slots.len()>=1  { v += slots[0]  as u128; }
+      match slots.len() {
+         0 => Value::from_parts(Tag::Unit as u16, Value::push_name(nom), v),
+         1 => Value::from_parts(Tag::U32 as u16, Value::push_name(nom), v),
+         2 => Value::from_parts(Tag::U322 as u16, Value::push_name(nom), v),
+         3 => Value::from_parts(Tag::U323 as u16, Value::push_name(nom), v),
+         _ => unreachable!(),
+      }
+   }
+   pub fn f32(slot: f32, nom: &str) -> Value {
+      let slot = unsafe { std::mem::transmute::<f32,u32>(slot) };
+      Value::from_parts(Tag::F32 as u16, Value::push_name(nom), slot as u128)
+   }
+   pub fn f32s(slots: &[f32], nom: &str) -> Value {
+      let mut v: u128 = 0;
+      unsafe {
+         if slots.len()>=3  { v += std::mem::transmute::<f32,u32>(slots[2])  as u128; } v <<= 32;
+         if slots.len()>=2  { v += std::mem::transmute::<f32,u32>(slots[1])  as u128; } v <<= 32;
+         if slots.len()>=1  { v += std::mem::transmute::<f32,u32>(slots[0])  as u128; }
+      }
+      match slots.len() {
+         0 => Value::from_parts(Tag::Unit as u16, Value::push_name(nom), v),
+         1 => Value::from_parts(Tag::F32 as u16, Value::push_name(nom), v),
+         2 => Value::from_parts(Tag::F322 as u16, Value::push_name(nom), v),
+         3 => Value::from_parts(Tag::F323 as u16, Value::push_name(nom), v),
+         _ => unreachable!(),
+      }
+   }
+   pub fn i64(slot: i64, nom: &str) -> Value {
+      Value::from_parts(Tag::I64 as u16, Value::push_name(nom), (slot as u64) as u128)
+   }
+   pub fn u64(slot: u64, nom: &str) -> Value {
+      Value::from_parts(Tag::U64 as u16, Value::push_name(nom), (slot as u64) as u128)
+   }
+   pub fn f64(slot: f64, nom: &str) -> Value {
+      let slot = unsafe { std::mem::transmute::<f64,u64>(slot) };
+      Value::from_parts(Tag::F64 as u16, Value::push_name(nom), slot as u128)
+   }
    pub fn tag<'t>(&self) -> String {
       let t = (self.0 >> 112) as u16;
       let t: Tag = FromPrimitive::from_i32(t.into()).expect(&format!("Invalid Tag in Value: {}", t));
@@ -164,7 +273,36 @@ impl Value {
             let sv = s as u8;
             s = unsafe { std::mem::transmute::<u8,i8>(sv) } as u128;
          },
-         _ => unimplemented!("transmute slot {:?}", tag)
+         Tag::U16|Tag::U162|Tag::U163|Tag::U164|Tag::U165|Tag::U166 => {
+            s <<= 32 + 16 * (5 - slot);
+            s >>= 32 + 16 * 5;
+         },
+         Tag::I16|Tag::I162|Tag::I163|Tag::I164|Tag::I165|Tag::I166 => {
+            s <<= 32 + 16 * (5 - slot);
+            s >>= 32 + 16 * 5;
+            let sv = s as u16;
+            s = unsafe { std::mem::transmute::<u16,i16>(sv) } as u128;
+         },
+         Tag::U32|Tag::U322|Tag::U323 => {
+            s <<= 32 + 32 * (2 - slot);
+            s >>= 32 + 32 * 2;
+         },
+         Tag::I32|Tag::I322|Tag::I323 => {
+            s <<= 32 + 32 * (2 - slot);
+            s >>= 32 + 32 * 2;
+            let sv = s as u32;
+            s = unsafe { std::mem::transmute::<u32,i32>(sv) } as u128;
+         },
+         Tag::F32|Tag::F322|Tag::F323 => {
+            s <<= 32 + 32 * (2 - slot);
+            s >>= 32 + 32 * 2;
+         },
+         Tag::U64 => {},
+         Tag::I64 => {
+            let sv = s as u64;
+            s = unsafe { std::mem::transmute::<u64,i64>(sv) } as u128;
+         },
+         Tag::F64 => {},
       }
       unsafe { std::mem::transmute::<u128,i128>(s) }
    }

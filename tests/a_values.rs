@@ -105,7 +105,6 @@ fn value_numbers_u16s() {
    assert_eq!(v.slot(Tag::I16, 4), 101);
 }
 
-
 #[test]
 fn value_number_i32() {
    let v = Value::i32(-2, "T#1");
@@ -153,13 +152,26 @@ fn value_numbers_u32s() {
 }
 
 #[test]
+fn value_number_f32() {
+   let v = Value::f32(-2.0, "T#1");
+   assert_eq!(v.tag(), "F32");
+   assert_eq!(v.name(), "T#1");
+   assert_eq!(v.slot(Tag::F32, 0), 3221225472);
+
+   let v = Value::f32(100.0, "T#3");
+   assert_eq!(v.tag(), "F32");
+   assert_eq!(v.name(), "T#3");
+   assert_eq!(v.slot(Tag::F32, 0), 1120403456);
+}
+
+#[test]
 fn value_numbers_f32s() {
-   let v = Value::f32s(&vec![3,0,4], "T#1");
+   let v = Value::f32s(&vec![3.2,0.5,4.321], "T#1");
    assert_eq!(v.tag(), "F323");
    assert_eq!(v.name(), "T#1");
-   assert_eq!(v.slot(Tag::F32, 0), 3);
-   assert_eq!(v.slot(Tag::F32, 1), 0);
-   assert_eq!(v.slot(Tag::F32, 2), 4);
+   assert_eq!(v.slot(Tag::F32, 0), 1078774989);
+   assert_eq!(v.slot(Tag::F32, 1), 1056964608);
+   assert_eq!(v.slot(Tag::F32, 2), 1082803618);
 }
 
 #[test]
@@ -188,30 +200,15 @@ fn value_number_u64() {
    assert_eq!(v.slot(Tag::U64, 0), 9);
 }
 
-
-#[test]
-fn value_number_f32() {
-   let v = Value::f32(-2, "T#1");
-   assert_eq!(v.tag(), "F32");
-   assert_eq!(v.name(), "T#1");
-   assert_eq!(v.slot(Tag::F32, 0), -2);
-
-   let v = Value::f32(100, "T#3");
-   assert_eq!(v.tag(), "F32");
-   assert_eq!(v.name(), "T#3");
-   assert_eq!(v.slot(Tag::F32, 0), 100);
-}
-
 #[test]
 fn value_number_f64() {
-   let v = Value::f64(12, "T#3");
+   let v = Value::f64(12.345, "T#3");
    assert_eq!(v.tag(), "F64");
    assert_eq!(v.name(), "T#3");
-   assert_eq!(v.slot(Tag::F64, 0), 12);
+   assert_eq!(v.slot(Tag::F64, 0), 4623139235229744497);
 
-   let v = Value::f64(9, "T#4");
+   let v = Value::f64(-98.76543210, "T#4");
    assert_eq!(v.tag(), "F64");
    assert_eq!(v.name(), "T#4");
-   assert_eq!(v.slot(Tag::F64, 0), 9);
+   assert_eq!(v.slot(Tag::F64, 0), 13860022453216687040);
 }
-
