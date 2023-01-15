@@ -32,8 +32,7 @@ use std::sync::Mutex;
 use std::alloc::{alloc, Layout};
 use std::iter::FromIterator;
 
-#[derive(FromPrimitive)]
-#[derive(Debug)]
+#[derive(FromPrimitive,Copy,Clone,Debug)]
 #[repr(u16)]
 pub enum Tag {
    Unit,
@@ -57,9 +56,94 @@ pub struct Value(u128);
 
 impl std::fmt::Debug for Value {
    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-      match self.tag() {
+      let tag = self.tag();
+      match tag {
          Tag::Unit => write!(f,"()"),
-         tag => unimplemented!("Format {:?}", tag)
+         Tag::I8 => write!(f,"{}",self.slot(tag,0)),
+         Tag::I82 => write!(f,"({},{})",self.slot(tag,0), self.slot(tag,1)),
+         Tag::I83 => write!(f,"({},{},{})",self.slot(tag,0), self.slot(tag,1), self.slot(tag,2)),
+         Tag::I84 => write!(f,"({},{},{},{})",self.slot(tag,0), self.slot(tag,1), self.slot(tag,2), self.slot(tag,3)),
+         Tag::I85 => write!(f,"({},{},{},{},{})",self.slot(tag,0), self.slot(tag,1), self.slot(tag,2), self.slot(tag,3),
+            self.slot(tag,4)),
+         Tag::I86 => write!(f,"({},{},{},{},{},{})",self.slot(tag,0), self.slot(tag,1), self.slot(tag,2), self.slot(tag,3),
+            self.slot(tag,4), self.slot(tag,5)),
+         Tag::I87 => write!(f,"({},{},{},{},{},{},{})",self.slot(tag,0), self.slot(tag,1), self.slot(tag,2), self.slot(tag,3),
+            self.slot(tag,4), self.slot(tag,5), self.slot(tag,6)),
+         Tag::I88 => write!(f,"({},{},{},{},{},{},{},{})",self.slot(tag,0), self.slot(tag,1), self.slot(tag,2), self.slot(tag,3),
+            self.slot(tag,4), self.slot(tag,5), self.slot(tag,6), self.slot(tag,7)),
+         Tag::I89 => write!(f,"({},{},{},{},{},{},{},{},{})",self.slot(tag,0), self.slot(tag,1), self.slot(tag,2), self.slot(tag,3),
+            self.slot(tag,4), self.slot(tag,5), self.slot(tag,6), self.slot(tag,7), self.slot(tag,8)),
+         Tag::I810 => write!(f,"({},{},{},{},{},{},{},{},{},{})",self.slot(tag,0), self.slot(tag,1), self.slot(tag,2), self.slot(tag,3),
+            self.slot(tag,4), self.slot(tag,5), self.slot(tag,6), self.slot(tag,7), self.slot(tag,8), self.slot(tag,9)),
+         Tag::I811 => write!(f,"({},{},{},{},{},{},{},{},{},{},{})",self.slot(tag,0), self.slot(tag,1), self.slot(tag,2), self.slot(tag,3),
+            self.slot(tag,4), self.slot(tag,5), self.slot(tag,6), self.slot(tag,7), self.slot(tag,8), self.slot(tag,9), self.slot(tag,10)),
+         Tag::I812 => write!(f,"({},{},{},{},{},{},{},{},{},{},{},{})",self.slot(tag,0), self.slot(tag,1), self.slot(tag,2), self.slot(tag,3),
+            self.slot(tag,4), self.slot(tag,5), self.slot(tag,6), self.slot(tag,7), self.slot(tag,8), self.slot(tag,9), self.slot(tag,10), self.slot(tag,11)),
+         Tag::U8 => write!(f,"{}",self.slot(tag,0)),
+         Tag::U82 => write!(f,"({},{})",self.slot(tag,0), self.slot(tag,1)),
+         Tag::U83 => write!(f,"({},{},{})",self.slot(tag,0), self.slot(tag,1), self.slot(tag,2)),
+         Tag::U84 => write!(f,"({},{},{},{})",self.slot(tag,0), self.slot(tag,1), self.slot(tag,2), self.slot(tag,3)),
+         Tag::U85 => write!(f,"({},{},{},{},{})",self.slot(tag,0), self.slot(tag,1), self.slot(tag,2), self.slot(tag,3),
+            self.slot(tag,4)),
+         Tag::U86 => write!(f,"({},{},{},{},{},{})",self.slot(tag,0), self.slot(tag,1), self.slot(tag,2), self.slot(tag,3),
+            self.slot(tag,4), self.slot(tag,5)),
+         Tag::U87 => write!(f,"({},{},{},{},{},{},{})",self.slot(tag,0), self.slot(tag,1), self.slot(tag,2), self.slot(tag,3),
+            self.slot(tag,4), self.slot(tag,5), self.slot(tag,6)),
+         Tag::U88 => write!(f,"({},{},{},{},{},{},{},{})",self.slot(tag,0), self.slot(tag,1), self.slot(tag,2), self.slot(tag,3),
+            self.slot(tag,4), self.slot(tag,5), self.slot(tag,6), self.slot(tag,7)),
+         Tag::U89 => write!(f,"({},{},{},{},{},{},{},{},{})",self.slot(tag,0), self.slot(tag,1), self.slot(tag,2), self.slot(tag,3),
+            self.slot(tag,4), self.slot(tag,5), self.slot(tag,6), self.slot(tag,7), self.slot(tag,8)),
+         Tag::U810 => write!(f,"({},{},{},{},{},{},{},{},{},{})",self.slot(tag,0), self.slot(tag,1), self.slot(tag,2), self.slot(tag,3),
+            self.slot(tag,4), self.slot(tag,5), self.slot(tag,6), self.slot(tag,7), self.slot(tag,8), self.slot(tag,9)),
+         Tag::U811 => write!(f,"({},{},{},{},{},{},{},{},{},{},{})",self.slot(tag,0), self.slot(tag,1), self.slot(tag,2), self.slot(tag,3),
+            self.slot(tag,4), self.slot(tag,5), self.slot(tag,6), self.slot(tag,7), self.slot(tag,8), self.slot(tag,9), self.slot(tag,10)),
+         Tag::U812 => write!(f,"({},{},{},{},{},{},{},{},{},{},{},{})",self.slot(tag,0), self.slot(tag,1), self.slot(tag,2), self.slot(tag,3),
+            self.slot(tag,4), self.slot(tag,5), self.slot(tag,6), self.slot(tag,7), self.slot(tag,8), self.slot(tag,9), self.slot(tag,10), self.slot(tag,11)),
+         Tag::I16 => write!(f,"{}",self.slot(tag,0)),
+         Tag::I162 => write!(f,"({},{})",self.slot(tag,0), self.slot(tag,1)),
+         Tag::I163 => write!(f,"({},{},{})",self.slot(tag,0), self.slot(tag,1), self.slot(tag,2)),
+         Tag::I164 => write!(f,"({},{},{},{})",self.slot(tag,0), self.slot(tag,1), self.slot(tag,2), self.slot(tag,3)),
+         Tag::I165 => write!(f,"({},{},{},{},{})",self.slot(tag,0), self.slot(tag,1), self.slot(tag,2), self.slot(tag,3),
+            self.slot(tag,4)),
+         Tag::I166 => write!(f,"({},{},{},{},{},{})",self.slot(tag,0), self.slot(tag,1), self.slot(tag,2), self.slot(tag,3),
+            self.slot(tag,4), self.slot(tag,5)),
+         Tag::U16 => write!(f,"{}",self.slot(tag,0)),
+         Tag::U162 => write!(f,"({},{})",self.slot(tag,0), self.slot(tag,1)),
+         Tag::U163 => write!(f,"({},{},{})",self.slot(tag,0), self.slot(tag,1), self.slot(tag,2)),
+         Tag::U164 => write!(f,"({},{},{},{})",self.slot(tag,0), self.slot(tag,1), self.slot(tag,2), self.slot(tag,3)),
+         Tag::U165 => write!(f,"({},{},{},{},{})",self.slot(tag,0), self.slot(tag,1), self.slot(tag,2), self.slot(tag,3),
+            self.slot(tag,4)),
+         Tag::U166 => write!(f,"({},{},{},{},{},{})",self.slot(tag,0), self.slot(tag,1), self.slot(tag,2), self.slot(tag,3),
+            self.slot(tag,4), self.slot(tag,5)),
+         Tag::I32 => write!(f,"{}",self.slot(tag,0)),
+         Tag::I322 => write!(f,"({},{})",self.slot(tag,0), self.slot(tag,1)),
+         Tag::I323 => write!(f,"({},{},{})",self.slot(tag,0), self.slot(tag,1), self.slot(tag,2)),
+         Tag::U32 => write!(f,"{}",self.slot(tag,0)),
+         Tag::U322 => write!(f,"({},{})",self.slot(tag,0), self.slot(tag,1)),
+         Tag::U323 => write!(f,"({},{},{})",self.slot(tag,0), self.slot(tag,1), self.slot(tag,2)),
+         Tag::F32 => {
+            let v = unsafe { std::mem::transmute::<u32,f32>(self.slot(tag,0) as u32) };
+            write!(f,"{:.5}",v)
+         },
+         Tag::F322 => {
+            let v1 = unsafe { std::mem::transmute::<u32,f32>(self.slot(tag,0) as u32) };
+            let v2 = unsafe { std::mem::transmute::<u32,f32>(self.slot(tag,1) as u32) };
+            write!(f,"({:.5},{:.5})",v1,v2)
+         },
+         Tag::F323 => {
+            let v1 = unsafe { std::mem::transmute::<u32,f32>(self.slot(tag,0) as u32) };
+            let v2 = unsafe { std::mem::transmute::<u32,f32>(self.slot(tag,1) as u32) };
+            let v3 = unsafe { std::mem::transmute::<u32,f32>(self.slot(tag,2) as u32) };
+            write!(f,"({:.5},{:.5},{:.5})",v1,v2,v3)
+         },
+         Tag::I64 => write!(f,"{}",self.slot(tag,0)),
+         Tag::U64 => write!(f,"{}",self.slot(tag,0)),
+         Tag::F64 => {
+            let v = unsafe { std::mem::transmute::<u64,f64>(self.slot(tag,0) as u64) };
+            write!(f,"{:.5}",v)
+         },
+         Tag::String => write!(f, "{:?}", self.literal()),
+         Tag::Tuple => write!(f, "()"),
       }
    }
 }

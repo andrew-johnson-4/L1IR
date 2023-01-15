@@ -253,5 +253,5 @@ fn value_string() {
    assert_eq!(v2.tag_as_str(), "String");
    assert_eq!(v2.name(), "T#2");
    assert_eq!(v2.literal(), "b");
-   assert_eq!(format!("{:?}",v), r#""b""#);
+   assert_eq!(format!("{:?}",v2), r#""b""#);
 }
