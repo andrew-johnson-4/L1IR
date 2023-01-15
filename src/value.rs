@@ -55,6 +55,15 @@ static NAMES: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
 pub struct Value(u128);
 
+impl std::fmt::Debug for Value {
+   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+      match self.tag() {
+         Tag::Unit => write!(f,"()"),
+         tag => unimplemented!("Format {:?}", tag)
+      }
+   }
+}
+
 impl Value {
    pub fn from_parts(tag: u16, name: u16, slots: u128) -> Value {
       let tag = (tag as u128) << 112;
@@ -293,10 +302,12 @@ impl Value {
       let slot = unsafe { std::mem::transmute::<f64,u64>(slot) };
       Value::from_parts(Tag::F64 as u16, Value::push_name(nom), slot as u128)
    }
-   pub fn tag<'t>(&self) -> String {
+   pub fn tag(&self) -> Tag {
       let t = (self.0 >> 112) as u16;
-      let t: Tag = FromPrimitive::from_i32(t.into()).expect(&format!("Invalid Tag in Value: {}", t));
-      format!("{:?}", t)
+      FromPrimitive::from_i32(t.into()).expect(&format!("Invalid Tag in Value: {}", t))
+   }
+   pub fn tag_as_str(&self) -> String {
+      format!("{:?}", self.tag())
    }
    pub fn name(&self) -> String {
       let ni = ((self.0 << 16) >> 112) as usize;
