@@ -143,7 +143,16 @@ impl std::fmt::Debug for Value {
             write!(f,"{:.5}",v)
          },
          Tag::String => write!(f, "{:?}", self.literal()),
-         Tag::Tuple => write!(f, "()"),
+         Tag::Tuple => {
+            let start = self.start();
+            let end = self.end();
+            write!(f, "(")?;
+            for ti in start..end {
+               if ti>start { write!(f, ",")?; }
+               write!(f, "{:?}", self.vslot(ti))?;
+            }
+            write!(f, ")")
+         }
       }
    }
 }
@@ -190,6 +199,28 @@ impl Value {
       raw |= ptr_bits;
       Value::from_parts(Tag::String as u16, Value::push_name(nom), raw)
    }
+   pub fn tuple(vs: &[Value], nom: &str) -> Value {
+      let layout = Layout::from_size_align((vs.len()+1) * 128, 128).unwrap();
+      let ptr = unsafe {
+         let ptr = alloc(layout) as *mut u128;
+         if ptr.is_null() {
+            panic!("Failed to allocate new memory for Tuple");
+         }
+         *ptr.offset(0) = 1;
+         for vi in 0..vs.len() {
+            *ptr.offset((1+vi) as isize) = vs[vi].0;
+         }
+         ptr
+      };
+      let ptr_bits = (ptr.expose_addr() as u64) as u128;
+      let start = 0 as u128;
+      let end = vs.len() as u128;
+      let mut raw: u128 = 0;
+      raw |= start; raw <<= 16;
+      raw |= end;   raw <<= 64;
+      raw |= ptr_bits;
+      Value::from_parts(Tag::Tuple as u16, Value::push_name(nom), raw)
+   }
    pub fn start(&self) -> usize {
       let mut raw = self.0;
       raw <<= 32; raw >>= 32;
@@ -206,6 +237,11 @@ impl Value {
       let mut raw = self.0;
       raw <<= 64; raw >>= 64;
       raw as *mut u32
+   }
+   pub fn tptr(&self) -> *mut u128 {
+      let mut raw = self.0;
+      raw <<= 64; raw >>= 64;
+      raw as *mut u128
    }
    pub fn i8(slot: i8, nom: &str) -> Value {
       Value::from_parts(Tag::I8 as u16, Value::push_name(nom), (slot as u8) as u128)
@@ -420,6 +456,18 @@ impl Value {
          val.push( char::from_u32_unchecked(*ptr.offset((po+1) as isize)) );
       }}
       String::from_iter(val)
+   }
+   pub fn vslot(&self, slot: usize) -> Value {
+      let tag = self.tag();
+      match tag {
+         Tag::Tuple => {
+            let ptr = self.tptr();
+            unsafe {
+               Value( *ptr.offset((slot+1) as isize) )
+            }
+         },
+         _ => { panic!("Could not cast {:?} as Tuple",tag) },         
+      }
    }
    pub fn slot(&self, tag: Tag, slot: usize) -> i128 {
       let mut s = ((self.0 << 32) >> 32) as u128;

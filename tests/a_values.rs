@@ -262,7 +262,7 @@ fn value_tuple() {
    let v2 = Value::f64(12.345, "T#3");
    let v3 = Value::tuple(&[v1,v2], "T#5");
    assert_eq!(v3.tag_as_str(), "Tuple");
-   assert_eq!(v3.name(), "T#2");
+   assert_eq!(v3.name(), "T#5");
    assert_eq!(format!("{:?}",v3), r#"("abc",12.34500)"#);
 
    let v4 = Value::i8(6, "T#6");
