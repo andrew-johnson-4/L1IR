@@ -255,3 +255,19 @@ fn value_string() {
    assert_eq!(v2.literal(), "b");
    assert_eq!(format!("{:?}",v2), r#""b""#);
 }
+
+#[test]
+fn value_tuple() {
+   let v1 = Value::string("abc", "T#2");
+   let v2 = Value::f64(12.345, "T#3");
+   let v3 = Value::tuple(&[v1,v2], "T#5");
+   assert_eq!(v3.tag_as_str(), "Tuple");
+   assert_eq!(v3.name(), "T#2");
+   assert_eq!(format!("{:?}",v3), r#"("abc",12.34500)"#);
+
+   let v4 = Value::i8(6, "T#6");
+   let v5 = Value::tuple(&[v3,v4], "T#7");
+   assert_eq!(v5.tag_as_str(), "Tuple");
+   assert_eq!(v5.name(), "T#7");
+   assert_eq!(format!("{:?}",v5), r#"(("abc",12.34500),6)"#);
+}
