@@ -1,6 +1,6 @@
 [package]
 name = "l1_ir"
-version = "0.0.21"
+version = "0.0.22"
 authors = ["Andrew <andrew@subarctic.org>"]
 license = "MIT"
 description = "L1 Intermediate Representation"
@@ -11,6 +11,7 @@ keywords = ["compiler","interpreter","AST","IR","JIT"]
 
 [dependencies]
 num-traits = { version = "0.2" }
+num-derive = { version = "0.2" }
 num-bigint = { version = "0.4" }
 cranelift = { version = "0.91", optional = true }
 cranelift-module = { version = "0.91", optional = true }
