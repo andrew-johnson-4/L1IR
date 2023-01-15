@@ -45,6 +45,8 @@ pub enum Tag {
    U64,
    I64,
    F64,
+   String,
+   Tuple,
 }
 
 static NAMES: Mutex<Vec<String>> = Mutex::new(Vec::new());
@@ -69,6 +71,9 @@ impl Value {
    }
    pub fn unit(nom: &str) -> Value {
       Value::from_parts(Tag::Unit as u16, Value::push_name(nom), 0)
+   }
+   pub fn string(lit: &str, nom: &str) -> Value {
+      Value::from_parts(Tag::String as u16, Value::push_name(nom), 0)
    }
    pub fn i8(slot: i8, nom: &str) -> Value {
       Value::from_parts(Tag::I8 as u16, Value::push_name(nom), (slot as u8) as u128)
@@ -259,6 +264,12 @@ impl Value {
       let ns = NAMES.lock().unwrap();
       ns[ni].clone()
    }
+   pub fn slice(&self, start: usize, end: usize) -> Value {
+      Value(self.0)
+   }
+   pub fn literal(&self) -> String {
+      unimplemented!("Value::literal")
+   }
    pub fn slot(&self, tag: Tag, slot: usize) -> i128 {
       let mut s = ((self.0 << 32) >> 32) as u128;
       match tag {
@@ -303,6 +314,7 @@ impl Value {
             s = unsafe { std::mem::transmute::<u64,i64>(sv) } as u128;
          },
          Tag::F64 => {},
+         _ => { panic!("Could not cast {:?} as I128",tag) },
       }
       unsafe { std::mem::transmute::<u128,i128>(s) }
    }

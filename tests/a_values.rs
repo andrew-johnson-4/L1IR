@@ -218,10 +218,10 @@ fn value_string() {
    let v = Value::string("abc", "T#2");
    assert_eq!(v.tag(), "String");
    assert_eq!(v.name(), "T#2");
-   assert_eq!(v.string(), "abc");
+   assert_eq!(v.literal(), "abc");
 
    let v2 = v.slice(1,2);
    assert_eq!(v.tag(), "String");
    assert_eq!(v.name(), "T#2");
-   assert_eq!(v.string(), "b");
+   assert_eq!(v.literal(), "b");
 }
