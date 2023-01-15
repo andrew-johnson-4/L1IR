@@ -1,3 +1,4 @@
+#![feature(strict_provenance)]
 
 //AST Definition
 pub mod ast;

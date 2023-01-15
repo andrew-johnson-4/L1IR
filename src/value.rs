@@ -15,20 +15,22 @@
 //`I64     | `T                | I64
 //`F32#    | `T                | F32[3]
 //`F64     | `T                | F64
-//`String  | `T                | start: U32 | end: U32 | U32 Offset -> StringData
-//`Tuple   | `T                | start: U32 | end: U32 | U32 Offset -> TupleData
+//`String  | `T                | start: U16 | end: U16 | U64 Offset -> StringData
+//`Tuple   | `T                | start: U16 | end: U16 | U64 Offset -> TupleData
 
 //type StringData: ?Sized
-//  ref_count: U64
+//  ref_count: U32
 //  data: U32[SIZE]
 
 //type TupleData: ?Sized
-//  ref_count: U64
+//  ref_count: U32
 //  data: Value[SIZE]
 
 use num_derive::FromPrimitive;    
 use num_traits::FromPrimitive;
 use std::sync::Mutex;
+use std::alloc::{alloc, Layout};
+use std::iter::FromIterator;
 
 #[derive(FromPrimitive)]
 #[derive(Debug)]
@@ -73,7 +75,44 @@ impl Value {
       Value::from_parts(Tag::Unit as u16, Value::push_name(nom), 0)
    }
    pub fn string(lit: &str, nom: &str) -> Value {
-      Value::from_parts(Tag::String as u16, Value::push_name(nom), 0)
+      let cs = lit.chars().collect::<Vec<char>>();
+      let layout = Layout::from_size_align((cs.len()+1) * 32, 32).unwrap();
+      let ptr = unsafe {
+         let ptr = alloc(layout) as *mut u32;
+         if ptr.is_null() {
+            panic!("Failed to allocate new memory for String");
+         }
+         *ptr.offset(0) = 1;
+         for ci in 0..cs.len() {
+            *ptr.offset((1+ci) as isize) = cs[ci] as u32;
+         }
+         ptr
+      };
+      let ptr_bits = (ptr.expose_addr() as u64) as u128;
+      let start = 0 as u128;
+      let end = cs.len() as u128;
+      let mut raw: u128 = 0;
+      raw |= start; raw <<= 16;
+      raw |= end;   raw <<= 64;
+      raw |= ptr_bits;
+      Value::from_parts(Tag::String as u16, Value::push_name(nom), raw)
+   }
+   pub fn start(&self) -> usize {
+      let mut raw = self.0;
+      raw <<= 32; raw >>= 32;
+      raw >>= 80;
+      raw as usize
+   }
+   pub fn end(&self) -> usize {
+      let mut raw = self.0;
+      raw <<= 48; raw >>= 48;
+      raw >>= 64;
+      raw as usize
+   }
+   pub fn ptr(&self) -> *mut u32 {
+      let mut raw = self.0;
+      raw <<= 64; raw >>= 64;
+      raw as *mut u32
    }
    pub fn i8(slot: i8, nom: &str) -> Value {
       Value::from_parts(Tag::I8 as u16, Value::push_name(nom), (slot as u8) as u128)
@@ -265,10 +304,27 @@ impl Value {
       ns[ni].clone()
    }
    pub fn slice(&self, start: usize, end: usize) -> Value {
-      Value(self.0)
+      let tag = (self.0 >> 112) as u16;
+      let nom = ((self.0 << 16) >> 112) as u16;
+      let ptr_bits = (self.ptr().expose_addr() as u64) as u128;
+      let start = start as u128;
+      let end = end as u128;
+      let mut raw: u128 = 0;
+      raw |= start; raw <<= 16;
+      raw |= end;   raw <<= 64;
+      raw |= ptr_bits;
+      Value::from_parts(tag, nom, raw)
    }
    pub fn literal(&self) -> String {
-      unimplemented!("Value::literal")
+      let start = self.start();
+      let end = self.end();
+      let ptr = self.ptr();
+      let mut val = Vec::new();
+      for po in start..end {
+      unsafe {
+         val.push( char::from_u32_unchecked(*ptr.offset((po+1) as isize)) );
+      }}
+      String::from_iter(val)
    }
    pub fn slot(&self, tag: Tag, slot: usize) -> i128 {
       let mut s = ((self.0 << 32) >> 32) as u128;

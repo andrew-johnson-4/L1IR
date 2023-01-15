@@ -221,7 +221,7 @@ fn value_string() {
    assert_eq!(v.literal(), "abc");
 
    let v2 = v.slice(1,2);
-   assert_eq!(v.tag(), "String");
-   assert_eq!(v.name(), "T#2");
-   assert_eq!(v.literal(), "b");
+   assert_eq!(v2.tag(), "String");
+   assert_eq!(v2.name(), "T#2");
+   assert_eq!(v2.literal(), "b");
 }
