@@ -36,18 +36,37 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::time::{Instant};
 
+fn signF32UI(a: u32) -> bool {
+   (a >> 31) == 1
+}
+fn expF32UI(a: u32) -> i16 {
+   ((a >> 23) & 0xFF) as i16
+}
+fn fracF32UI(a: u32) -> u32 {
+   a & 0x007FFFFF
+}
+fn packToF32UI( sign: bool, exp: i16, sig: u32 ) -> u32 {
+unsafe {
+   ((if sign {1_u32} else {0_u32})<<31) +
+   ((std::mem::transmute::<i16,u16>(exp) as u32) << 23) +
+   sig
+}}
+fn isNaNF32UI( a: u32 ) -> bool {
+   (((!a) & 0x7F800000) == 0) &&
+   ((a & 0x007FFFFF) != 0)
+}
 fn fmul(a: f32, b: f32) -> f32 { unsafe {
-    let uA: i32; //union f32
-    let uiA: u32;
-    let signA: bool;
-    let expA: i16;
-    let sigA: u32;
-    let uB: i32; //union f32
-    let uiB: u32;
-    let signB: bool;
-    let expB: i16;
-    let sigB: u32;
-    let signZ: bool;
+    let uA: i32 = std::mem::transmute::<f32,i32>(a);
+    let uiA: u32 = std::mem::transmute::<f32,u32>(a);
+    let signA: bool = signF32UI(uiA);
+    let expA: i16 = expF32UI(uiA);
+    let sigA: u32 = fracF32UI(uiA);
+    let uB: i32 = std::mem::transmute::<f32,i32>(b);
+    let uiB: u32 = std::mem::transmute::<f32,u32>(b);
+    let signB: bool = signF32UI(uiB);
+    let expB: i16 = expF32UI(uiB);
+    let sigB: u32 = fracF32UI(uiB);
+    let signZ: bool = signA ^ signB;
     let magBits: u32;
     //struct exp16_sig32 normExpSig;
     let expZ: i16;
@@ -55,21 +74,6 @@ fn fmul(a: f32, b: f32) -> f32 { unsafe {
     let uiZ: u32;
     let uZ: i32; //union f32
 
-    /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
-    /*
-    uA.f = a;
-    uiA = uA.ui;
-    signA = signF32UI( uiA );
-    expA  = expF32UI( uiA );
-    sigA  = fracF32UI( uiA );
-    uB.f = b;
-    uiB = uB.ui;
-    signB = signF32UI( uiB );
-    expB  = expF32UI( uiB );
-    sigB  = fracF32UI( uiB );
-    signZ = signA ^ signB;
-    */
     /*------------------------------------------------------------------------
     *------------------------------------------------------------------------*/
     /*
@@ -145,6 +149,17 @@ fn fmul(a: f32, b: f32) -> f32 { unsafe {
 }}
 
 pub fn main() {
+    let start = Instant::now();
+    for x in 0_u32..=u32::MAX {
+       let x_sign = signF32UI(x);
+       let x_exp  = expF32UI(x);
+       let x_frac = fracF32UI(x);
+       let x_pack = packToF32UI(x_sign, x_exp, x_frac);
+       assert_eq!(x, x_pack);
+    }
+    let t = start.elapsed();
+    println!("(Rust) verify u32 pack/unpack in {} seconds", t.as_secs_f32());
+
     let start = Instant::now();
     for x in 0_u32..1000000_u32 {
     for y in 0_u32..1000000_u32 {
