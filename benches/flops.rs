@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::time::{Instant};
 
+const defaultNaNF32UI: u32 = 0xFFFFFFFF; //on 8086, 0xFFC00000
 fn signF32UI(a: u32) -> bool {
    (a >> 31) == 1
 }
@@ -55,6 +56,9 @@ fn isNaNF32UI( a: u32 ) -> bool {
    (((!a) & 0x7F800000) == 0) &&
    ((a & 0x007FFFFF) != 0)
 }
+fn softfloat_propagateNaNF32UI( uiA: u32, uiB: u32 ) -> u32 {
+   return defaultNaNF32UI;
+}
 fn fmul(a: f32, b: f32) -> f32 { unsafe {
     let uA: i32 = std::mem::transmute::<f32,i32>(a);
     let uiA: u32 = std::mem::transmute::<f32,u32>(a);
@@ -72,22 +76,34 @@ fn fmul(a: f32, b: f32) -> f32 { unsafe {
     let expZ: i16;
     let sigZ: u32;
     let uiZ: u32;
-    let uZ: i32; //union f32
 
-    /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
-    /*
-    if ( expA == 0xFF ) {
-        if ( sigA || ((expB == 0xFF) && sigB) ) goto propagateNaN;
-        magBits = expB | sigB;
-        goto infArg;
+    if expA == 0xFF {
+        if (sigA != 0) || ((expB == 0xFF) && (sigB != 0)) {
+           uiZ = softfloat_propagateNaNF32UI( uiA, uiB );
+        } else {
+           magBits = (std::mem::transmute::<i16,u16>(expB) as u32) | sigB;
+           if magBits == 0 {
+              uiZ = defaultNaNF32UI;
+           } else {
+              uiZ = packToF32UI( signZ, 0xFF, 0 );
+           }
+        }
+        return std::mem::transmute::<u32,f32>(uiZ);
     }
-    if ( expB == 0xFF ) {
-        if ( sigB ) goto propagateNaN;
-        magBits = expA | sigA;
-        goto infArg;
+    if expB == 0xFF {
+        if sigB != 0 {
+           uiZ = softfloat_propagateNaNF32UI( uiA, uiB );
+        } else {
+           magBits = (std::mem::transmute::<i16,u16>(expA) as u32) | sigA;
+           if magBits == 0 {
+              uiZ = defaultNaNF32UI;
+           } else {
+              uiZ = packToF32UI( signZ, 0xFF, 0 );
+           }
+        }
+        return std::mem::transmute::<u32,f32>(uiZ);
     }
-    */
+
     /*------------------------------------------------------------------------
     *------------------------------------------------------------------------*/
     /*
@@ -117,28 +133,10 @@ fn fmul(a: f32, b: f32) -> f32 { unsafe {
     }
     return softfloat_roundPackToF32( signZ, expZ, sigZ );
     */
-    /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
     /*
  propagateNaN:
     uiZ = softfloat_propagateNaNF32UI( uiA, uiB );
     goto uiZ;
-    */
-    /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
-    /*
- infArg:
-    if ( ! magBits ) {
-        softfloat_raiseFlags( softfloat_flag_invalid );
-        uiZ = defaultNaNF32UI;
-    } else {
-        uiZ = packToF32UI( signZ, 0xFF, 0 );
-    }
-    goto uiZ;
-    */
-    /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
-    /*
  zero:
     uiZ = packToF32UI( signZ, 0, 0 );
  uiZ:
