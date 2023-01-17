@@ -48,7 +48,7 @@ fn fracF32UI(a: u32) -> u32 {
 }
 fn packToF32UI( sign: bool, exp: i16, sig: u32 ) -> u32 {
 unsafe {
-   ((if sign {1_u32} else {0_u32})<<31) +
+   ((sign as u32)<<31) +
    ((std::mem::transmute::<i16,u16>(exp) as u32) << 23) +
    sig
 }}
@@ -59,22 +59,71 @@ fn isNaNF32UI( a: u32 ) -> bool {
 fn softfloat_propagateNaNF32UI( uiA: u32, uiB: u32 ) -> u32 {
    return defaultNaNF32UI;
 }
+fn softfloat_normSubnormalF32Sig( sig: u32 ) -> (i16,u32) {
+    let shiftDist = (sig.leading_zeros() - 8) as i16;
+    let exp = 1 - shiftDist;
+    let sig = sig << shiftDist;
+    (exp, sig)
+}
+fn softfloat_roundPackToF32( sign: bool, mut exp: i16, mut sig: u32 ) -> f32 {
+unsafe {
+    let roundNearEven = false;
+    let roundIncrement: u8 = 0x40; //alternatives: 0x7F, 0
+    let mut roundBits: u8;
+    let isTiny: bool;
+
+    roundBits = (sig & 0x7F) as u8;
+    if 0xFD <= std::mem::transmute::<i16,u16>(exp) {
+        if exp < 0 {
+            isTiny = (exp < -1) || (sig + (roundIncrement as u32) < 0x80000000);
+            sig = softfloat_shiftRightJam32( sig, -exp );
+            exp = 0;
+            roundBits = (sig & 0x7F) as u8;
+        } else if (0xFD < exp) || (0x80000000 <= sig + (roundIncrement as u32)) {
+            let uiZ = packToF32UI( sign, 0xFF, 0 ) - ((!roundIncrement) as u32);
+            return std::mem::transmute::<u32,f32>(uiZ);
+        }
+    }
+    sig = (sig + (roundIncrement as u32)) >> 7;
+    sig &= (!(! (roundBits ^ 0x40) & (roundNearEven as u8))) as u32;
+    if sig == 0 { exp = 0 };
+    let uiZ = packToF32UI( sign, exp, sig );
+    return std::mem::transmute::<u32,f32>(uiZ);
+}}
+fn softfloat_shortShiftRightJam64( a: u64, dist: u8 ) -> u64
+{
+    return a >> dist |
+           (
+              ((a & ((1<<dist as u64) - 1)
+              ) != 0) as u64
+           );
+}
+fn softfloat_shiftRightJam32( a: u32, dist: i16 ) -> u32
+{
+    return if dist < 31 {
+       a>>dist | (
+          ((a<<(
+             -dist
+             & 31)) != 0)
+       as u32)
+    } else { (a != 0) as u32 };
+}
+
 fn fmul(a: f32, b: f32) -> f32 { unsafe {
     let uA: i32 = std::mem::transmute::<f32,i32>(a);
     let uiA: u32 = std::mem::transmute::<f32,u32>(a);
     let signA: bool = signF32UI(uiA);
-    let expA: i16 = expF32UI(uiA);
-    let sigA: u32 = fracF32UI(uiA);
+    let mut expA: i16 = expF32UI(uiA);
+    let mut sigA: u32 = fracF32UI(uiA);
     let uB: i32 = std::mem::transmute::<f32,i32>(b);
     let uiB: u32 = std::mem::transmute::<f32,u32>(b);
     let signB: bool = signF32UI(uiB);
-    let expB: i16 = expF32UI(uiB);
-    let sigB: u32 = fracF32UI(uiB);
+    let mut expB: i16 = expF32UI(uiB);
+    let mut sigB: u32 = fracF32UI(uiB);
     let signZ: bool = signA ^ signB;
     let magBits: u32;
-    //struct exp16_sig32 normExpSig;
-    let expZ: i16;
-    let sigZ: u32;
+    let mut expZ: i16;
+    let mut sigZ: u32;
     let uiZ: u32;
 
     if expA == 0xFF {
@@ -104,46 +153,27 @@ fn fmul(a: f32, b: f32) -> f32 { unsafe {
         return std::mem::transmute::<u32,f32>(uiZ);
     }
 
-    /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
-    /*
-    if ( ! expA ) {
-        if ( ! sigA ) goto zero;
-        normExpSig = softfloat_normSubnormalF32Sig( sigA );
-        expA = normExpSig.exp;
-        sigA = normExpSig.sig;
+    if expA == 0 {
+        if sigA == 0 {
+           return std::mem::transmute::<u32,f32>(packToF32UI(signZ, 0, 0));
+        };
+        (expA, sigA) = softfloat_normSubnormalF32Sig( sigA );
     }
-    if ( ! expB ) {
-        if ( ! sigB ) goto zero;
-        normExpSig = softfloat_normSubnormalF32Sig( sigB );
-        expB = normExpSig.exp;
-        sigB = normExpSig.sig;
+    if expB == 0 {
+        if sigB == 0 {
+           return std::mem::transmute::<u32,f32>(packToF32UI(signZ, 0, 0));
+        }
+        (expB, sigB) = softfloat_normSubnormalF32Sig( sigB );
     }
-    */
-    /*------------------------------------------------------------------------
-    *------------------------------------------------------------------------*/
-    /*
     expZ = expA + expB - 0x7F;
     sigA = (sigA | 0x00800000)<<7;
     sigB = (sigB | 0x00800000)<<8;
-    sigZ = softfloat_shortShiftRightJam64( (uint_fast64_t) sigA * sigB, 32 );
-    if ( sigZ < 0x40000000 ) {
-        --expZ;
-        sigZ <<= 1;
+    sigZ = softfloat_shortShiftRightJam64( (sigA * sigB) as u64, 32 ) as u32;
+    if sigZ < 0x40000000 {
+       expZ -= 1;
+       sigZ <<= 1;
     }
     return softfloat_roundPackToF32( signZ, expZ, sigZ );
-    */
-    /*
- propagateNaN:
-    uiZ = softfloat_propagateNaNF32UI( uiA, uiB );
-    goto uiZ;
- zero:
-    uiZ = packToF32UI( signZ, 0, 0 );
- uiZ:
-    uZ.ui = uiZ;
-    return uZ.f;
-    */
-    return a * b;
 }}
 
 pub fn main() {
