@@ -189,12 +189,16 @@ pub fn main() {
     println!("(Rust) verify u32 pack/unpack in {} seconds", t.as_secs_f32());
 
     let start = Instant::now();
-    for x in 0_u32..1000000_u32 {
-    for y in 0_u32..1000000_u32 {
+    for x in (0_u32..u32::MAX).step_by(12345) {
+    for y in (0_u32..u32::MAX).step_by(12345) {
     unsafe {
        let xf = std::mem::transmute::<u32,f32>(x);
        let yf = std::mem::transmute::<u32,f32>(y);
-       assert_eq!( fmul(xf,yf), xf * yf );
+       let msoft = fmul(xf,yf);
+       let minst = xf * yf;
+       assert_eq!( msoft, minst, "{}_u32 * {}_u32 = {}_u32 vs {}_u32", x, y,
+                   std::mem::transmute::<f32,u32>(msoft),
+                   std::mem::transmute::<f32,u32>(minst) );
     }}}
     let t = start.elapsed();
     println!("(Rust) 2MMMM FLOPS in {} seconds", t.as_secs_f32());
