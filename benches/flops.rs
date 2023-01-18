@@ -194,11 +194,13 @@ pub fn main() {
     unsafe {
        let xf = std::mem::transmute::<u32,f32>(x);
        let yf = std::mem::transmute::<u32,f32>(y);
-       let msoft = fmul(xf,yf);
-       let minst = xf * yf;
-       assert_eq!( msoft, minst, "{}_u32 * {}_u32 = {}_u32 vs {}_u32", x, y,
-                   std::mem::transmute::<f32,u32>(msoft),
-                   std::mem::transmute::<f32,u32>(minst) );
+       let mut msoft = fmul(xf,yf);
+       if msoft.is_nan() { msoft = f32::NAN; }
+       let msoft_u32 = std::mem::transmute::<f32,u32>(msoft);
+       let mut minst = xf * yf;
+       if minst.is_nan() { minst = f32::NAN; }
+       let minst_u32 = std::mem::transmute::<f32,u32>(minst);
+       assert_eq!( msoft_u32, minst_u32, "{}_u32 vs {}_u32 = {}_f32 vs {}_f32 = {} * {}", msoft_u32, minst_u32, msoft, minst, x, y );
     }}}
     let t = start.elapsed();
     println!("(Rust) 2MMMM FLOPS in {} seconds", t.as_secs_f32());
