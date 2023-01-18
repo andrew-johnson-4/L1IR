@@ -6,3 +6,7 @@ bench:
 	./target/debug/bench
 	ocamlopt -o target/bench_ml benches/main.ml
 	time ./target/bench_ml
+
+flops:
+	cargo build --features cranelift --release
+	./target/release/flops
