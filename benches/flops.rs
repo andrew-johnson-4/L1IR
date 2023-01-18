@@ -200,7 +200,7 @@ pub fn main() {
        let mut minst = xf * yf;
        if minst.is_nan() { minst = f32::NAN; }
        let minst_u32 = std::mem::transmute::<f32,u32>(minst);
-       assert_eq!( msoft_u32, minst_u32, "{}_u32 vs {}_u32 = {}_f32 vs {}_f32 = {} * {}", msoft_u32, minst_u32, msoft, minst, x, y );
+       assert_eq!( msoft_u32, minst_u32, "{}_u32 vs {}_u32 = {}_f32 vs {}_f32 = {} * {} = {} * {}", msoft_u32, minst_u32, msoft, minst, x, y, xf, yf );
     }}}
     let t = start.elapsed();
     println!("(Rust) 2MMMM FLOPS in {} seconds", t.as_secs_f32());
