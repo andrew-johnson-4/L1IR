@@ -123,10 +123,10 @@ fn ucatu(lui: &mut BigUint, lcs: &mut Vec<char>, u:&BigUint) {
 pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx: &Program<S>, mut e: Expression<S>) -> Result<Value,Error<S>> {
    loop {
    match e {
-      Expression::UnaryIntroduction(ui,_span) => {
+      Expression::UnaryIntroduction(ui,_tt,_span) => {
          return Ok(Value::Unary(ui,None))
       },
-      Expression::LiteralIntroduction(lps,span) => {
+      Expression::LiteralIntroduction(lps,_tt,span) => {
          if lps.len()==1 {
          if let LIPart::Literal(lcs) = &lps[0] {
             return Ok(Value::Literal(0,lcs.len(),lcs.clone(),None));
@@ -157,7 +157,7 @@ pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx
             return Ok(Value::Literal(0,lcs.len(),Rc::new(lcs),None));
          }
       },
-      Expression::TupleIntroduction(tps,span) => {
+      Expression::TupleIntroduction(tps,_tt,span) => {
          if tps.len()==1 {
          if let TIPart::Tuple(tcs) = &tps[0] {
             return Ok(Value::Tuple(0,tcs.len(),tcs.clone(),None));
@@ -191,17 +191,17 @@ pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx
          }}
          return Ok(Value::Tuple(0,tcs.len(),Rc::new(tcs),None));
       },
-      Expression::FunctionReference(fi,_span) => {
+      Expression::FunctionReference(fi,_tt,_span) => {
          return Ok(Value::Function(fi,None));
       },
-      Expression::VariableReference(li,span) => {
+      Expression::VariableReference(li,_tt,span) => {
          if let Some(lv) = lctx.borrow().get(&li) {
             return Ok(lv.clone());
          } else {
             return Err(error("Runtime Error", &format!("v#{} not found", li), &span));
          }
       },
-      Expression::FunctionApplication(fi,pxs,span) => {
+      Expression::FunctionApplication(fi,pxs,_tt,span) => {
          if fi>pctx.functions.len() {
             return Err(error("Runtime Error", &format!("f#{} undefined", fi), &span));
          }
@@ -227,7 +227,7 @@ pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx
          lctx = new_ctx;
          e = bes[bes.len()-1].clone();
       },
-      Expression::PatternMatch(re,lrs,span) => {
+      Expression::PatternMatch(re,lrs,_tt,span) => {
          let mut matched: Option<Expression<S>> = None;
          let rv = eval_e(lctx.clone(), pctx, (*re).clone())?;
          for (l,r) in lrs.iter() {
@@ -242,7 +242,7 @@ pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx
             return Err(error("Runtime Error", &format!("pattern did not match on {:?}", rv), &span));
          }
       },
-      Expression::Failure(span) => {
+      Expression::Failure(_tt,span) => {
          return Err(error("Runtime Error", "failure", &span));
       },
    }}

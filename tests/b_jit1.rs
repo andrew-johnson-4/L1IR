@@ -7,7 +7,7 @@ fn eval_match1() {
    let nojit = Program::program(
       vec![],
       vec![Expression::pattern(
-         Expression::variable(0,()),
+         Expression::variable(0,()).typed("U64"),
          vec![
             (
                LHSPart::literal("000"),

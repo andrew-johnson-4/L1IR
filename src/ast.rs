@@ -424,40 +424,53 @@ impl LHSPart {
 
 #[derive(Clone)]
 pub enum Expression<S:Debug + Clone> { //Expressions don't need to "clone"?
-   UnaryIntroduction(BigUint,S),
-   LiteralIntroduction(Rc<Vec<LIPart<S>>>,S),
-   TupleIntroduction(Rc<Vec<TIPart<S>>>,S),
-   VariableReference(usize,S),
-   FunctionReference(usize,S),
-   FunctionApplication(usize,Rc<Vec<Expression<S>>>,S),
-   PatternMatch(Rc<Expression<S>>,Rc<Vec<(LHSPart,Expression<S>)>>,S),
-   Failure(S),
+   UnaryIntroduction(BigUint,String,S),
+   LiteralIntroduction(Rc<Vec<LIPart<S>>>,String,S),
+   TupleIntroduction(Rc<Vec<TIPart<S>>>,String,S),
+   VariableReference(usize,String,S),
+   FunctionReference(usize,String,S),
+   FunctionApplication(usize,Rc<Vec<Expression<S>>>,String,S),
+   PatternMatch(Rc<Expression<S>>,Rc<Vec<(LHSPart,Expression<S>)>>,String,S),
+   Failure(String,S),
 }
 impl<S:Debug + Clone> Expression<S> {
+   pub fn typed(self, tt: &str) -> Expression<S> {
+      let tt = tt.to_string();
+      match self {
+         Expression::UnaryIntroduction(vi,_,span) => { Expression::UnaryIntroduction(vi,tt,span) },
+         Expression::LiteralIntroduction(vi,_,span) => { Expression::LiteralIntroduction(vi,tt,span) },
+         Expression::TupleIntroduction(vi,_,span) => { Expression::TupleIntroduction(vi,tt,span) },
+         Expression::VariableReference(vi,_,span) => { Expression::VariableReference(vi,tt,span) },
+         Expression::FunctionReference(vi,_,span) => { Expression::FunctionReference(vi,tt,span) },
+         Expression::FunctionApplication(fi,ps,_,span) => { Expression::FunctionApplication(fi,ps,tt,span) },
+         Expression::PatternMatch(pe,lrs,_,span) => { Expression::PatternMatch(pe,lrs,tt,span) },
+         Expression::Failure(_,span) => { Expression::Failure(tt,span) },
+      }
+   }
    pub fn vars(&self, vars: &mut Vec<usize>) {
       match self {
-         Expression::VariableReference(vi,_) => {
+         Expression::VariableReference(vi,_,_) => {
             vars.push(*vi);
          },
-         Expression::UnaryIntroduction(_,_) => {},
-         Expression::Failure(_) => {},
-         Expression::FunctionReference(_,_) => {},
-         Expression::LiteralIntroduction(lis,_) => {
+         Expression::UnaryIntroduction(_,_,_) => {},
+         Expression::Failure(_,_) => {},
+         Expression::FunctionReference(_,_,_) => {},
+         Expression::LiteralIntroduction(lis,_,_) => {
             for li in lis.iter() {
                li.vars(vars);
             }
          },
-         Expression::TupleIntroduction(tis,_) => {
+         Expression::TupleIntroduction(tis,_,_) => {
             for ti in tis.iter() {
                ti.vars(vars);
             }
          },
-         Expression::FunctionApplication(_,es,_) => {
+         Expression::FunctionApplication(_,es,_,_) => {
             for e in es.iter() {
                e.vars(vars);
             }
          },
-         Expression::PatternMatch(e,lrs,_) => {
+         Expression::PatternMatch(e,lrs,_,_) => {
             e.vars(vars);
             for (l,r) in lrs.iter() {
                l.vars(vars);
@@ -468,71 +481,72 @@ impl<S:Debug + Clone> Expression<S> {
    }
    pub fn equals(&self, other: &Expression<()>) -> bool {
       match (self,other) {
-         (Expression::UnaryIntroduction(lui,_),Expression::UnaryIntroduction(rui,_)) => { lui == rui },
-         (Expression::VariableReference(lui,_),Expression::VariableReference(rui,_)) => { lui == rui },
-         (Expression::FunctionReference(lui,_),Expression::FunctionReference(rui,_)) => { lui == rui },
-         (Expression::LiteralIntroduction(lli,_),Expression::LiteralIntroduction(rli,_)) => {
+         (Expression::UnaryIntroduction(lui,_,_),Expression::UnaryIntroduction(rui,_,_)) => { lui == rui },
+         (Expression::VariableReference(lui,_,_),Expression::VariableReference(rui,_,_)) => { lui == rui },
+         (Expression::FunctionReference(lui,_,_),Expression::FunctionReference(rui,_,_)) => { lui == rui },
+         (Expression::LiteralIntroduction(lli,_,_),Expression::LiteralIntroduction(rli,_,_)) => {
             lli.len() == rli.len() &&
             std::iter::zip(lli.iter(),rli.iter()).all(|(l,r)| l.equals(r))
          },
-         (Expression::TupleIntroduction(lli,_),Expression::TupleIntroduction(rli,_)) => {
+         (Expression::TupleIntroduction(lli,_,_),Expression::TupleIntroduction(rli,_,_)) => {
             lli.len() == rli.len() &&
             std::iter::zip(lli.iter(),rli.iter()).all(|(l,r)| l.equals(r))
          },
-         (Expression::FunctionApplication(lf,lps,_),Expression::FunctionApplication(rf,rps,_)) => {
+         (Expression::FunctionApplication(lf,lps,_,_),Expression::FunctionApplication(rf,rps,_,_)) => {
             lf == rf &&
             lps.len() == rps.len() &&
             std::iter::zip(lps.iter(),rps.iter()).all(|(l,r)| l.equals(r))
          },
-         (Expression::PatternMatch(le,lps,_),Expression::PatternMatch(re,rps,_)) => {
+         (Expression::PatternMatch(le,lps,_,_),Expression::PatternMatch(re,rps,_,_)) => {
             le.equals(re) &&
             lps.len() == rps.len() &&
             std::iter::zip(lps.iter(),rps.iter()).all(|((ll,le),(rl,re))| ll.equals(rl) && le.equals(re))
          },
-         (Expression::Failure(_),Expression::Failure(_)) => { true },
+         (Expression::Failure(_,_),Expression::Failure(_,_)) => { true },
          _ => false
       }
    }
    pub fn unary(ui: &[u8], span: S) -> Expression<S> {
       let ui = BigUint::parse_bytes(ui, 10).unwrap();
-      Expression::UnaryIntroduction(ui, span)
+      Expression::UnaryIntroduction(ui, "".to_string(), span)
    }
    pub fn variable(vi: usize, span: S) -> Expression<S> {
-      Expression::VariableReference(vi,span)
+      Expression::VariableReference(vi, "".to_string(), span)
    }
    pub fn failure(span: S) -> Expression<S> {
-      Expression::Failure(span)
+      Expression::Failure("".to_string(), span)
    }
    pub fn literal(cs: &str, span: S) -> Expression<S> {
       let cs = cs.chars().collect::<Vec<char>>();
       Expression::LiteralIntroduction(Rc::new(vec![
          LIPart::Literal(Rc::new(cs)),
-      ]), span)
+      ]), "".to_string(), span)
    }
    pub fn li(lps: Vec<LIPart<S>>, span: S) -> Expression<S> {
       Expression::LiteralIntroduction(Rc::new(
          lps
-      ), span)
+      ), "".to_string(), span)
    }
    pub fn tuple(tps: Vec<Value>, span: S) -> Expression<S> {
       Expression::TupleIntroduction(Rc::new(vec![
          TIPart::tuple(tps)
-      ]), span)
+      ]), "".to_string(), span)
    }
    pub fn ti(tps: Vec<TIPart<S>>, span: S) -> Expression<S> {
       Expression::TupleIntroduction(Rc::new(
          tps
-      ), span)
+      ), "".to_string(), span)
    }
    pub fn apply(fi: usize, args: Vec<Expression<S>>, span: S) -> Expression<S> {
       Expression::FunctionApplication(fi,Rc::new(
          args
-      ), span)
+      ), "".to_string(), span)
    }
    pub fn pattern(v: Expression<S>, lrs: Vec<(LHSPart,Expression<S>)>, span: S) -> Expression<S> {
       Expression::PatternMatch(
          Rc::new(v),
          Rc::new(lrs),
+         "".to_string(),
          span)
    }
 }

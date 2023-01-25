@@ -154,7 +154,7 @@ pub fn compile_lhs<'f>(ctx: &mut FunctionBuilder<'f>, mut lblk: Block, rblk: Blo
 
 pub fn try_inline_plurals<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, mut blk: Block, p: &Program<S>,
                                                pe: &Expression<S>, lrs: &Vec<(LHSPart,Expression<S>)>, _span: &S) -> Option<(JExpr,JType)> {
-   if let Expression::TupleIntroduction(tis,_span) = pe {
+   if let Expression::TupleIntroduction(tis,_tt,_span) = pe {
       for ts in tis.iter() {
       match ts {
          TIPart::Variable(_) => {},    //ok to inline
@@ -248,7 +248,7 @@ pub fn try_inline_plurals<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut F
 
 pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, mut blk: Block, p: &Program<S>, e: &Expression<S>) -> (JExpr,JType) {
    match e {
-      Expression::UnaryIntroduction(ui,_span) => {
+      Expression::UnaryIntroduction(ui,_tt,_span) => {
          let ui = ui.to_i64().unwrap();
          (JExpr {
             block: blk,
@@ -258,7 +258,7 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
             jtype: types::I64,
          })
       },
-      Expression::LiteralIntroduction(lis,_span) => {
+      Expression::LiteralIntroduction(lis,_tt,_span) => {
          let mut val = ctx.ins().iconst(types::I64, 0);
          for li in lis.iter() {
          match li {
@@ -284,8 +284,8 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
             jtype: types::I64,
          })
       }
-      Expression::TupleIntroduction(_ti,_span) => unimplemented!("compile expression: TupleIntroduction"),
-      Expression::VariableReference(vi,_span) => {
+      Expression::TupleIntroduction(_ti,_tt,_span) => unimplemented!("compile expression: TupleIntroduction"),
+      Expression::VariableReference(vi,_tt,_span) => {
          let jv = Variable::from_u32(*vi as u32);
          let jv = ctx.use_var(jv);
          (JExpr {
@@ -296,8 +296,8 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
             jtype: types::I64,
          })
       },
-      Expression::FunctionReference(_vi,_span) => unimplemented!("compile expression: FunctionReference"),
-      Expression::FunctionApplication(fi,args,_span) => {
+      Expression::FunctionReference(_vi,_tt,_span) => unimplemented!("compile expression: FunctionReference"),
+      Expression::FunctionApplication(fi,args,_tt,_span) => {
          let mut arg_types = Vec::new();
          for a in args.iter() {
             let jejt = compile_expr(jmod, ctx, blk, p, a);
@@ -305,7 +305,7 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
          }
          apply_fn(jmod, ctx, blk, p, *fi, arg_types)
       },
-      Expression::PatternMatch(pe,lrs,span) => {
+      Expression::PatternMatch(pe,lrs,_tt,span) => {
          if let Some((je,jt)) = try_inline_plurals(jmod, ctx, blk, p, pe.as_ref(), lrs.as_ref(), span) {
             return (je,jt);
          }
@@ -350,7 +350,7 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
             jtype: types::I64,
          })
       },
-      Expression::Failure(_span) => unimplemented!("compile expression: Failure"),
+      Expression::Failure(_tt,_span) => unimplemented!("compile expression: Failure"),
    }
 }
 
