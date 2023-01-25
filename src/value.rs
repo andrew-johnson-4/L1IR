@@ -52,7 +52,7 @@ pub enum Tag {
 
 static NAMES: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
-pub struct Value(u128);
+pub struct Value(pub u128);
 
 impl std::fmt::Debug for Value {
    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

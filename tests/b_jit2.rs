@@ -1,16 +1,18 @@
-use l1_ir::ast::{Expression,Program,FunctionDefinition,LIPart,Value,LHSPart,LHSLiteralPart};
+use l1_ir::value::Value;
+use l1_ir::ast::{Expression,Program};
 use l1_ir::opt::{JProgram};
 
 #[test]
-fn eval_tuple_introduction() {
+fn eval_string_introduction() {
    let nojit = Program::program(
       vec![],
-      vec![],
+      vec![
+         Expression::variable(0,()),
+      ],
    );
    let jit = JProgram::compile(&nojit);
 
-   for x in 0..20 {
-      let jval = jit.eval(&[x]).unwrap();
-      assert_eq!(format!("{:?}",jval), r#"(1,"True",(2.00000,(3,4,5))"#);
-   }
+   let arg = Value::string("abc", "String");
+   let ret = jit.eval(&[arg]).unwrap();
+   assert_eq!(format!("{:?}",ret), r#""abc""#);
 }
