@@ -13,6 +13,6 @@ fn eval_string_introduction() {
    let jit = JProgram::compile(&nojit);
 
    let arg = Value::string("abc", "String");
-   let ret = jit.eval(&[arg]).unwrap();
+   let ret = jit.eval(&[arg]);
    assert_eq!(format!("{:?}",ret), r#""abc""#);
 }

@@ -1,4 +1,5 @@
-use l1_ir::ast::{Expression,Program,FunctionDefinition,LIPart,Value,LHSPart,LHSLiteralPart};
+use l1_ir::value::Value;
+use l1_ir::ast::{Expression,Program,FunctionDefinition,LIPart,LHSPart,LHSLiteralPart};
 use l1_ir::opt::{JProgram};
 
 #[test]
@@ -22,8 +23,8 @@ fn eval_match1() {
    let jit = JProgram::compile(&nojit);
 
    for x in 0..20 {
-      let jval = jit.eval(&[x]).unwrap();
-      assert_eq!(Value::from_u64(if x==3 {123} else {321}), jval, "if {}==3 then 123 else 321", x);
+      let jval = jit.eval(&[Value::u64(x,"U64")]);
+      assert_eq!(Value::u64(if x==3 {123} else {321},"U64"), jval, "if {}==3 then 123 else 321", x);
    }
 }
 #[test]
@@ -54,8 +55,8 @@ fn eval_match2() {
    let jit = JProgram::compile(&nojit);
 
    for x in 0..20 {
-      let jval = jit.eval(&[x]).unwrap();
-      assert_eq!(Value::from_u64(if x==3 {123} else {321}), jval, "if {}==3 then 123 else 321", x);
+      let jval = jit.eval(&[Value::u64(x,"U64")]);
+      assert_eq!(Value::u64(if x==3 {123} else {321},"U64"), jval, "if {}==3 then 123 else 321", x);
    }
 }
 
@@ -80,8 +81,8 @@ fn eval_add() {
 
    for x in 0..20 {
    for y in 0..20 {
-      let jval = jit.eval(&[x, y]).unwrap();
-      assert_eq!(Value::from_u64(x + y), jval, "{} + {}", x, y);
+      let jval = jit.eval(&[Value::u64(x,"U64"), Value::u64(y,"U64")]);
+      assert_eq!(Value::u64(x + y,"U64"), jval, "{} + {}", x, y);
    }}
 }
 
@@ -90,8 +91,8 @@ fn eval_fibonacci() {
    let jit = l1_fibonacci();
 
    for x in 0..20 {
-      let jval = jit.eval(&[x]).unwrap();
-      assert_eq!(Value::from_u64(rust_fibonacci(x)), jval, "fibonacci({})", x);
+      let jval = jit.eval(&[Value::u64(x,"U64")]);
+      assert_eq!(Value::u64(rust_fibonacci(x),"U64"), jval, "fibonacci({})", x);
    }
 }
 
@@ -156,8 +157,8 @@ fn eval_two_pow_n() {
    let jit = l1_two_pow_n();
 
    for x in 0..20 {
-      let jval = jit.eval(&[x]).unwrap();
-      assert_eq!(Value::from_u64(rust_two_pow_n(x)), jval, "2^{}", x);
+      let jval = jit.eval(&[Value::u64(x,"U64")]);
+      assert_eq!(Value::u64(rust_two_pow_n(x),"U64"), jval, "2^{}", x);
    }
 }
 

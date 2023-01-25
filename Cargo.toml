@@ -40,8 +40,3 @@ required-features = ["cranelift"]
 name = "bench"
 path = "benches/main.rs"
 required-features = ["cranelift"]
-
-[[bin]]
-name = "flops"
-path = "benches/flops.rs"
-required-features = ["cranelift"]

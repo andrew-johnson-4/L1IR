@@ -1,3 +1,4 @@
+use l1_ir::value;
 use l1_ir::ast::{Expression,Program,FunctionDefinition,LHSPart,TIPart,Value};
 use l1_ir::eval::{eval};
 use l1_ir::opt::{JProgram};
@@ -30,8 +31,10 @@ fn eval_tuple1() {
    for x in 0..20 {
    for y in 0..20 {
       let nval = eval(nojit.clone(),&[Value::from_u64(x),Value::from_u64(y)]).unwrap();
-      let jval = jit.eval(&[x,y]).unwrap();
-      assert_eq!(nval, jval, "match ({},{})", x, y);
+      let jx = value::Value::u64(x,"U64");
+      let jy = value::Value::u64(y,"U64");
+      let jval = jit.eval(&[jx,jy]);
+      assert_eq!(nval, jval.ast(), "match ({},{})", x, y);
    }}
 }
 
@@ -81,7 +84,9 @@ fn eval_tuple2() {
    for x in 0..20 {
    for y in 0..20 {
       let nval = eval(nojit.clone(),&[Value::from_u64(x),Value::from_u64(y)]).unwrap();
-      let jval = jit.eval(&[x,y]).unwrap();
-      assert_eq!(nval, jval, "match ({},{})", x, y);
+      let jx = value::Value::u64(x,"U64");
+      let jy = value::Value::u64(y,"U64");
+      let jval = jit.eval(&[jx,jy]);
+      assert_eq!(nval, jval.ast(), "match ({},{})", x, y);
    }}
 }

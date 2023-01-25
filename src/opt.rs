@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 use crate::value;
-use crate::ast::{Program,Error,Expression,LHSPart,LHSLiteralPart,LIPart,TIPart};
+use crate::ast::{Program,Expression,LHSPart,LHSLiteralPart,LIPart,TIPart};
 use cranelift::prelude::*;
 use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{DataContext, Linkage, Module, FuncOrDataId};
@@ -459,11 +459,11 @@ impl JProgram {
          main: module.get_finalized_function(fn_main),
       }
    }
-   pub fn eval(&self, args: &[value::Value]) -> Result<value::Value,Error<String>> {
+   pub fn eval(&self, args: &[value::Value]) -> value::Value {
       let ptr_main = unsafe { std::mem::transmute::<_, fn(*const u128,u64) -> u128>(self.main) };
       let args = args.iter().map(|v|v.0).collect::<Vec<u128>>();
       let res = ptr_main(args.as_ptr(), args.len() as u64);
-      Ok(value::Value(res))
+      value::Value(res)
    }
 }
 
