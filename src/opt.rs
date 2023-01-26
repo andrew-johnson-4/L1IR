@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 use crate::value;
 use crate::ast;
-use crate::ast::{Program,Expression,LHSPart,LHSLiteralPart,LIPart,TIPart};
+use crate::ast::{Program,Expression,LHSPart,LHSLiteralPart,LIPart,TIPart,FunctionDefinition};
 use cranelift::prelude::*;
 use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{DataContext, Linkage, Module, FuncOrDataId};
@@ -31,6 +31,14 @@ pub struct JType {
    pub jtype: types::Type,
 }
 
+pub fn function_parameters<S: Debug + Clone>(fd: &FunctionDefinition<S>) -> Vec<types::Type> {
+   fd.args.iter().map(|(_ti,tt)|type_by_name(tt)).collect::<Vec<types::Type>>()
+}
+pub fn function_return<S: Debug + Clone>(fd: &FunctionDefinition<S>) -> Vec<types::Type> {
+   let rt = type_by_name(&fd.body[fd.body.len()-1].typ());
+   vec![rt]
+}
+
 pub fn type_by_name(tn: &ast::Type) -> types::Type {
    if let Some(ref tn) = tn.name {
    match tn.as_str() {
@@ -40,7 +48,8 @@ pub fn type_by_name(tn: &ast::Type) -> types::Type {
 }
 
 pub fn compile_fn<'f,S: Clone + Debug>(jmod: &mut JITModule, builder_context: &mut FunctionBuilderContext, p: &Program<S>, fi: usize) {
-   let hpars = p.functions[fi].args.iter().map(|_|types::I64).collect::<Vec<types::Type>>();
+   let hpars = function_parameters(&p.functions[fi]);
+   let hrets = function_return(&p.functions[fi]);
    if is_hardcoded(p, fi, &hpars) {
       return;
    }
@@ -48,10 +57,12 @@ pub fn compile_fn<'f,S: Clone + Debug>(jmod: &mut JITModule, builder_context: &m
    let mut ctx = jmod.make_context();
 
    let mut sig_fn = jmod.make_signature();
-   for _ in p.functions[fi].args.iter() {
-      sig_fn.params.push(AbiParam::new(types::I64));
+   for pt in hpars.iter() {
+      sig_fn.params.push(AbiParam::new(*pt));
    }
-   sig_fn.returns.push(AbiParam::new(types::I64));
+   for rt in hrets.iter() {
+      sig_fn.returns.push(AbiParam::new(*rt));
+   }
 
    let fn0 = jmod
       .declare_function(&format!("f#{}", fi), Linkage::Local, &sig_fn)
@@ -400,11 +411,12 @@ impl JProgram {
          let isig = pf.args.iter().map(|(_ti,tt)|type_by_name(tt)).collect::<Vec<types::Type>>();
          if is_hardcoded(p, pi, &isig) { continue; }
          let mut sig_f = module.make_signature();
-         for (_pti,ptt) in pf.args.iter() {
-            sig_f.params.push(AbiParam::new(type_by_name(ptt)));
+         for ptt in function_parameters(pf).into_iter() {
+            sig_f.params.push(AbiParam::new(ptt));
          }
-         let rt = type_by_name(&pf.body[pf.body.len()-1].typ());
-         sig_f.returns.push(AbiParam::new(rt));
+         for rtt in function_return(pf).into_iter() {
+            sig_f.returns.push(AbiParam::new(rtt));
+         }
          module.declare_function(
             &format!("f#{}", pi),
             Linkage::Local,

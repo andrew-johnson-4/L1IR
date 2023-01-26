@@ -213,7 +213,7 @@ pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx
             ps.push(eval_e(lctx.clone(), pctx, px.clone())?);
          }
          let mut new_ctx = HashMap::new();
-         for ((pi,pt),pv) in std::iter::zip(&pctx.functions[fi].args, ps) {
+         for ((pi,_pt),pv) in std::iter::zip(&pctx.functions[fi].args, ps) {
             new_ctx.insert(*pi, pv);
          }
          let ref bes = pctx.functions[fi].body;
