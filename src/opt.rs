@@ -396,22 +396,21 @@ impl JProgram {
       let mut ctx = module.make_context();
       let mut _data_ctx = DataContext::new();
 
-      /*
       for (pi,pf) in p.functions.iter().enumerate() {
-         let isig = pf.args.iter().map(|_|types::I64).collect::<Vec<types::Type>>();
+         let isig = pf.args.iter().map(|(_ti,tt)|type_by_name(tt)).collect::<Vec<types::Type>>();
          if is_hardcoded(p, pi, &isig) { continue; }
          let mut sig_f = module.make_signature();
-         for _ in pf.args.iter() {
-            sig_f.params.push(AbiParam::new(types::I64));
+         for (_pti,ptt) in pf.args.iter() {
+            sig_f.params.push(AbiParam::new(type_by_name(ptt)));
          }
-         sig_f.returns.push(AbiParam::new(types::I64));
+         let rt = type_by_name(&pf.body[pf.body.len()-1].typ());
+         sig_f.returns.push(AbiParam::new(rt));
          module.declare_function(
             &format!("f#{}", pi),
             Linkage::Local,
             &sig_f
          ).unwrap();
       }
-      */
 
       //int main(int *args, size_t args_count);
       let mut sig_main = module.make_signature();

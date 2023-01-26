@@ -458,6 +458,18 @@ impl<S:Debug + Clone> Expression<S> {
          Expression::Failure(_,span) => { Expression::Failure(nom,span) },
       }
    }
+   pub fn typ(&self) -> Type {
+      match self {
+         Expression::UnaryIntroduction(_vi,tt,_span) => { tt.clone() },
+         Expression::LiteralIntroduction(_vi,tt,_span) => { tt.clone() },
+         Expression::TupleIntroduction(_vi,tt,_span) => { tt.clone() },
+         Expression::VariableReference(_vi,tt,_span) => { tt.clone() },
+         Expression::FunctionReference(_vi,tt,_span) => { tt.clone() },
+         Expression::FunctionApplication(_fi,_ps,tt,_span) => { tt.clone() },
+         Expression::PatternMatch(_pe,_lrs,tt,_span) => { tt.clone() },
+         Expression::Failure(tt,_span) => { tt.clone() },
+      }
+   }
    pub fn vars(&self, vars: &mut Vec<usize>) {
       match self {
          Expression::VariableReference(vi,_,_) => {
