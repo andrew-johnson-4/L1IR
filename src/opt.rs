@@ -443,19 +443,11 @@ impl JProgram {
          main.def_var(pv, arg_value);
       }
 
-      if pars.len()>0 {
+      if p.expressions.len()==0 {
          let jv = Variable::from_u32(0 as u32);
          let jv = main.use_var(jv);
          let (lval,rval) = main.ins().isplit(jv);
          main.ins().return_(&[lval,rval]);
-      } else {
-         let rval = main.ins().iconst(types::I64, i64::from(0));
-         main.ins().return_(&[rval,rval]);
-      }
-      /*
-      if p.expressions.len()==0 {
-         let rval = main.ins().iconst(types::I128, i64::from(0));
-         main.ins().return_(&[rval]);
       } else {
          for pi in 0..(p.expressions.len()-1) {
             let (je,_jt) = compile_expr(&mut module, &mut main, blk, p, &p.expressions[pi]);
@@ -463,9 +455,9 @@ impl JProgram {
          }
          let (je,_jt) = compile_expr(&mut module, &mut main, blk, p, &p.expressions[p.expressions.len()-1]);
          blk = je.block;
-         main.ins().return_(&[je.value]);
+         let (lval,rval) = main.ins().isplit(je.value);
+         main.ins().return_(&[lval,rval]);
       }
-      */
 
       main.seal_block(blk);
       main.finalize();
@@ -473,11 +465,9 @@ impl JProgram {
       module.define_function(fn_main, &mut ctx).unwrap();
       module.clear_context(&mut ctx);
 
-      /*
       for fi in 0..p.functions.len() {
          compile_fn(&mut module, &mut builder_context, &p, fi);
       }
-      */
 
       module.finalize_definitions().unwrap();
       JProgram {
