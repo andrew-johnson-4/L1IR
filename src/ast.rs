@@ -251,18 +251,20 @@ impl std::fmt::Debug for Value {
 
 #[derive(Clone)]
 pub struct FunctionDefinition<S:Debug + Clone> {
-   pub args: Vec<usize>,
+   pub args: Vec<(usize,Type)>,
    pub body: Vec<Expression<S>>,
 }
 impl<S:Debug + Clone> FunctionDefinition<S> {
-   pub fn define(args: Vec<usize>, body: Vec<Expression<S>>) -> FunctionDefinition<S> {
+   pub fn define(args: Vec<(usize,Type)>, body: Vec<Expression<S>>) -> FunctionDefinition<S> {
       FunctionDefinition {
          args: args,
          body: body,
       }
    }
    pub fn equals(&self, other: &FunctionDefinition<()>) -> bool {
-      self.args == other.args &&
+      let self_args = self.args.iter().map(|(vi,_vt)| *vi).collect::<Vec<usize>>();
+      let other_args = other.args.iter().map(|(vi,_vt)| *vi).collect::<Vec<usize>>();
+      self_args == other_args &&
       self.body.len() == other.body.len() &&
       std::iter::zip(self.body.iter(),other.body.iter()).all(|(l,r)| l.equals(r))
    }

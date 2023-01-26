@@ -1,4 +1,4 @@
-use l1_ir::ast::{Expression,Program,FunctionDefinition,LHSPart,LHSLiteralPart,LIPart};
+use l1_ir::ast::{Expression,Program,FunctionDefinition,LHSPart,LHSLiteralPart,LIPart,Type};
 use l1_ir::eval::{eval};
 
 #[test]
@@ -6,7 +6,7 @@ fn eval_recursive_loop() {
    assert_eq!(
       format!("{:?}",eval(Program::program(
          vec![FunctionDefinition::define(
-            vec![24],
+            vec![(24,Type::nominal("U64"))],
             vec![Expression::pattern(
                Expression::variable(24,()),
                vec![
@@ -43,7 +43,7 @@ fn eval_fibonacci() {
    assert_eq!(
       format!("{:?}",eval(Program::program(
          vec![FunctionDefinition::define(
-            vec![24],
+            vec![(24,Type::nominal("U64"))],
             vec![Expression::pattern(
                Expression::variable(24,()),
                vec![

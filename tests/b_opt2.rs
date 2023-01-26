@@ -1,5 +1,5 @@
 use l1_ir::value;
-use l1_ir::ast::{Expression,Program,FunctionDefinition,LHSPart,TIPart,Value};
+use l1_ir::ast::{Expression,Program,FunctionDefinition,LHSPart,TIPart,Value,Type};
 use l1_ir::eval::{eval};
 use l1_ir::opt::{JProgram};
 
@@ -7,7 +7,7 @@ use l1_ir::opt::{JProgram};
 fn eval_tuple1() {
    let nojit = Program::program(
       vec![FunctionDefinition::define(
-         vec![0,1],
+         vec![(0,Type::nominal("U64")), (1,Type::nominal("U64"))],
          vec![Expression::pattern(
             Expression::ti(vec![
                TIPart::variable(0),
@@ -42,7 +42,7 @@ fn eval_tuple1() {
 fn eval_tuple2() {
    let nojit = Program::program(
       vec![FunctionDefinition::define(
-         vec![0,1],
+         vec![(0,Type::nominal("U64")), (1,Type::nominal("U64"))],
          vec![Expression::pattern(
             Expression::ti(vec![
                TIPart::variable(0),

@@ -1,4 +1,4 @@
-use l1_ir::ast::{Value,Expression,Program,LIPart,TIPart,FunctionDefinition,LHSPart};
+use l1_ir::ast::{Value,Expression,Program,LIPart,TIPart,FunctionDefinition,LHSPart,Type};
 use l1_ir::eval::{eval};
 
 #[test]
@@ -132,7 +132,7 @@ fn eval_function() {
    assert_eq!(
       format!("{:?}",eval(Program::program(
          vec![FunctionDefinition::define(
-            vec![24],
+            vec![(24,Type::nominal("U64"))],
             vec![Expression::ti(vec![
                TIPart::tuple(vec![
                   Value::literal("a"),

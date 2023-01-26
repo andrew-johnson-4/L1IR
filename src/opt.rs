@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 use crate::value;
+use crate::ast;
 use crate::ast::{Program,Expression,LHSPart,LHSLiteralPart,LIPart,TIPart};
 use cranelift::prelude::*;
 use cranelift_jit::{JITBuilder, JITModule};
@@ -30,6 +31,14 @@ pub struct JType {
    pub jtype: types::Type,
 }
 
+pub fn type_by_name(tn: &ast::Type) -> types::Type {
+   if let Some(ref tn) = tn.name {
+   match tn.as_str() {
+      "U64" => types::I64,
+      _ => unimplemented!("type_by_name({})", tn),
+   }} else { types::I128 }
+}
+
 pub fn compile_fn<'f,S: Clone + Debug>(jmod: &mut JITModule, builder_context: &mut FunctionBuilderContext, p: &Program<S>, fi: usize) {
    let hpars = p.functions[fi].args.iter().map(|_|types::I64).collect::<Vec<types::Type>>();
    if is_hardcoded(p, fi, &hpars) {
@@ -54,9 +63,10 @@ pub fn compile_fn<'f,S: Clone + Debug>(jmod: &mut JITModule, builder_context: &m
    fnb.append_block_params_for_function_params(blk);
    fnb.switch_to_block(blk);
 
-   for (pi,vi) in p.functions[fi].args.iter().enumerate() {
+   for (pi,(vi,vt)) in p.functions[fi].args.iter().enumerate() {
+      let ptyp = type_by_name(vt);
       let pvar = Variable::from_u32(*vi as u32);
-      fnb.declare_var(pvar, types::I64);
+      fnb.declare_var(pvar, ptyp);
       let pval = fnb.block_params(blk)[pi];
       fnb.def_var(pvar, pval);
    }

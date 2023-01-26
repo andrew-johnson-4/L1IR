@@ -1,5 +1,5 @@
 use l1_ir::value::Value;
-use l1_ir::ast::{Expression,Program,FunctionDefinition,LIPart,LHSPart,LHSLiteralPart};
+use l1_ir::ast::{Expression,Program,FunctionDefinition,LIPart,LHSPart,LHSLiteralPart,Type};
 use l1_ir::opt::{JProgram};
 
 #[test]
@@ -31,7 +31,7 @@ fn eval_match1() {
 fn eval_match2() {
    let nojit = Program::program(
       vec![FunctionDefinition::define(
-         vec![24],
+         vec![(24,Type::nominal("U64"))],
          vec![Expression::pattern(
             Expression::variable(24,()),
             vec![
@@ -64,7 +64,7 @@ fn eval_match2() {
 fn eval_add() {
    let nojit = Program::program(
       vec![FunctionDefinition::define(
-         vec![0,1],
+         vec![(0,Type::nominal("U64")), (1,Type::nominal("U64"))],
          vec![Expression::li(vec![
             LIPart::variable(0),
             LIPart::variable(1),
@@ -106,7 +106,7 @@ fn rust_fibonacci(n: u64) -> u64 {
 fn l1_fibonacci() -> JProgram {
    let l1fib = Program::program(
       vec![FunctionDefinition::define(
-         vec![24],
+         vec![(24,Type::nominal("U64"))],
          vec![Expression::pattern(
             Expression::variable(24,()),
             vec![
@@ -172,14 +172,14 @@ fn l1_two_pow_n() -> JProgram {
    let l12n = Program::program(
       vec![
          FunctionDefinition::define( // 0 = $"+"
-            vec![0,1],
+            vec![(0,Type::nominal("U64")), (1,Type::nominal("U64"))],
             vec![Expression::li(vec![
                LIPart::variable(0),
                LIPart::variable(1),
             ],())]
          ),
          FunctionDefinition::define( // 1 = $"-"
-            vec![0,1],
+            vec![(0,Type::nominal("U64")), (1,Type::nominal("U64"))],
             vec![Expression::pattern(
                Expression::variable(0,()),
                vec![
@@ -195,7 +195,7 @@ fn l1_two_pow_n() -> JProgram {
             ())],
          ),
          FunctionDefinition::define(
-            vec![24],
+            vec![(24,Type::nominal("U64"))],
             vec![Expression::pattern(
                Expression::variable(24,()),
                vec![
