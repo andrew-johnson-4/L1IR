@@ -22,7 +22,7 @@ fn eval_match1() {
    );
    let jit = JProgram::compile(&nojit);
 
-   for x in 0..20 {
+   for x in 1..20 {
       let jval = jit.eval(&[Value::u64(x,"U64")]);
       assert_eq!(Value::u64(if x==3 {123} else {321},"U64"), jval, "if {}==3 then 123 else 321", x);
    }

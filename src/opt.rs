@@ -434,8 +434,15 @@ impl JProgram {
          main.def_var(pv, arg_value);
       }
 
+      if pars.len()>0 {
+         let jv = Variable::from_u32(0 as u32);
+         let jv = main.use_var(jv);
+         let (lval,rval) = main.ins().isplit(jv);
+         main.ins().return_(&[lval,rval]);
+      } else {
          let rval = main.ins().iconst(types::I64, i64::from(0));
          main.ins().return_(&[rval,rval]);
+      }
       /*
       if p.expressions.len()==0 {
          let rval = main.ins().iconst(types::I128, i64::from(0));
