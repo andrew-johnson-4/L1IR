@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 use crate::value;
 use crate::ast;
+use crate::value::{Tag};
 use crate::ast::{Program,Expression,LHSPart,LHSLiteralPart,LIPart,TIPart,FunctionDefinition};
 use cranelift::prelude::*;
 use cranelift_jit::{JITBuilder, JITModule};
@@ -261,7 +262,7 @@ pub fn try_inline_plurals<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut F
          block: succblk,
          value: ctx.block_params(succblk)[0],
       }, JType {
-         name: "Unary".to_string(),
+         name: "Value".to_string(),
          jtype: types::I64,
       }))
    } else { None }
@@ -271,12 +272,14 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
    match e {
       Expression::UnaryIntroduction(ui,_tt,_span) => {
          let ui = ui.to_i64().unwrap();
+         let vlow = ctx.ins().iconst(types::I64, ui);
+         let vhigh = ctx.ins().iconst(types::I64, (Tag::U64 as i64) * (2_i64.pow(48)));
          (JExpr {
             block: blk,
-            value: ctx.ins().iconst(types::I64, ui)
+            value: ctx.ins().iconcat(vlow, vhigh),
          }, JType {
-            name: "Unary".to_string(),
-            jtype: types::I64,
+            name: "Value".to_string(),
+            jtype: types::I128,
          })
       },
       Expression::LiteralIntroduction(lis,_tt,_span) => {
@@ -301,7 +304,7 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
             block: blk,
             value: val,
          }, JType {
-            name: "Unary".to_string(),
+            name: "Value".to_string(),
             jtype: types::I64,
          })
       }
@@ -313,7 +316,7 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
             block: blk,
             value: jv
          }, JType {
-            name: "Unary".to_string(),
+            name: "Value".to_string(),
             jtype: types::I64,
          })
       },
@@ -367,7 +370,7 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
             block: succblk,
             value: ctx.block_params(succblk)[0],
          }, JType {
-            name: "Unary".to_string(),
+            name: "Value".to_string(),
             jtype: types::I64,
          })
       },
@@ -391,7 +394,7 @@ pub fn apply_fn<'f, S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBu
          block: blk,
          value: cval,
       }, JType {
-         name: "Unary".to_string(),
+         name: "Value".to_string(),
          jtype: types::I64,
       });
    }
