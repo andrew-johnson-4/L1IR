@@ -386,6 +386,7 @@ impl JProgram {
       let mut ctx = module.make_context();
       let mut _data_ctx = DataContext::new();
 
+      /*
       for (pi,pf) in p.functions.iter().enumerate() {
          let isig = pf.args.iter().map(|_|types::I64).collect::<Vec<types::Type>>();
          if is_hardcoded(p, pi, &isig) { continue; }
@@ -400,11 +401,13 @@ impl JProgram {
             &sig_f
          ).unwrap();
       }
+      */
 
       //int main(int *args, size_t args_count);
       let mut sig_main = module.make_signature();
       sig_main.params.push(AbiParam::new(types::I64));
       sig_main.params.push(AbiParam::new(types::I64));
+      sig_main.returns.push(AbiParam::new(types::I64));
       sig_main.returns.push(AbiParam::new(types::I64));
 
       let fn_main = module
@@ -423,16 +426,19 @@ impl JProgram {
       }
       for pi in pars.iter() {
          let pv = Variable::from_u32(*pi as u32);
-         main.declare_var(pv, types::I64);
+         main.declare_var(pv, types::I128);
          let arg_base = main.block_params(blk)[0];
-         let arg_offset = (8 * *pi) as i32;
+         let arg_offset = (16 * *pi) as i32;
          let arg_flags = MemFlags::new();
-         let arg_value = main.ins().load(types::I64, arg_flags, arg_base, arg_offset);
+         let arg_value = main.ins().load(types::I128, arg_flags, arg_base, arg_offset);
          main.def_var(pv, arg_value);
       }
 
-      if p.expressions.len()==0 {
          let rval = main.ins().iconst(types::I64, i64::from(0));
+         main.ins().return_(&[rval,rval]);
+      /*
+      if p.expressions.len()==0 {
+         let rval = main.ins().iconst(types::I128, i64::from(0));
          main.ins().return_(&[rval]);
       } else {
          for pi in 0..(p.expressions.len()-1) {
@@ -443,6 +449,7 @@ impl JProgram {
          blk = je.block;
          main.ins().return_(&[je.value]);
       }
+      */
 
       main.seal_block(blk);
       main.finalize();
@@ -450,9 +457,11 @@ impl JProgram {
       module.define_function(fn_main, &mut ctx).unwrap();
       module.clear_context(&mut ctx);
 
+      /*
       for fi in 0..p.functions.len() {
          compile_fn(&mut module, &mut builder_context, &p, fi);
       }
+      */
 
       module.finalize_definitions().unwrap();
       JProgram {
