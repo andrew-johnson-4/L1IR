@@ -49,6 +49,7 @@ pub fn type_by_name(tn: &ast::Type) -> types::Type {
 }
 
 pub fn compile_fn<'f,S: Clone + Debug>(jmod: &mut JITModule, builder_context: &mut FunctionBuilderContext, p: &Program<S>, fi: usize) {
+   println!("compile fn#{}", fi);
    let hpars = function_parameters(&p.functions[fi]);
    let hrets = function_return(&p.functions[fi]);
    if is_hardcoded(p, fi, &hpars) {
@@ -104,6 +105,7 @@ pub fn compile_fn<'f,S: Clone + Debug>(jmod: &mut JITModule, builder_context: &m
 }
 
 pub fn compile_lhs<'f>(ctx: &mut FunctionBuilder<'f>, mut lblk: Block, rblk: Block, lhs: &LHSPart, nblk: Block, mut val: Value) {
+   println!("compile lhs");
    ctx.switch_to_block(lblk);
    match lhs {
       LHSPart::Tuple(_lts) => unimplemented!("compile_lhs(Tuple)"),
@@ -176,6 +178,7 @@ pub fn compile_lhs<'f>(ctx: &mut FunctionBuilder<'f>, mut lblk: Block, rblk: Blo
 
 pub fn try_inline_plurals<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, mut blk: Block, p: &Program<S>,
                                                pe: &Expression<S>, lrs: &Vec<(LHSPart,Expression<S>)>, _span: &S) -> Option<(JExpr,JType)> {
+   println!("try inline plurals");
    if let Expression::TupleIntroduction(tis,_tt,_span) = pe {
       for ts in tis.iter() {
       match ts {
@@ -269,8 +272,10 @@ pub fn try_inline_plurals<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut F
 }
 
 pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, mut blk: Block, p: &Program<S>, e: &Expression<S>) -> (JExpr,JType) {
+   println!("compile expr");
    match e {
       Expression::UnaryIntroduction(ui,_tt,_span) => {
+         println!("unary introduction");
          let ui = ui.to_i64().unwrap();
          let vlow = ctx.ins().iconst(types::I64, ui);
          let vhigh = ctx.ins().iconst(types::I64, (Tag::U64 as i64) * (2_i64.pow(48)));
@@ -310,6 +315,7 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
       }
       Expression::TupleIntroduction(_ti,_tt,_span) => unimplemented!("compile expression: TupleIntroduction"),
       Expression::VariableReference(vi,_tt,_span) => {
+         println!("variable reference");
          let jv = Variable::from_u32(*vi as u32);
          let jv = ctx.use_var(jv);
          (JExpr {
@@ -317,7 +323,7 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
             value: jv
          }, JType {
             name: "Value".to_string(),
-            jtype: types::I64,
+            jtype: types::I128,
          })
       },
       Expression::FunctionReference(_vi,_tt,_span) => unimplemented!("compile expression: FunctionReference"),
@@ -330,6 +336,7 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
          apply_fn(jmod, ctx, blk, p, *fi, arg_types)
       },
       Expression::PatternMatch(pe,lrs,_tt,span) => {
+         println!("pattern match");
          if let Some((je,jt)) = try_inline_plurals(jmod, ctx, blk, p, pe.as_ref(), lrs.as_ref(), span) {
             return (je,jt);
          }
@@ -338,7 +345,7 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
 
          let failblk = ctx.create_block(); //failure block
          let succblk = ctx.create_block(); //success block
-         ctx.append_block_param(succblk, types::I64);
+         ctx.append_block_param(succblk, types::I128);
 
          let mut lblocks = Vec::new();
          let mut rblocks = Vec::new();
@@ -371,7 +378,7 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
             value: ctx.block_params(succblk)[0],
          }, JType {
             name: "Value".to_string(),
-            jtype: types::I64,
+            jtype: types::I128,
          })
       },
       Expression::Failure(_tt,_span) => unimplemented!("compile expression: Failure"),
@@ -379,6 +386,7 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
 }
 
 pub fn apply_fn<'f, S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, blk: Block, p: &Program<S>, fi: usize, args: Vec<(JExpr,JType)>) -> (JExpr,JType) {
+   println!("apply fn#{}", fi);
    if let Some((je,jt)) = check_hardcoded_call(ctx, blk, p, fi, &args) {
       return (je, jt);
    }
@@ -410,11 +418,13 @@ impl JProgram {
       let mut ctx = module.make_context();
       let mut _data_ctx = DataContext::new();
 
+      println!("compile program 1");
+
       for (pi,pf) in p.functions.iter().enumerate() {
-         let isig = pf.args.iter().map(|(_ti,tt)|type_by_name(tt)).collect::<Vec<types::Type>>();
+         let isig = function_parameters(pf);
          if is_hardcoded(p, pi, &isig) { continue; }
          let mut sig_f = module.make_signature();
-         for ptt in function_parameters(pf).into_iter() {
+         for ptt in isig.into_iter() {
             sig_f.params.push(AbiParam::new(ptt));
          }
          for rtt in function_return(pf).into_iter() {
@@ -426,6 +436,8 @@ impl JProgram {
             &sig_f
          ).unwrap();
       }
+
+      println!("compile program 2");
 
       //int main(int *args, size_t args_count);
       let mut sig_main = module.make_signature();
@@ -439,10 +451,14 @@ impl JProgram {
         .unwrap();
       ctx.func.signature = sig_main;
 
+      println!("compile program 3");
+
       let mut main = FunctionBuilder::new(&mut ctx.func, &mut builder_context);
       let mut blk = main.create_block();
       main.append_block_params_for_function_params(blk);
       main.switch_to_block(blk);
+
+      println!("compile program 4");
 
       let mut pars = Vec::new();
       for pe in p.expressions.iter() {
@@ -458,18 +474,26 @@ impl JProgram {
          main.def_var(pv, arg_value);
       }
 
+      println!("compile program 5");
+
       if p.expressions.len()==0 {
          let jv = Variable::from_u32(0 as u32);
          let jv = main.use_var(jv);
          let (lval,rval) = main.ins().isplit(jv);
          main.ins().return_(&[lval,rval]);
       } else {
+         println!("compile program 6.1");
+
          for pi in 0..(p.expressions.len()-1) {
+            println!("compile program 6.2");
             let (je,_jt) = compile_expr(&mut module, &mut main, blk, p, &p.expressions[pi]);
             blk = je.block;
          }
+         println!("compile program 6.3");
          let (je,_jt) = compile_expr(&mut module, &mut main, blk, p, &p.expressions[p.expressions.len()-1]);
          blk = je.block;
+
+         println!("compile program 6.4");
          let (lval,rval) = main.ins().isplit(je.value);
          main.ins().return_(&[lval,rval]);
       }
@@ -480,9 +504,13 @@ impl JProgram {
       module.define_function(fn_main, &mut ctx).unwrap();
       module.clear_context(&mut ctx);
 
+      println!("compile program 7");
+
       for fi in 0..p.functions.len() {
          compile_fn(&mut module, &mut builder_context, &p, fi);
       }
+
+      println!("compile program 8");
 
       module.finalize_definitions().unwrap();
       JProgram {

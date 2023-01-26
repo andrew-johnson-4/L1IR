@@ -35,8 +35,3 @@ required-features = ["cranelift"]
 name = "b_jit1"
 path = "tests/b_jit1.rs"
 required-features = ["cranelift"]
-
-[[bin]]
-name = "bench"
-path = "benches/main.rs"
-required-features = ["cranelift"]

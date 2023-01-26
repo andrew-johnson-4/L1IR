@@ -40,7 +40,6 @@ fn eval_match1() {
    }
 }
 
-/*
 #[test]
 fn eval_match2() {
    let nojit = Program::program(
@@ -74,6 +73,7 @@ fn eval_match2() {
    }
 }
 
+/*
 #[test]
 fn eval_add() {
    let nojit = Program::program(
