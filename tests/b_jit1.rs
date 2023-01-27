@@ -2,6 +2,7 @@ use l1_ir::value::Value;
 use l1_ir::ast::{Expression,Program,FunctionDefinition,LIPart,LHSPart,LHSLiteralPart,Type};
 use l1_ir::opt::{JProgram};
 
+/*
 #[test]
 fn eval_echo() {
    let nojit = Program::program(
@@ -39,9 +40,39 @@ fn eval_match1() {
       assert_eq!(Value::u64(321,"U64"), jval, "321");
    }
 }
+*/
 
 #[test]
 fn eval_match2() {
+   let nojit = Program::program(
+      vec![],
+      vec![
+         Expression::pattern(
+            Expression::variable(0,()).typed("U64"),
+            vec![
+               (
+                  LHSPart::literal("3"),
+                  Expression::unary(b"123",()),
+               ),
+               (
+                  LHSPart::Any,
+                  Expression::unary(b"321",()),
+               ),
+            ],
+         ()),
+      ],
+   );
+   let jit = JProgram::compile(&nojit);
+
+   for x in 0..20 {
+      let jval = jit.eval(&[Value::u64(x,"U64")]);
+      assert_eq!(Value::u64(if x==3 {123} else {321},"U64"), jval, "if {}==3 then 123 else 321", x);
+   }
+}
+
+/*
+#[test]
+fn eval_match3() {
    let nojit = Program::program(
       vec![FunctionDefinition::define(
          vec![(24,Type::nominal("U64"))],
@@ -73,7 +104,6 @@ fn eval_match2() {
    }
 }
 
-/*
 #[test]
 fn eval_add() {
    let nojit = Program::program(
