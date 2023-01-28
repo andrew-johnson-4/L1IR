@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 use std::cell::RefCell;
 use num_bigint::{BigUint,ToBigUint};
 use std::fmt::Debug;
@@ -6,7 +6,7 @@ use num_traits::cast::ToPrimitive;
 use std::collections::{HashMap};
 use crate::ast::{Error,error,Value,Expression,Program,LIPart,TIPart,LHSPart,LHSLiteralPart};
 
-pub fn eval_lhs<S:Debug + Clone>(lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx: &Program<S>, lhs: &LHSPart, rval: &Value) -> bool {
+pub fn eval_lhs<S:Debug + Clone>(lctx: Arc<RefCell<HashMap<usize,Value>>>, pctx: &Program<S>, lhs: &LHSPart, rval: &Value) -> bool {
    match lhs {
       LHSPart::Any => true,
       LHSPart::Variable(lid) => {
@@ -46,7 +46,7 @@ pub fn eval_lhs<S:Debug + Clone>(lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx: 
                lu = lu - pcs.len().to_biguint().unwrap();
             } else if let LHSLiteralPart::Variable(pid) = pl {
                if let Some(Value::Unary(pu,_)) = lctx.borrow().get(pid) {
-                  if &lu < pu { return false; }
+                  if lu < pu.clone() { return false; }
                   lu = lu - pu;
                } else {
                   unimplemented!("UnpackLiteral prefix")
@@ -62,7 +62,7 @@ pub fn eval_lhs<S:Debug + Clone>(lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx: 
                lu = lu - scs.len().to_biguint().unwrap();
             } else if let LHSLiteralPart::Variable(sid) = sl {
                if let Some(Value::Unary(su,_)) = lctx.borrow().get(sid) {
-                  if &lu < su { return false; }
+                  if lu < su.clone() { return false; }
                   lu = lu - su;
                } else {
                   unimplemented!("UnpackLiteral suffix")
@@ -121,7 +121,7 @@ fn ucatu(lui: &mut BigUint, lcs: &mut Vec<char>, u:&BigUint) {
    }
 }
 
-pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx: &Program<S>, mut e: Expression<S>) -> Result<Value,Error<S>> {
+pub fn eval_e<S:Debug + Clone>(mut lctx: Arc<RefCell<HashMap<usize,Value>>>, pctx: &Program<S>, mut e: Expression<S>) -> Result<Value,Error<S>> {
    loop {
    match e {
       Expression::ValueIntroduction(ui,_tt,_span) => {
@@ -155,7 +155,7 @@ pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx
          if lcs.len()==0 {
             return Ok(Value::Unary(lui,None))
          } else {
-            return Ok(Value::Literal(0,lcs.len(),Rc::new(lcs),None));
+            return Ok(Value::Literal(0,lcs.len(),Arc::new(lcs),None));
          }
       },
       Expression::TupleIntroduction(tps,_tt,span) => {
@@ -190,7 +190,7 @@ pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx
                tcs.push(ev);
             },
          }}
-         return Ok(Value::Tuple(0,tcs.len(),Rc::new(tcs),None));
+         return Ok(Value::Tuple(0,tcs.len(),Arc::new(tcs),None));
       },
       Expression::FunctionReference(fi,_tt,_span) => {
          return Ok(Value::Function(fi,None));
@@ -204,10 +204,10 @@ pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx
       },
       Expression::FunctionApplication(fi,pxs,_tt,span) => {
          if !pctx.functions.contains_key(&fi) {
-            return Err(error("Runtime Error", &format!("f#{} undefined", fi), &span));
+            return Err(error("Runtime Error", &format!("{} undefined", fi), &span));
          }
          if pxs.len()!=pctx.functions.get(&fi).unwrap().args.len() {
-            return Err(error("Runtime Error", &format!("f#{} called with wrong arity", fi), &span));
+            return Err(error("Runtime Error", &format!("{} called with wrong arity", fi), &span));
          }
          let mut ps = Vec::new();
          for px in pxs.iter() {
@@ -221,7 +221,7 @@ pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx
          if bes.len()==0 {
             return Ok(Value::tuple(Vec::new()));
          }
-         let new_ctx = Rc::new(RefCell::new(new_ctx));
+         let new_ctx = Arc::new(RefCell::new(new_ctx));
          for bi in 0..(bes.len()-1) {
             eval_e(new_ctx.clone(), pctx, bes[bi].clone())?;
          }
@@ -255,7 +255,7 @@ pub fn eval<S:Debug + Clone>(p: Program<S>, args: &[Value]) -> Result<Value,Erro
    for ai in 0..args.len() {
       top_ctx.insert(ai, args[ai].clone());
    }
-   let top_ctx = Rc::new(RefCell::new(top_ctx));
+   let top_ctx = Arc::new(RefCell::new(top_ctx));
    for e in p.expressions.iter() {
       top_value = eval_e(top_ctx.clone(), &p, e.clone())?;
    }

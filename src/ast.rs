@@ -1,7 +1,6 @@
 use num_bigint::{BigUint,ToBigUint};
-use regex::Regex;
 use std::collections::HashMap;
-use std::rc::Rc;
+use std::sync::Arc;
 use std::fmt::Debug;
 
 pub struct Error<S:Debug + Clone> {
@@ -25,7 +24,7 @@ pub fn error<S:Debug + Clone>(t:&str, m:&str, s:&S) -> Error<S> {
 #[derive(Clone)]
 pub struct Type {
    pub name: Option<String>,
-   pub regex: Option<Rc<Regex>>,
+   pub regex: Option<String>,
    pub strct: Option<Vec<Type>>,
    pub fnid: Option<String>,
    pub invariants: Vec<String>,
@@ -60,7 +59,7 @@ impl Type {
    pub fn regex(r: &str) -> Type {
       Type {
          name: None,
-         regex: Some(Rc::new(Regex::new(r).unwrap())),
+         regex: Some(r.to_string()),
          strct: None,
          fnid: None,
          invariants: vec![],
@@ -130,8 +129,8 @@ impl Type {
 #[derive(Clone)]
 pub enum Value {
    Unary(BigUint,Option<String>), //a unary number, represented as "0"...
-   Literal(usize,usize,Rc<Vec<char>>,Option<String>), //avoid copy-on-slice
-   Tuple(usize,usize,Rc<Vec<Value>>,Option<String>), //avoid copy-on-slice
+   Literal(usize,usize,Arc<Vec<char>>,Option<String>), //avoid copy-on-slice
+   Tuple(usize,usize,Arc<Vec<Value>>,Option<String>), //avoid copy-on-slice
    Function(String,Option<String>), //all functions are static program indices
 }
 impl Value {
@@ -153,10 +152,10 @@ impl Value {
    }
    pub fn literal(cs: &str) -> Value {
       let cs = cs.chars().collect::<Vec<char>>();
-      Value::Literal(0,cs.len(),Rc::new(cs),None)
+      Value::Literal(0,cs.len(),Arc::new(cs),None)
    }
    pub fn tuple(ts: Vec<Value>) -> Value {
-      Value::Tuple(0,ts.len(),Rc::new(ts),None)
+      Value::Tuple(0,ts.len(),Arc::new(ts),None)
    }
    pub fn function(fid: &str) -> Value {
       Value::Function(fid.to_string(),None)
@@ -294,7 +293,7 @@ impl<S:Debug + Clone> Program<S> {
 
 #[derive(Clone)]
 pub enum LIPart<S:Debug + Clone> {
-   Literal(Rc<Vec<char>>),
+   Literal(Arc<Vec<char>>),
    InlineVariable(usize),
    Expression(Expression<S>),
 }
@@ -316,7 +315,7 @@ impl<S:Debug + Clone> LIPart<S> {
    }
    pub fn literal(cs: &str) -> LIPart<S> {
       let cs = cs.chars().collect::<Vec<char>>();
-      LIPart::Literal(Rc::new(
+      LIPart::Literal(Arc::new(
          cs
       ))
    }
@@ -330,7 +329,7 @@ impl<S:Debug + Clone> LIPart<S> {
 
 #[derive(Clone)]
 pub enum TIPart<S: Debug + Clone> {
-   Tuple(Rc<Vec<Value>>),
+   Tuple(Arc<Vec<Value>>),
    Variable(usize),
    InlineVariable(usize),
    Expression(Expression<S>),
@@ -359,7 +358,7 @@ impl<S: Debug + Clone> TIPart<S> {
       }
    }
    pub fn tuple(ts: Vec<Value>) -> TIPart<S> {
-      TIPart::Tuple(Rc::new(
+      TIPart::Tuple(Arc::new(
          ts
       ))
    }
@@ -442,12 +441,12 @@ impl LHSPart {
 #[derive(Clone)]
 pub enum Expression<S:Debug + Clone> { //Expressions don't need to "clone"?
    ValueIntroduction(Value,Type,S),
-   LiteralIntroduction(Rc<Vec<LIPart<S>>>,Type,S),
-   TupleIntroduction(Rc<Vec<TIPart<S>>>,Type,S),
+   LiteralIntroduction(Arc<Vec<LIPart<S>>>,Type,S),
+   TupleIntroduction(Arc<Vec<TIPart<S>>>,Type,S),
    VariableReference(usize,Type,S),
    FunctionReference(String,Type,S),
-   FunctionApplication(String,Rc<Vec<Expression<S>>>,Type,S),
-   PatternMatch(Rc<Expression<S>>,Rc<Vec<(LHSPart,Expression<S>)>>,Type,S),
+   FunctionApplication(String,Arc<Vec<Expression<S>>>,Type,S),
+   PatternMatch(Arc<Expression<S>>,Arc<Vec<(LHSPart,Expression<S>)>>,Type,S),
    Failure(Type,S),
 }
 impl<S:Debug + Clone> Expression<S> {
@@ -546,34 +545,34 @@ impl<S:Debug + Clone> Expression<S> {
    }
    pub fn literal(cs: &str, span: S) -> Expression<S> {
       let cs = cs.chars().collect::<Vec<char>>();
-      Expression::LiteralIntroduction(Rc::new(vec![
-         LIPart::Literal(Rc::new(cs)),
+      Expression::LiteralIntroduction(Arc::new(vec![
+         LIPart::Literal(Arc::new(cs)),
       ]), Type::default(), span)
    }
    pub fn li(lps: Vec<LIPart<S>>, span: S) -> Expression<S> {
-      Expression::LiteralIntroduction(Rc::new(
+      Expression::LiteralIntroduction(Arc::new(
          lps
       ), Type::default(), span)
    }
    pub fn tuple(tps: Vec<Value>, span: S) -> Expression<S> {
-      Expression::TupleIntroduction(Rc::new(vec![
+      Expression::TupleIntroduction(Arc::new(vec![
          TIPart::tuple(tps)
       ]), Type::default(), span)
    }
    pub fn ti(tps: Vec<TIPart<S>>, span: S) -> Expression<S> {
-      Expression::TupleIntroduction(Rc::new(
+      Expression::TupleIntroduction(Arc::new(
          tps
       ), Type::default(), span)
    }
    pub fn apply(fi: &str, args: Vec<Expression<S>>, span: S) -> Expression<S> {
-      Expression::FunctionApplication(fi.to_string(),Rc::new(
+      Expression::FunctionApplication(fi.to_string(),Arc::new(
          args
       ), Type::default(), span)
    }
    pub fn pattern(v: Expression<S>, lrs: Vec<(LHSPart,Expression<S>)>, span: S) -> Expression<S> {
       Expression::PatternMatch(
-         Rc::new(v),
-         Rc::new(lrs),
+         Arc::new(v),
+         Arc::new(lrs),
          Type::default(),
          span)
    }

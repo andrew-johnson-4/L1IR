@@ -2,7 +2,6 @@ use l1_ir::value::Value;
 use l1_ir::ast::{Expression,Program,FunctionDefinition,LIPart,LHSPart,LHSLiteralPart,Type};
 use l1_ir::opt::{JProgram};
 
-/* TODO FIXME use new fnid system
 #[test]
 fn eval_echo() {
    let nojit = Program::program(
@@ -73,6 +72,7 @@ fn eval_match2() {
 fn eval_match3() {
    let nojit = Program::program(
       vec![FunctionDefinition::define(
+         "match",
          vec![(24,Type::nominal("U64"))],
          vec![Expression::pattern(
             Expression::variable(24,()).typed("U64"),
@@ -89,7 +89,7 @@ fn eval_match3() {
          ()).typed("U64")],
       )],
       vec![
-         Expression::apply(0,vec![
+         Expression::apply("match",vec![
             Expression::variable(0, ()),
          ],()),
       ],
@@ -105,15 +105,9 @@ fn eval_match3() {
 #[test]
 fn eval_add() {
    let nojit = Program::program(
-      vec![FunctionDefinition::define(
-         vec![(0,Type::nominal("U64")), (1,Type::nominal("U64"))],
-         vec![Expression::li(vec![
-            LIPart::variable(0),
-            LIPart::variable(1),
-         ],())]
-      )],
+      vec![],
       vec![
-         Expression::apply(0,vec![
+         Expression::apply("+:(U64,U64)->U64",vec![
             Expression::variable(0, ()),
             Expression::variable(1, ()),
          ],()),
@@ -148,6 +142,7 @@ fn rust_fibonacci(n: u64) -> u64 {
 fn l1_fibonacci() -> JProgram {
    let l1fib = Program::program(
       vec![FunctionDefinition::define(
+         "fib",
          vec![(24,Type::nominal("U64"))],
          vec![Expression::pattern(
             Expression::variable(24,()).typed("U64"),
@@ -168,12 +163,12 @@ fn l1_fibonacci() -> JProgram {
                   ),
                   Expression::li(vec![
                      LIPart::expression(
-                        Expression::apply(0,vec![
+                        Expression::apply("fib",vec![
                            Expression::variable(2,()).typed("U64"),
                         ],()),
                      ),
                      LIPart::expression(
-                        Expression::apply(0,vec![
+                        Expression::apply("fib",vec![
                            Expression::li(vec![
                               LIPart::literal("1"),
                               LIPart::variable(2),
@@ -186,7 +181,7 @@ fn l1_fibonacci() -> JProgram {
          ()).typed("U64")],
       )],
       vec![
-         Expression::apply(0,vec![
+         Expression::apply("fib",vec![
             Expression::variable(0, ())
          ],()),
       ],
@@ -213,30 +208,8 @@ fn rust_two_pow_n(n: u64) -> u64 {
 fn l1_two_pow_n() -> JProgram {
    let l12n = Program::program(
       vec![
-         FunctionDefinition::define( // 0 = $"+"
-            vec![(0,Type::nominal("U64")),(1,Type::nominal("U64"))],
-            vec![Expression::li(vec![
-               LIPart::variable(0),
-               LIPart::variable(1),
-            ],())]
-         ),
-         FunctionDefinition::define( // 1 = $"-"
-            vec![(0,Type::nominal("U64")),(1,Type::nominal("U64"))],
-            vec![Expression::pattern(
-               Expression::variable(0,()),
-               vec![
-                  (
-                     LHSPart::ul(
-                        vec![LHSLiteralPart::variable(1)],
-                        Some(2),
-                        vec![],
-                     ),
-                     Expression::variable(2,()),
-                  ),
-               ],
-            ())],
-         ),
          FunctionDefinition::define(
+            "fib",
             vec![(24,Type::nominal("U64"))],
             vec![Expression::pattern(
                Expression::variable(24,()).typed("U64"),
@@ -247,15 +220,15 @@ fn l1_two_pow_n() -> JProgram {
                   ),
                   (
                      LHSPart::Any,
-                     Expression::apply(0,vec![
-                        Expression::apply(2,vec![
-                           Expression::apply(1,vec![
+                     Expression::apply("+:(U64,U64)->U64",vec![
+                        Expression::apply("fib",vec![
+                           Expression::apply("-:(U64,U64)->U64",vec![
                               Expression::variable(24,()),
                               Expression::unary(b"1",()),
                            ],()),
                         ],()),
-                        Expression::apply(2,vec![
-                           Expression::apply(1,vec![
+                        Expression::apply("fib",vec![
+                           Expression::apply("-:(U64,U64)->U64",vec![
                               Expression::variable(24,()),
                               Expression::unary(b"1",()),
                            ],()),
@@ -267,11 +240,10 @@ fn l1_two_pow_n() -> JProgram {
          ),
       ],
       vec![
-         Expression::apply(2,vec![
+         Expression::apply("fib",vec![
             Expression::variable(0, ())
          ],()),
       ],
    );
    JProgram::compile(&l12n)
 }
-*/

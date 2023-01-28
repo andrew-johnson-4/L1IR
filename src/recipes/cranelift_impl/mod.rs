@@ -1,7 +1,7 @@
 
 pub mod add;
-/*
 pub mod sub;
+/*
 pub mod eq;
 pub mod ne;
 pub mod lt;

@@ -1,19 +1,19 @@
 use crate::ast::{FunctionDefinition};
 use cranelift::prelude::*;
 
-pub struct FFI<'f> {
+pub struct FFI {
    pub args: Vec<types::Type>,
    pub fdef: FunctionDefinition<()>,
-   pub cons: fn(&mut FunctionBuilder<'f>,Vec<Value>) -> Value,
+   pub cons: for<'f> fn(&mut FunctionBuilder<'f>,&[Value]) -> Value,
    pub rname: String,
    pub rtype: types::Type,
 }
 
-pub fn import<'f>() -> Vec<FFI<'f>> {
+pub fn import<'f>() -> Vec<FFI> {
    let mut imported = Vec::new();
    imported.extend(crate::recipes::cranelift_impl::add::import());
-   /*
    imported.extend(crate::recipes::cranelift_impl::sub::import());
+   /*
    imported.extend(crate::recipes::cranelift_impl::eq::import());
    imported.extend(crate::recipes::cranelift_impl::ne::import());
    imported.extend(crate::recipes::cranelift_impl::lt::import());
