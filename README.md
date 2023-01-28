@@ -1,4 +1,4 @@
-# L1IR
+# L1IR: Typed Glue
 
 [![Crates.IO](https://img.shields.io/crates/v/l1_ir.svg)](https://crates.rs/crates/l1_ir)
 [![Build](https://github.com/andrew-johnson-4/L1IR/workflows/Build/badge.svg)](https://github.com/andrew-johnson-4/L1IR)
