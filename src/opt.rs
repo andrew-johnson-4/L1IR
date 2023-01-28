@@ -1,10 +1,20 @@
 use std::fmt::Debug;
+use crate::value;
 use crate::ast;
-use crate::ast::{Program,Error,Expression,LHSPart,LHSLiteralPart,LIPart,TIPart};
+use crate::value::{Tag};
+use crate::ast::{Program,Expression,LHSPart,LHSLiteralPart,LIPart,TIPart,FunctionDefinition};
 use cranelift::prelude::*;
 use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{DataContext, Linkage, Module, FuncOrDataId};
 use num_traits::ToPrimitive;
+use std::collections::HashMap;
+use std::sync::Mutex;
+
+lazy_static! {
+   static ref TYPE_CONTEXT: Mutex<HashMap<usize, String>> = {
+      Mutex::new(HashMap::new())
+   };
+}
 
 static mut UNIQUE_ID: usize = 1000000;
 fn uid() -> usize {
@@ -30,8 +40,51 @@ pub struct JType {
    pub jtype: types::Type,
 }
 
+pub fn function_parameters<S: Debug + Clone>(fd: &FunctionDefinition<S>) -> Vec<types::Type> {
+   fd.args.iter().map(|(_ti,tt)|type_by_name(tt)).collect::<Vec<types::Type>>()
+}
+pub fn function_return<S: Debug + Clone>(fd: &FunctionDefinition<S>) -> Vec<types::Type> {
+   let rt = type_by_name(&fd.body[fd.body.len()-1].typ());
+   vec![rt]
+}
+
+pub fn type_by_name(tn: &ast::Type) -> types::Type {
+   if let Some(ref tn) = tn.name {
+   match tn.as_str() {
+      "U64" => types::I64,
+      _ => unimplemented!("type_by_name({})", tn),
+   }} else { types::I128 }
+}
+pub fn jtype_by_name(tn: &ast::Type) -> JType {
+   if let Some(ref tn) = tn.name {
+   match tn.as_str() {
+      "U64" => JType { name: tn.clone(), jtype: types::I64 },
+      _ => unimplemented!("type_by_name({})", tn),
+   }} else { JType { name: "Value".to_string(), jtype: types::I128 } }
+}
+
+pub fn type_cast<'f>(ctx: &mut FunctionBuilder<'f>, ot: &str, nt: &str, v: Value) -> Value {
+   if ot == nt { v }
+   else if ot=="Value" && nt=="U64" {
+      let (low64,high64) = ctx.ins().isplit(v);
+      let high16 = ctx.ins().ushr_imm(high64, 48);
+      let aeq = ctx.ins().icmp_imm(IntCC::Equal, high16, (Tag::U64 as u16) as i64);
+      ctx.ins().trapz(aeq, TrapCode::BadConversionToInteger);
+      low64
+   }
+   else if ot=="U64" && nt=="Value" {
+      let high64 = ((Tag::U64 as u16) as u64) * (2_u64.pow(48));
+      let high64 = unsafe { std::mem::transmute::<u64,i64>(high64) };
+      let high64 = ctx.ins().iconst(types::I64, high64);
+      ctx.ins().iconcat(v, high64)
+   }
+   else { panic!("Could not cast {} as {}", ot, nt) }
+}
+
 pub fn compile_fn<'f,S: Clone + Debug>(jmod: &mut JITModule, builder_context: &mut FunctionBuilderContext, p: &Program<S>, fi: usize) {
-   let hpars = p.functions[fi].args.iter().map(|_|types::I64).collect::<Vec<types::Type>>();
+   println!("compile fn#{}", fi);
+   let hpars = function_parameters(&p.functions[fi]);
+   let hrets = function_return(&p.functions[fi]);
    if is_hardcoded(p, fi, &hpars) {
       return;
    }
@@ -39,10 +92,12 @@ pub fn compile_fn<'f,S: Clone + Debug>(jmod: &mut JITModule, builder_context: &m
    let mut ctx = jmod.make_context();
 
    let mut sig_fn = jmod.make_signature();
-   for _ in p.functions[fi].args.iter() {
-      sig_fn.params.push(AbiParam::new(types::I64));
+   for pt in hpars.iter() {
+      sig_fn.params.push(AbiParam::new(*pt));
    }
-   sig_fn.returns.push(AbiParam::new(types::I64));
+   for rt in hrets.iter() {
+      sig_fn.returns.push(AbiParam::new(*rt));
+   }
 
    let fn0 = jmod
       .declare_function(&format!("f#{}", fi), Linkage::Local, &sig_fn)
@@ -54,9 +109,12 @@ pub fn compile_fn<'f,S: Clone + Debug>(jmod: &mut JITModule, builder_context: &m
    fnb.append_block_params_for_function_params(blk);
    fnb.switch_to_block(blk);
 
-   for (pi,vi) in p.functions[fi].args.iter().enumerate() {
+   for (pi,(vi,vt)) in p.functions[fi].args.iter().enumerate() {
+      let ptyp = type_by_name(vt);
       let pvar = Variable::from_u32(*vi as u32);
-      fnb.declare_var(pvar, types::I64);
+      fnb.declare_var(pvar, ptyp);
+      TYPE_CONTEXT.lock().unwrap().insert(*vi, vt.name.clone().unwrap_or("Value".to_string()));
+
       let pval = fnb.block_params(blk)[pi];
       fnb.def_var(pvar, pval);
    }
@@ -81,26 +139,39 @@ pub fn compile_fn<'f,S: Clone + Debug>(jmod: &mut JITModule, builder_context: &m
    jmod.clear_context(&mut ctx);
 }
 
-pub fn compile_lhs<'f>(ctx: &mut FunctionBuilder<'f>, mut lblk: Block, rblk: Block, lhs: &LHSPart, nblk: Block, mut val: Value) {
+pub fn compile_lhs<'f>(ctx: &mut FunctionBuilder<'f>, mut lblk: Block, rblk: Block, lhs: &LHSPart, nblk: Block, mut val: Value, typ: &str) {
+   println!("compile lhs");
    ctx.switch_to_block(lblk);
    match lhs {
       LHSPart::Tuple(_lts) => unimplemented!("compile_lhs(Tuple)"),
       LHSPart::Literal(lts) => {
-         let cond = ctx.ins().icmp_imm(IntCC::Equal, val, lts.len() as i64);
+         let cond = if typ=="U64" {
+            let v = lts.parse::<u64>().unwrap();
+            let v = unsafe { std::mem::transmute::<u64,i64>(v) };
+            ctx.ins().icmp_imm(IntCC::Equal, val, v)
+         } else {
+            unimplemented!("compile_lhs(Literal:{})", typ)
+         };
          ctx.ins().brnz(cond, rblk, &[]);
          ctx.ins().jump(nblk, &[]);
       },
       LHSPart::UnpackLiteral(pres,mid,sufs) => {
          for p in pres.iter() {
          if let LHSLiteralPart::Literal(cs) = p {
-            let cond = ctx.ins().icmp_imm(IntCC::UnsignedLessThan, val, cs.len() as i64);
+            let sub = if typ=="U64" {
+               let v = cs.parse::<u64>().unwrap();
+               unsafe { std::mem::transmute::<u64,i64>(v) }
+            } else {
+               unimplemented!("compile_lhs(Literal:{})", typ)
+            };
+            let cond = ctx.ins().icmp_imm(IntCC::UnsignedLessThan, val, sub);
             let bb = ctx.create_block(); //basic blocks can't compute after jump
             ctx.ins().brnz(cond, nblk, &[]);
             ctx.ins().jump(bb, &[]);
             ctx.seal_block(lblk);
             ctx.switch_to_block(bb);
             lblk = bb;
-            let len = ctx.ins().iconst(types::I64, cs.len() as i64);
+            let len = ctx.ins().iconst(types::I64, sub);
             val = ctx.ins().isub(val, len);
          } else if let LHSLiteralPart::Variable(vi) = p {
             let jv = Variable::from_u32(*vi as u32);
@@ -140,6 +211,7 @@ pub fn compile_lhs<'f>(ctx: &mut FunctionBuilder<'f>, mut lblk: Block, rblk: Blo
          if let Some(mi) = mid {
             let jv = Variable::from_u32(*mi as u32);
             ctx.declare_var(jv, types::I64);
+            TYPE_CONTEXT.lock().unwrap().insert(*mi, typ.to_string());
             ctx.def_var(jv, val);
          }
          ctx.ins().jump(rblk, &[]);
@@ -154,7 +226,8 @@ pub fn compile_lhs<'f>(ctx: &mut FunctionBuilder<'f>, mut lblk: Block, rblk: Blo
 
 pub fn try_inline_plurals<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, mut blk: Block, p: &Program<S>,
                                                pe: &Expression<S>, lrs: &Vec<(LHSPart,Expression<S>)>, _span: &S) -> Option<(JExpr,JType)> {
-   if let Expression::TupleIntroduction(tis,_span) = pe {
+   println!("try inline plurals");
+   if let Expression::TupleIntroduction(tis,_tt,_span) = pe {
       for ts in tis.iter() {
       match ts {
          TIPart::Variable(_) => {},    //ok to inline
@@ -213,12 +286,12 @@ pub fn try_inline_plurals<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut F
                   } else {
                      ctx.create_block()
                   };
-                  compile_lhs(ctx, current, next, lt, lblocks[li+1], header[lti]);
+                  compile_lhs(ctx, current, next, lt, lblocks[li+1], header[lti], "Value");
                   current = next;
                }
             },
             LHSPart::Any => {
-               compile_lhs(ctx, lblocks[li], rblocks[li], l, lblocks[li+1], noval);
+               compile_lhs(ctx, lblocks[li], rblocks[li], l, lblocks[li+1], noval, "Value");
             }
             _ => unreachable!(),
          }
@@ -240,25 +313,47 @@ pub fn try_inline_plurals<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut F
          block: succblk,
          value: ctx.block_params(succblk)[0],
       }, JType {
-         name: "Unary".to_string(),
+         name: "Value".to_string(),
          jtype: types::I64,
       }))
    } else { None }
 }
 
 pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, mut blk: Block, p: &Program<S>, e: &Expression<S>) -> (JExpr,JType) {
+   println!("compile expr");
    match e {
-      Expression::UnaryIntroduction(ui,_span) => {
-         let ui = ui.to_i64().unwrap();
-         (JExpr {
-            block: blk,
-            value: ctx.ins().iconst(types::I64, ui)
-         }, JType {
-            name: "Unary".to_string(),
-            jtype: types::I64,
-         })
-      },
-      Expression::LiteralIntroduction(lis,_span) => {
+      Expression::ValueIntroduction(ui,tt,_span) => {
+      if let ast::Value::Unary(ui,_) = ui {
+         let tname = tt.name.clone().unwrap_or("Value".to_string());
+         if "Value" == &tname {
+            println!("value introduction");
+            let ui = ui.to_i64().unwrap();
+            let vlow = ctx.ins().iconst(types::I64, ui);
+            let vhigh = ctx.ins().iconst(types::I64, (Tag::U64 as i64) * (2_i64.pow(48)));
+            (JExpr {
+               block: blk,
+               value: ctx.ins().iconcat(vlow, vhigh),
+            }, JType {
+               name: "Value".to_string(),
+               jtype: types::I128,
+            })
+         } else if "U64" == &tname {
+            let ui = ui.to_i64().unwrap();
+            let v = ctx.ins().iconst(types::I64, ui);
+            (JExpr {
+               block: blk,
+               value: v,
+            }, JType {
+               name: "U64".to_string(),
+               jtype: types::I64,
+            })
+         } else {
+            unimplemented!("compile expression Value::Unary({:?})", ui)
+         }
+      } else {
+         unimplemented!("compile expression {:?}", ui)
+      }},
+      Expression::LiteralIntroduction(lis,_tt,_span) => {
          let mut val = ctx.ins().iconst(types::I64, 0);
          for li in lis.iter() {
          match li {
@@ -280,24 +375,31 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
             block: blk,
             value: val,
          }, JType {
-            name: "Unary".to_string(),
+            name: "U64".to_string(),
             jtype: types::I64,
          })
       }
-      Expression::TupleIntroduction(_ti,_span) => unimplemented!("compile expression: TupleIntroduction"),
-      Expression::VariableReference(vi,_span) => {
+      Expression::TupleIntroduction(_ti,_tt,_span) => unimplemented!("compile expression: TupleIntroduction"),
+      Expression::VariableReference(vi,tt,_span) => {
+         println!("variable reference");
          let jv = Variable::from_u32(*vi as u32);
          let jv = ctx.use_var(jv);
+         let jt = type_by_name(tt);
+         let nt = tt.name.clone().unwrap_or("Value".to_string());
+         let tc = TYPE_CONTEXT.lock().unwrap();
+         let ot = tc.get(vi).expect(&format!("Could not find Type of Variable v#{}", vi));
+         let nv = type_cast(ctx, ot, &nt, jv);
+         println!("variable reference v#{} : {} as {}", vi, ot, nt);
          (JExpr {
             block: blk,
-            value: jv
+            value: nv
          }, JType {
-            name: "Unary".to_string(),
-            jtype: types::I64,
+            name: nt,
+            jtype: jt,
          })
       },
-      Expression::FunctionReference(_vi,_span) => unimplemented!("compile expression: FunctionReference"),
-      Expression::FunctionApplication(fi,args,_span) => {
+      Expression::FunctionReference(_vi,_tt,_span) => unimplemented!("compile expression: FunctionReference"),
+      Expression::FunctionApplication(fi,args,_tt,_span) => {
          let mut arg_types = Vec::new();
          for a in args.iter() {
             let jejt = compile_expr(jmod, ctx, blk, p, a);
@@ -305,16 +407,18 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
          }
          apply_fn(jmod, ctx, blk, p, *fi, arg_types)
       },
-      Expression::PatternMatch(pe,lrs,span) => {
+      Expression::PatternMatch(pe,lrs,_tt,span) => {
+         println!("pattern match");
          if let Some((je,jt)) = try_inline_plurals(jmod, ctx, blk, p, pe.as_ref(), lrs.as_ref(), span) {
             return (je,jt);
          }
-         let (je,_jt) = compile_expr(jmod, ctx, blk, p, pe);
+         let (je,jt) = compile_expr(jmod, ctx, blk, p, pe);
          blk = je.block;
 
          let failblk = ctx.create_block(); //failure block
          let succblk = ctx.create_block(); //success block
-         ctx.append_block_param(succblk, types::I64);
+         let st = type_by_name(&lrs[lrs.len()-1].1.typ());
+         ctx.append_block_param(succblk, st);
 
          let mut lblocks = Vec::new();
          let mut rblocks = Vec::new();
@@ -327,12 +431,17 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
          ctx.seal_block(blk);             //seal pattern expression
 
          for (li,(l,_r)) in lrs.iter().enumerate() {
-            compile_lhs(ctx, lblocks[li], rblocks[li], l, lblocks[li+1], je.value);
+            compile_lhs(ctx, lblocks[li], rblocks[li], l, lblocks[li+1], je.value, &jt.name);
          }
 
+         let mut rjt = JType {
+            name: "Value".to_string(),
+            jtype: types::I128,
+         };
          for (ri,(_l,r)) in lrs.iter().enumerate() {
             ctx.switch_to_block(rblocks[ri]);
-            let (je,_jt) = compile_expr(jmod, ctx, rblocks[ri], p, r);
+            let (je,jt) = compile_expr(jmod, ctx, rblocks[ri], p, r);
+            rjt = jt;
             ctx.ins().jump(succblk, &[je.value]);
             ctx.seal_block(je.block);
          }
@@ -345,16 +454,24 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
          (JExpr {
             block: succblk,
             value: ctx.block_params(succblk)[0],
-         }, JType {
-            name: "Unary".to_string(),
-            jtype: types::I64,
-         })
+         }, rjt)
       },
-      Expression::Failure(_span) => unimplemented!("compile expression: Failure"),
+      Expression::Failure(_tt,_span) => unimplemented!("compile expression: Failure"),
    }
 }
 
 pub fn apply_fn<'f, S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, blk: Block, p: &Program<S>, fi: usize, args: Vec<(JExpr,JType)>) -> (JExpr,JType) {
+   let mut coerced_args: Vec<(JExpr,JType)> = Vec::new();
+   for (ji,(mut je,mut jt)) in args.into_iter().enumerate() {
+      let nt = jtype_by_name(&p.functions[fi].args[ji].1);
+      je.value = type_cast(ctx, &jt.name, &nt.name, je.value);
+      jt = nt;
+      coerced_args.push((je, jt));
+   }
+   let args = coerced_args;
+   println!("apply fn#{}({})", fi,
+      args.iter().map(|(_je,jt)| format!("{:?}",jt.name)).collect::<Vec<String>>().join(",")
+   );
    if let Some((je,jt)) = check_hardcoded_call(ctx, blk, p, fi, &args) {
       return (je, jt);
    }
@@ -366,12 +483,16 @@ pub fn apply_fn<'f, S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBu
          &args
       );
       let cval = ctx.inst_results(call)[0];
+      let ref fd = p.functions[fi];
+      let ftype = fd.body[fd.body.len()-1].typ();
+      let rname = ftype.name.clone().unwrap_or("Value".to_string());
+      let rtype = type_by_name(&ftype);
       return (JExpr {
          block: blk,
          value: cval,
       }, JType {
-         name: "Unary".to_string(),
-         jtype: types::I64,
+         name: rname,
+         jtype: rtype,
       });
    }
    unreachable!("function undefined: f#{}", fi)
@@ -386,14 +507,18 @@ impl JProgram {
       let mut ctx = module.make_context();
       let mut _data_ctx = DataContext::new();
 
+      println!("compile program 1");
+
       for (pi,pf) in p.functions.iter().enumerate() {
-         let isig = pf.args.iter().map(|_|types::I64).collect::<Vec<types::Type>>();
+         let isig = function_parameters(pf);
          if is_hardcoded(p, pi, &isig) { continue; }
          let mut sig_f = module.make_signature();
-         for _ in pf.args.iter() {
-            sig_f.params.push(AbiParam::new(types::I64));
+         for ptt in isig.into_iter() {
+            sig_f.params.push(AbiParam::new(ptt));
          }
-         sig_f.returns.push(AbiParam::new(types::I64));
+         for rtt in function_return(pf).into_iter() {
+            sig_f.returns.push(AbiParam::new(rtt));
+         }
          module.declare_function(
             &format!("f#{}", pi),
             Linkage::Local,
@@ -401,10 +526,13 @@ impl JProgram {
          ).unwrap();
       }
 
+      println!("compile program 2");
+
       //int main(int *args, size_t args_count);
       let mut sig_main = module.make_signature();
       sig_main.params.push(AbiParam::new(types::I64));
       sig_main.params.push(AbiParam::new(types::I64));
+      sig_main.returns.push(AbiParam::new(types::I64));
       sig_main.returns.push(AbiParam::new(types::I64));
 
       let fn_main = module
@@ -412,10 +540,14 @@ impl JProgram {
         .unwrap();
       ctx.func.signature = sig_main;
 
+      println!("compile program 3");
+
       let mut main = FunctionBuilder::new(&mut ctx.func, &mut builder_context);
       let mut blk = main.create_block();
       main.append_block_params_for_function_params(blk);
       main.switch_to_block(blk);
+
+      println!("compile program 4");
 
       let mut pars = Vec::new();
       for pe in p.expressions.iter() {
@@ -423,25 +555,39 @@ impl JProgram {
       }
       for pi in pars.iter() {
          let pv = Variable::from_u32(*pi as u32);
-         main.declare_var(pv, types::I64);
+         main.declare_var(pv, types::I128);
+         TYPE_CONTEXT.lock().unwrap().insert(*pi, "Value".to_string());
+         
          let arg_base = main.block_params(blk)[0];
-         let arg_offset = (8 * *pi) as i32;
+         let arg_offset = (16 * *pi) as i32;
          let arg_flags = MemFlags::new();
-         let arg_value = main.ins().load(types::I64, arg_flags, arg_base, arg_offset);
+         let arg_value = main.ins().load(types::I128, arg_flags, arg_base, arg_offset);
          main.def_var(pv, arg_value);
       }
 
+      println!("compile program 5");
+
       if p.expressions.len()==0 {
-         let rval = main.ins().iconst(types::I64, i64::from(0));
-         main.ins().return_(&[rval]);
+         let jv = Variable::from_u32(0 as u32);
+         let jv = main.use_var(jv);
+         let (lval,rval) = main.ins().isplit(jv);
+         main.ins().return_(&[lval,rval]);
       } else {
+         println!("compile program 6.1");
+
          for pi in 0..(p.expressions.len()-1) {
+            println!("compile program 6.2");
             let (je,_jt) = compile_expr(&mut module, &mut main, blk, p, &p.expressions[pi]);
             blk = je.block;
          }
-         let (je,_jt) = compile_expr(&mut module, &mut main, blk, p, &p.expressions[p.expressions.len()-1]);
+         println!("compile program 6.3");
+         let (mut je,jt) = compile_expr(&mut module, &mut main, blk, p, &p.expressions[p.expressions.len()-1]);
+         je.value = type_cast(&mut main, &jt.name, "Value", je.value);
          blk = je.block;
-         main.ins().return_(&[je.value]);
+
+         println!("compile program 6.4");
+         let (lval,rval) = main.ins().isplit(je.value);
+         main.ins().return_(&[lval,rval]);
       }
 
       main.seal_block(blk);
@@ -450,29 +596,30 @@ impl JProgram {
       module.define_function(fn_main, &mut ctx).unwrap();
       module.clear_context(&mut ctx);
 
+      println!("compile program 7");
+
       for fi in 0..p.functions.len() {
          compile_fn(&mut module, &mut builder_context, &p, fi);
       }
+
+      println!("compile program 8");
 
       module.finalize_definitions().unwrap();
       JProgram {
          main: module.get_finalized_function(fn_main),
       }
    }
-   pub fn ueval(&self, args: &[u64]) -> u64 {
-      let ptr_main = unsafe { std::mem::transmute::<_, fn(*const u64,u64) -> u64>(self.main) };
-      ptr_main(args.as_ptr(), args.len() as u64)
-   }
-   pub fn eval(&self, args: &[u64]) -> Result<ast::Value,Error<String>> {
-      let ptr_main = unsafe { std::mem::transmute::<_, fn(*const u64,u64) -> u64>(self.main) };
+   pub fn eval(&self, args: &[value::Value]) -> value::Value {
+      let ptr_main = unsafe { std::mem::transmute::<_, fn(*const u128,u64) -> u128>(self.main) };
+      let args = args.iter().map(|v|v.0).collect::<Vec<u128>>();
       let res = ptr_main(args.as_ptr(), args.len() as u64);
-      Ok(ast::Value::from_u64(res))
+      value::Value(res)
    }
 }
 
 pub fn is_hardcoded<S: Clone + Debug>(p: &Program<S>, fi: usize, sig: &Vec<types::Type>) -> bool {
    let hardcoded = crate::recipes::cranelift::import();
-   for (hsig,hdef,_hexpr,_htype) in hardcoded.iter() {
+   for (hsig,hdef,_hexpr,_hname,_htype) in hardcoded.iter() {
       if sig == hsig && p.functions[fi].equals(hdef) {
          return true;
       }
@@ -483,12 +630,12 @@ pub fn check_hardcoded_call<'f, S: Clone + Debug>(ctx: &mut FunctionBuilder<'f>,
    let sig = args.iter().map(|(_je,jt)| jt.jtype).collect::<Vec<types::Type>>();
    let val = args.iter().map(|(je,_jt)| je.value).collect::<Vec<Value>>();
    let hardcoded = crate::recipes::cranelift::import();
-   for (hsig,hdef,hexpr,htype) in hardcoded.iter() {
+   for (hsig,hdef,hexpr,hname,htype) in hardcoded.iter() {
       if &sig == hsig && p.functions[fi].equals(hdef) {
          let rval = hexpr(ctx, val);
          return Some((
             JExpr { block: blk, value: rval },
-            JType { name:"".to_string(), jtype: *htype },
+            JType { name: hname.clone(), jtype: *htype },
          ));
       }
    }

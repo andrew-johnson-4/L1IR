@@ -1,7 +1,8 @@
 use std::time::{Instant};
 use std::process::Command;
 use std::{io, io::Write};
-use l1_ir::ast::{Expression,Program,FunctionDefinition,LIPart,LHSPart,LHSLiteralPart};
+use l1_ir::value::Value;
+use l1_ir::ast::{Expression,Program,FunctionDefinition,LIPart,LHSPart,LHSLiteralPart,Type};
 use l1_ir::opt::{JProgram};
 
 fn two_pow_n(n: u64) -> u64 {
@@ -15,14 +16,14 @@ fn l1_two_pow_n() -> JProgram {
    let l12n = Program::program(
       vec![
          FunctionDefinition::define( // 0 = $"+"
-            vec![0,1],
+            vec![(0,Type::nominal("U64")), (1,Type::nominal("U64"))],
             vec![Expression::li(vec![
                LIPart::variable(0),
                LIPart::variable(1),
             ],())]
          ),
          FunctionDefinition::define( // 1 = $"-"
-            vec![0,1],
+            vec![(0,Type::nominal("U64")), (1,Type::nominal("U64"))],
             vec![Expression::pattern(
                Expression::variable(0,()),
                vec![
@@ -38,7 +39,7 @@ fn l1_two_pow_n() -> JProgram {
             ())],
          ),
          FunctionDefinition::define(
-            vec![24],
+            vec![(24,Type::nominal("U64"))],
             vec![Expression::pattern(
                Expression::variable(24,()),
                vec![
@@ -89,7 +90,7 @@ pub fn main() {
     let start = Instant::now();
     for _ in 0..1000 {
     for n in 0_u64..20_u64 {
-       j2n.ueval(&[n]);
+       j2n.eval(&[Value::u64(n,"U64")]);
     }}
     let t = start.elapsed();
     println!("(L1) 1M 2^20 in {} seconds", t.as_secs_f32());

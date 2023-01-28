@@ -31,6 +31,7 @@ use num_traits::FromPrimitive;
 use std::sync::Mutex;
 use std::alloc::{alloc, Layout};
 use std::iter::FromIterator;
+use crate::ast;
 
 #[derive(FromPrimitive,Copy,Clone,Debug)]
 #[repr(u16)]
@@ -52,8 +53,14 @@ pub enum Tag {
 
 static NAMES: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
-pub struct Value(u128);
+pub struct Value(pub u128);
 
+impl PartialEq for Value {
+   fn eq(&self, other: &Self) -> bool {
+      self.0 == other.0
+   }
+}
+impl Eq for Value {}
 impl std::fmt::Debug for Value {
    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
       let tag = self.tag();
@@ -158,6 +165,9 @@ impl std::fmt::Debug for Value {
 }
 
 impl Value {
+   pub fn ast(&self) -> ast::Value {
+      unimplemented!("Value::ast")
+   }
    pub fn from_parts(tag: u16, name: u16, slots: u128) -> Value {
       let tag = (tag as u128) << 112;
       let name = (name as u128) << 96;

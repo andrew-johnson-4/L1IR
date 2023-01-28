@@ -1,10 +1,10 @@
-use crate::ast::{FunctionDefinition,Expression,LHSPart,LHSLiteralPart,LIPart};
+use crate::ast::{FunctionDefinition,Expression,LHSPart,LHSLiteralPart,LIPart,Type};
 use cranelift::prelude::*;
 
-pub fn import<'f>() -> (Vec<types::Type>,FunctionDefinition<()>,fn(&mut FunctionBuilder<'f>,Vec<Value>) -> Value,types::Type) {
+pub fn import<'f>() -> (Vec<types::Type>,FunctionDefinition<()>,fn(&mut FunctionBuilder<'f>,Vec<Value>) -> Value,String,types::Type) {
    (vec![types::I64,types::I64],
    FunctionDefinition::define(
-      vec![0,1],
+      vec![(0,Type::nominal("U64")), (1,Type::nominal("U64"))],
       vec![Expression::pattern(
          Expression::variable(0,()),
          vec![(
@@ -29,6 +29,6 @@ pub fn import<'f>() -> (Vec<types::Type>,FunctionDefinition<()>,fn(&mut Function
       let val0 = val[0].clone();
       let val1 = val[1].clone();
       ctx.ins().udiv(val0, val1)
-   }, types::I64)
+   }, "U64".to_string(), types::I64)
 }
 
