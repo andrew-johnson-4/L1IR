@@ -2,7 +2,7 @@ use l1_ir::value::Value;
 use l1_ir::ast::{Expression,Program,FunctionDefinition,LIPart,LHSPart,LHSLiteralPart,Type};
 use l1_ir::opt::{JProgram};
 
-/*
+/* TODO FIXME use new fnid system
 #[test]
 fn eval_echo() {
    let nojit = Program::program(
