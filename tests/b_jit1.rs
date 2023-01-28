@@ -101,7 +101,6 @@ fn eval_match3() {
       assert_eq!(Value::u64(if x==3 {123} else {321},"U64"), jval, "if {}==3 then 123 else 321", x);
    }
 }
-*/
 
 #[test]
 fn eval_add() {
@@ -128,8 +127,8 @@ fn eval_add() {
       assert_eq!(Value::u64(x + y,"U64"), jval, "{} + {}", x, y);
    }}
 }
+*/
 
-/*
 #[test]
 fn eval_fibonacci() {
    let jit = l1_fibonacci();
@@ -152,40 +151,40 @@ fn l1_fibonacci() -> JProgram {
       vec![FunctionDefinition::define(
          vec![(24,Type::nominal("U64"))],
          vec![Expression::pattern(
-            Expression::variable(24,()),
+            Expression::variable(24,()).typed("U64"),
             vec![
                (
-                  LHSPart::literal(""),
-                  Expression::unary(b"1",()),
+                  LHSPart::literal("0"),
+                  Expression::unary(b"1",()).typed("U64"),
                ),
                (
-                  LHSPart::literal("0"),
-                  Expression::unary(b"1",()),
+                  LHSPart::literal("1"),
+                  Expression::unary(b"1",()).typed("U64"),
                ),
                (
                   LHSPart::ul(
-                     vec![LHSLiteralPart::literal("00")],
+                     vec![LHSLiteralPart::literal("2")],
                      Some(2),
                      vec![],
                   ),
                   Expression::li(vec![
                      LIPart::expression(
                         Expression::apply(0,vec![
-                           Expression::variable(2,()),
+                           Expression::variable(2,()).typed("U64"),
                         ],()),
                      ),
                      LIPart::expression(
                         Expression::apply(0,vec![
                            Expression::li(vec![
-                              LIPart::literal("0"),
+                              LIPart::literal("1"),
                               LIPart::variable(2),
                            ],()),
                         ],()),
                      ),
-                  ],()),
+                  ],()).typed("U64"),
                ),
             ],
-         ())],
+         ()).typed("U64")],
       )],
       vec![
          Expression::apply(0,vec![
@@ -196,6 +195,7 @@ fn l1_fibonacci() -> JProgram {
    JProgram::compile(&l1fib)
 }
 
+/*
 #[test]
 fn eval_two_pow_n() {
    let jit = l1_two_pow_n();

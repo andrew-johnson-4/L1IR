@@ -55,6 +55,13 @@ pub fn type_by_name(tn: &ast::Type) -> types::Type {
       _ => unimplemented!("type_by_name({})", tn),
    }} else { types::I128 }
 }
+pub fn jtype_by_name(tn: &ast::Type) -> JType {
+   if let Some(ref tn) = tn.name {
+   match tn.as_str() {
+      "U64" => JType { name: tn.clone(), jtype: types::I64 },
+      _ => unimplemented!("type_by_name({})", tn),
+   }} else { JType { name: "Value".to_string(), jtype: types::I128 } }
+}
 
 pub fn type_cast<'f>(ctx: &mut FunctionBuilder<'f>, ot: &str, nt: &str, v: Value) -> Value {
    if ot == nt { v }
@@ -449,12 +456,16 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
 
 pub fn apply_fn<'f, S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, blk: Block, p: &Program<S>, fi: usize, args: Vec<(JExpr,JType)>) -> (JExpr,JType) {
    let mut coerced_args: Vec<(JExpr,JType)> = Vec::new();
-   for (ji,(mut je,jt)) in args.into_iter().enumerate() {
-      je.value = type_cast(ctx, &jt.name, &p.functions[fi].args[ji].1.name.clone().unwrap_or("Value".to_string()), je.value);
+   for (ji,(mut je,mut jt)) in args.into_iter().enumerate() {
+      let nt = jtype_by_name(&p.functions[fi].args[ji].1);
+      je.value = type_cast(ctx, &jt.name, &nt.name, je.value);
+      jt = nt;
       coerced_args.push((je, jt));
    }
    let args = coerced_args;
-   println!("apply fn#{}", fi);
+   println!("apply fn#{}({})", fi,
+      args.iter().map(|(_je,jt)| format!("{:?}",jt.name)).collect::<Vec<String>>().join(",")
+   );
    if let Some((je,jt)) = check_hardcoded_call(ctx, blk, p, fi, &args) {
       return (je, jt);
    }
@@ -602,7 +613,7 @@ impl JProgram {
 
 pub fn is_hardcoded<S: Clone + Debug>(p: &Program<S>, fi: usize, sig: &Vec<types::Type>) -> bool {
    let hardcoded = crate::recipes::cranelift::import();
-   for (hsig,hdef,_hexpr,_htype) in hardcoded.iter() {
+   for (hsig,hdef,_hexpr,_hname,_htype) in hardcoded.iter() {
       if sig == hsig && p.functions[fi].equals(hdef) {
          return true;
       }
@@ -613,12 +624,12 @@ pub fn check_hardcoded_call<'f, S: Clone + Debug>(ctx: &mut FunctionBuilder<'f>,
    let sig = args.iter().map(|(_je,jt)| jt.jtype).collect::<Vec<types::Type>>();
    let val = args.iter().map(|(je,_jt)| je.value).collect::<Vec<Value>>();
    let hardcoded = crate::recipes::cranelift::import();
-   for (hsig,hdef,hexpr,htype) in hardcoded.iter() {
+   for (hsig,hdef,hexpr,hname,htype) in hardcoded.iter() {
       if &sig == hsig && p.functions[fi].equals(hdef) {
          let rval = hexpr(ctx, val);
          return Some((
             JExpr { block: blk, value: rval },
-            JType { name:"".to_string(), jtype: *htype },
+            JType { name: hname.clone(), jtype: *htype },
          ));
       }
    }
