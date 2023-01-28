@@ -1,18 +1,28 @@
 use crate::ast::{FunctionDefinition};
 use cranelift::prelude::*;
 
-pub fn import<'f>() -> Vec<(Vec<types::Type>,FunctionDefinition<()>,fn(&mut FunctionBuilder<'f>,Vec<Value>) -> Value,String,types::Type)> {
+pub struct FFI<'f> {
+   pub args: Vec<types::Type>,
+   pub fdef: FunctionDefinition<()>,
+   pub cons: fn(&mut FunctionBuilder<'f>,Vec<Value>) -> Value,
+   pub rname: String,
+   pub rtype: types::Type,
+}
+
+pub fn import<'f>() -> Vec<FFI<'f>> {
    let mut imported = Vec::new();
-   imported.push(crate::recipes::cranelift_impl::add::import());
-   imported.push(crate::recipes::cranelift_impl::sub::import());
-   imported.push(crate::recipes::cranelift_impl::eq::import());
-   imported.push(crate::recipes::cranelift_impl::ne::import());
-   imported.push(crate::recipes::cranelift_impl::lt::import());
-   imported.push(crate::recipes::cranelift_impl::lte::import());
-   imported.push(crate::recipes::cranelift_impl::gt::import());
-   imported.push(crate::recipes::cranelift_impl::gte::import());
-   imported.push(crate::recipes::cranelift_impl::mul::import());
-   imported.push(crate::recipes::cranelift_impl::div::import());
-   imported.push(crate::recipes::cranelift_impl::rem::import());
+   imported.extend(crate::recipes::cranelift_impl::add::import());
+   /*
+   imported.extend(crate::recipes::cranelift_impl::sub::import());
+   imported.extend(crate::recipes::cranelift_impl::eq::import());
+   imported.extend(crate::recipes::cranelift_impl::ne::import());
+   imported.extend(crate::recipes::cranelift_impl::lt::import());
+   imported.extend(crate::recipes::cranelift_impl::lte::import());
+   imported.extend(crate::recipes::cranelift_impl::gt::import());
+   imported.extend(crate::recipes::cranelift_impl::gte::import());
+   imported.extend(crate::recipes::cranelift_impl::mul::import());
+   imported.extend(crate::recipes::cranelift_impl::div::import());
+   imported.extend(crate::recipes::cranelift_impl::rem::import());
+   */
    imported
 }

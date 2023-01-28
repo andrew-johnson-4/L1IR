@@ -1,5 +1,6 @@
 
 pub mod add;
+/*
 pub mod sub;
 pub mod eq;
 pub mod ne;
@@ -10,3 +11,4 @@ pub mod gte;
 pub mod mul;
 pub mod div;
 pub mod rem;
+*/
