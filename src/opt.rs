@@ -65,6 +65,12 @@ pub fn type_cast<'f>(ctx: &mut FunctionBuilder<'f>, ot: &str, nt: &str, v: Value
       ctx.ins().trapz(aeq, TrapCode::BadConversionToInteger);
       low64
    }
+   else if ot=="U64" && nt=="Value" {
+      let high64 = ((Tag::U64 as u16) as u64) * (2_u64.pow(48));
+      let high64 = unsafe { std::mem::transmute::<u64,i64>(high64) };
+      let high64 = ctx.ins().iconst(types::I64, high64);
+      ctx.ins().iconcat(v, high64)
+   }
    else { panic!("Could not cast {} as {}", ot, nt) }
 }
 
@@ -100,6 +106,8 @@ pub fn compile_fn<'f,S: Clone + Debug>(jmod: &mut JITModule, builder_context: &m
       let ptyp = type_by_name(vt);
       let pvar = Variable::from_u32(*vi as u32);
       fnb.declare_var(pvar, ptyp);
+      TYPE_CONTEXT.lock().unwrap().insert(*vi, vt.name.clone().unwrap_or("Value".to_string()));
+
       let pval = fnb.block_params(blk)[pi];
       fnb.def_var(pvar, pval);
    }
@@ -190,6 +198,7 @@ pub fn compile_lhs<'f>(ctx: &mut FunctionBuilder<'f>, mut lblk: Block, rblk: Blo
          if let Some(mi) = mid {
             let jv = Variable::from_u32(*mi as u32);
             ctx.declare_var(jv, types::I64);
+            TYPE_CONTEXT.lock().unwrap().insert(*mi, typ.to_string());
             ctx.def_var(jv, val);
          }
          ctx.ins().jump(rblk, &[]);
@@ -423,6 +432,12 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
 }
 
 pub fn apply_fn<'f, S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, blk: Block, p: &Program<S>, fi: usize, args: Vec<(JExpr,JType)>) -> (JExpr,JType) {
+   let mut coerced_args: Vec<(JExpr,JType)> = Vec::new();
+   for (ji,(mut je,jt)) in args.into_iter().enumerate() {
+      je.value = type_cast(ctx, &jt.name, &p.functions[fi].args[ji].1.name.clone().unwrap_or("Value".to_string()), je.value);
+      coerced_args.push((je, jt));
+   }
+   let args = coerced_args;
    println!("apply fn#{}", fi);
    if let Some((je,jt)) = check_hardcoded_call(ctx, blk, p, fi, &args) {
       return (je, jt);
@@ -435,12 +450,16 @@ pub fn apply_fn<'f, S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBu
          &args
       );
       let cval = ctx.inst_results(call)[0];
+      let ref fd = p.functions[fi];
+      let ftype = fd.body[fd.body.len()-1].typ();
+      let rname = ftype.name.clone().unwrap_or("Value".to_string());
+      let rtype = type_by_name(&ftype);
       return (JExpr {
          block: blk,
          value: cval,
       }, JType {
-         name: "Value".to_string(),
-         jtype: types::I64,
+         name: rname,
+         jtype: rtype,
       });
    }
    unreachable!("function undefined: f#{}", fi)
@@ -529,7 +548,8 @@ impl JProgram {
             blk = je.block;
          }
          println!("compile program 6.3");
-         let (je,_jt) = compile_expr(&mut module, &mut main, blk, p, &p.expressions[p.expressions.len()-1]);
+         let (mut je,jt) = compile_expr(&mut module, &mut main, blk, p, &p.expressions[p.expressions.len()-1]);
+         je.value = type_cast(&mut main, &jt.name, "Value", je.value);
          blk = je.block;
 
          println!("compile program 6.4");

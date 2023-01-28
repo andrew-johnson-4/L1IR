@@ -87,7 +87,7 @@ fn eval_match3() {
                   Expression::unary(b"321",()),
                ),
             ],
-         ())],
+         ()).typed("U64")],
       )],
       vec![
          Expression::apply(0,vec![
