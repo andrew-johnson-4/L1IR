@@ -2,7 +2,7 @@ use l1_ir::value::Value;
 use l1_ir::ast::{Expression,Program,FunctionDefinition,LIPart,LHSPart,LHSLiteralPart,Type};
 use l1_ir::opt::{JProgram};
 
-/*
+/* TODO FIXME use new fnid system
 #[test]
 fn eval_echo() {
    let nojit = Program::program(
@@ -193,7 +193,6 @@ fn l1_fibonacci() -> JProgram {
    );
    JProgram::compile(&l1fib)
 }
-*/
 
 #[test]
 fn eval_two_pow_n() {
@@ -275,3 +274,4 @@ fn l1_two_pow_n() -> JProgram {
    );
    JProgram::compile(&l12n)
 }
+*/

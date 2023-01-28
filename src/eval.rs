@@ -203,10 +203,10 @@ pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx
          }
       },
       Expression::FunctionApplication(fi,pxs,_tt,span) => {
-         if fi>pctx.functions.len() {
+         if !pctx.functions.contains_key(&fi) {
             return Err(error("Runtime Error", &format!("f#{} undefined", fi), &span));
          }
-         if pxs.len()!=pctx.functions[fi].args.len() {
+         if pxs.len()!=pctx.functions.get(&fi).unwrap().args.len() {
             return Err(error("Runtime Error", &format!("f#{} called with wrong arity", fi), &span));
          }
          let mut ps = Vec::new();
@@ -214,10 +214,10 @@ pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx
             ps.push(eval_e(lctx.clone(), pctx, px.clone())?);
          }
          let mut new_ctx = HashMap::new();
-         for ((pi,_pt),pv) in std::iter::zip(&pctx.functions[fi].args, ps) {
+         for ((pi,_pt),pv) in std::iter::zip(&pctx.functions.get(&fi).unwrap().args, ps) {
             new_ctx.insert(*pi, pv);
          }
-         let ref bes = pctx.functions[fi].body;
+         let ref bes = pctx.functions.get(&fi).unwrap().body;
          if bes.len()==0 {
             return Ok(Value::tuple(Vec::new()));
          }

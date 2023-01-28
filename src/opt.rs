@@ -81,11 +81,12 @@ pub fn type_cast<'f>(ctx: &mut FunctionBuilder<'f>, ot: &str, nt: &str, v: Value
    else { panic!("Could not cast {} as {}", ot, nt) }
 }
 
-pub fn compile_fn<'f,S: Clone + Debug>(jmod: &mut JITModule, builder_context: &mut FunctionBuilderContext, p: &Program<S>, fi: usize) {
+pub fn compile_fn<'f,S: Clone + Debug>(jmod: &mut JITModule, builder_context: &mut FunctionBuilderContext, p: &Program<S>, fi: String) {
    println!("compile fn#{}", fi);
-   let hpars = function_parameters(&p.functions[fi]);
-   let hrets = function_return(&p.functions[fi]);
-   if is_hardcoded(p, fi, &hpars) {
+   let pf = p.functions.get(&fi).unwrap();
+   let hpars = function_parameters(&pf);
+   let hrets = function_return(&pf);
+   if is_hardcoded(p, fi.clone(), &hpars) {
       return;
    }
 
@@ -109,7 +110,7 @@ pub fn compile_fn<'f,S: Clone + Debug>(jmod: &mut JITModule, builder_context: &m
    fnb.append_block_params_for_function_params(blk);
    fnb.switch_to_block(blk);
 
-   for (pi,(vi,vt)) in p.functions[fi].args.iter().enumerate() {
+   for (pi,(vi,vt)) in pf.args.iter().enumerate() {
       let ptyp = type_by_name(vt);
       let pvar = Variable::from_u32(*vi as u32);
       fnb.declare_var(pvar, ptyp);
@@ -119,15 +120,15 @@ pub fn compile_fn<'f,S: Clone + Debug>(jmod: &mut JITModule, builder_context: &m
       fnb.def_var(pvar, pval);
    }
 
-   if p.functions[fi].body.len()==0 {
+   if pf.body.len()==0 {
       let rval = fnb.ins().iconst(types::I64, i64::from(0));
       fnb.ins().return_(&[rval]);
    } else {
-      for pi in 0..(p.functions[fi].body.len()-1) {
-         let (je,_jt) = compile_expr(jmod, &mut fnb, blk, p, &p.functions[fi].body[pi]);
+      for pi in 0..(pf.body.len()-1) {
+         let (je,_jt) = compile_expr(jmod, &mut fnb, blk, p, &pf.body[pi]);
          blk = je.block;
       }
-      let (je,_jt) = compile_expr(jmod, &mut fnb, blk, p, &p.functions[fi].body[p.functions[fi].body.len()-1]);
+      let (je,_jt) = compile_expr(jmod, &mut fnb, blk, p, &pf.body[pf.body.len()-1]);
       blk = je.block;
       fnb.ins().return_(&[je.value]);
    }
@@ -405,7 +406,7 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
             let jejt = compile_expr(jmod, ctx, blk, p, a);
             arg_types.push(jejt);
          }
-         apply_fn(jmod, ctx, blk, p, *fi, arg_types)
+         apply_fn(jmod, ctx, blk, p, fi.clone(), arg_types)
       },
       Expression::PatternMatch(pe,lrs,_tt,span) => {
          println!("pattern match");
@@ -460,10 +461,11 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
    }
 }
 
-pub fn apply_fn<'f, S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, blk: Block, p: &Program<S>, fi: usize, args: Vec<(JExpr,JType)>) -> (JExpr,JType) {
+pub fn apply_fn<'f, S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, blk: Block, p: &Program<S>, fi: String, args: Vec<(JExpr,JType)>) -> (JExpr,JType) {
    let mut coerced_args: Vec<(JExpr,JType)> = Vec::new();
+   let pf = p.functions.get(&fi).unwrap();
    for (ji,(mut je,mut jt)) in args.into_iter().enumerate() {
-      let nt = jtype_by_name(&p.functions[fi].args[ji].1);
+      let nt = jtype_by_name(&pf.args[ji].1);
       je.value = type_cast(ctx, &jt.name, &nt.name, je.value);
       jt = nt;
       coerced_args.push((je, jt));
@@ -472,7 +474,7 @@ pub fn apply_fn<'f, S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBu
    println!("apply fn#{}({})", fi,
       args.iter().map(|(_je,jt)| format!("{:?}",jt.name)).collect::<Vec<String>>().join(",")
    );
-   if let Some((je,jt)) = check_hardcoded_call(ctx, blk, p, fi, &args) {
+   if let Some((je,jt)) = check_hardcoded_call(ctx, blk, p, fi.clone(), &args) {
       return (je, jt);
    }
    if let Some(FuncOrDataId::Func(fnid)) = jmod.get_name(&format!("f#{}", fi)) {
@@ -483,8 +485,7 @@ pub fn apply_fn<'f, S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBu
          &args
       );
       let cval = ctx.inst_results(call)[0];
-      let ref fd = p.functions[fi];
-      let ftype = fd.body[fd.body.len()-1].typ();
+      let ftype = pf.body[pf.body.len()-1].typ();
       let rname = ftype.name.clone().unwrap_or("Value".to_string());
       let rtype = type_by_name(&ftype);
       return (JExpr {
@@ -509,9 +510,9 @@ impl JProgram {
 
       println!("compile program 1");
 
-      for (pi,pf) in p.functions.iter().enumerate() {
+      for (pn,pf) in p.functions.iter() {
          let isig = function_parameters(pf);
-         if is_hardcoded(p, pi, &isig) { continue; }
+         if is_hardcoded(p, pn.clone(), &isig) { continue; }
          let mut sig_f = module.make_signature();
          for ptt in isig.into_iter() {
             sig_f.params.push(AbiParam::new(ptt));
@@ -520,7 +521,7 @@ impl JProgram {
             sig_f.returns.push(AbiParam::new(rtt));
          }
          module.declare_function(
-            &format!("f#{}", pi),
+            pn,
             Linkage::Local,
             &sig_f
          ).unwrap();
@@ -598,8 +599,8 @@ impl JProgram {
 
       println!("compile program 7");
 
-      for fi in 0..p.functions.len() {
-         compile_fn(&mut module, &mut builder_context, &p, fi);
+      for (fi,_f) in p.functions.iter() {
+         compile_fn(&mut module, &mut builder_context, &p, fi.clone());
       }
 
       println!("compile program 8");
@@ -617,25 +618,25 @@ impl JProgram {
    }
 }
 
-pub fn is_hardcoded<S: Clone + Debug>(p: &Program<S>, fi: usize, sig: &Vec<types::Type>) -> bool {
+pub fn is_hardcoded<S: Clone + Debug>(p: &Program<S>, fi: String, sig: &Vec<types::Type>) -> bool {
    let hardcoded = crate::recipes::cranelift::import();
-   for (hsig,hdef,_hexpr,_hname,_htype) in hardcoded.iter() {
-      if sig == hsig && p.functions[fi].equals(hdef) {
+   for ffi in hardcoded.iter() {
+      if sig == &ffi.args && p.functions.get(&fi).unwrap().equals(&ffi.fdef) {
          return true;
       }
    }
    false
 }
-pub fn check_hardcoded_call<'f, S: Clone + Debug>(ctx: &mut FunctionBuilder<'f>, blk: Block, p: &Program<S>, fi: usize, args: &Vec<(JExpr,JType)>) -> Option<(JExpr,JType)> {
+pub fn check_hardcoded_call<'f, S: Clone + Debug>(ctx: &mut FunctionBuilder<'f>, blk: Block, p: &Program<S>, fi: String, args: &Vec<(JExpr,JType)>) -> Option<(JExpr,JType)> {
    let sig = args.iter().map(|(_je,jt)| jt.jtype).collect::<Vec<types::Type>>();
    let val = args.iter().map(|(je,_jt)| je.value).collect::<Vec<Value>>();
    let hardcoded = crate::recipes::cranelift::import();
-   for (hsig,hdef,hexpr,hname,htype) in hardcoded.iter() {
-      if &sig == hsig && p.functions[fi].equals(hdef) {
-         let rval = hexpr(ctx, val);
+   for ffi in hardcoded.iter() {
+      if sig == ffi.args && p.functions.get(&fi).unwrap().equals(&ffi.fdef) {
+         let rval = (ffi.cons)(ctx, val);
          return Some((
             JExpr { block: blk, value: rval },
-            JType { name: hname.clone(), jtype: *htype },
+            JType { name: ffi.rname.clone(), jtype: ffi.rtype },
          ));
       }
    }

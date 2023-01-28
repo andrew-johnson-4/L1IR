@@ -1,5 +1,6 @@
 use num_bigint::{BigUint,ToBigUint};
 use regex::Regex;
+use std::collections::HashMap;
 use std::rc::Rc;
 use std::fmt::Debug;
 
@@ -26,8 +27,8 @@ pub struct Type {
    pub name: Option<String>,
    pub regex: Option<Rc<Regex>>,
    pub strct: Option<Vec<Type>>,
-   pub fnid: Option<usize>,
-   pub invariants: Vec<usize>,
+   pub fnid: Option<String>,
+   pub invariants: Vec<String>,
 }
 impl std::fmt::Debug for Type {
    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -65,12 +66,12 @@ impl Type {
          invariants: vec![],
       }
    }
-   pub fn function(f: usize) -> Type {
+   pub fn function(f: &str) -> Type {
       Type {
          name: None,
          regex: None,
          strct: None,
-         fnid: Some(f),
+         fnid: Some(f.to_string()),
          invariants: vec![],
       }
    }
@@ -88,9 +89,9 @@ impl Type {
       if let Some(ref _cstrct) = constraint.strct {
          unimplemented!("Check structural constraint")
       }
-      if let Some(cfi) = constraint.fnid {
+      if let Some(cfi) = &constraint.fnid {
          if let Value::Function(vfi,_) = v {
-         if cfi != *vfi { return Err(Type::reject(
+         if cfi != vfi { return Err(Type::reject(
             &format!("Function #{} does not satisfy constraint: {:?}", vfi, constraint),
             span
          )); }} else { return Err(Type::reject(
@@ -131,7 +132,7 @@ pub enum Value {
    Unary(BigUint,Option<String>), //a unary number, represented as "0"...
    Literal(usize,usize,Rc<Vec<char>>,Option<String>), //avoid copy-on-slice
    Tuple(usize,usize,Rc<Vec<Value>>,Option<String>), //avoid copy-on-slice
-   Function(usize,Option<String>), //all functions are static program indices
+   Function(String,Option<String>), //all functions are static program indices
 }
 impl Value {
    pub fn typof<'a>(&'a self) -> &'a Option<String> {
@@ -157,8 +158,8 @@ impl Value {
    pub fn tuple(ts: Vec<Value>) -> Value {
       Value::Tuple(0,ts.len(),Rc::new(ts),None)
    }
-   pub fn function(fid: usize) -> Value {
-      Value::Function(fid,None)
+   pub fn function(fid: &str) -> Value {
+      Value::Function(fid.to_string(),None)
    }
    pub fn typed(self, tt: &str) -> Value {
       let tt = tt.to_string();
@@ -242,7 +243,7 @@ impl std::fmt::Debug for Value {
          }
          write!(f, r#")"#)
       } else if let Value::Function(fid,_tt) = self {
-         write!(f, "f#{}", fid)
+         write!(f, "{}", fid)
       } else if let Value::Unary(ui,_tt) = self {
          write!(f, "{}", ui)
       } else { unreachable!("exhaustive") }
@@ -251,12 +252,14 @@ impl std::fmt::Debug for Value {
 
 #[derive(Clone)]
 pub struct FunctionDefinition<S:Debug + Clone> {
+   pub name: String,
    pub args: Vec<(usize,Type)>,
    pub body: Vec<Expression<S>>,
 }
 impl<S:Debug + Clone> FunctionDefinition<S> {
-   pub fn define(args: Vec<(usize,Type)>, body: Vec<Expression<S>>) -> FunctionDefinition<S> {
+   pub fn define(name: &str, args: Vec<(usize,Type)>, body: Vec<Expression<S>>) -> FunctionDefinition<S> {
       FunctionDefinition {
+         name: name.to_string(),
          args: args,
          body: body,
       }
@@ -264,6 +267,7 @@ impl<S:Debug + Clone> FunctionDefinition<S> {
    pub fn equals(&self, other: &FunctionDefinition<()>) -> bool {
       let self_args = self.args.iter().map(|(vi,_vt)| *vi).collect::<Vec<usize>>();
       let other_args = other.args.iter().map(|(vi,_vt)| *vi).collect::<Vec<usize>>();
+      self.name == other.name &&
       self_args == other_args &&
       self.body.len() == other.body.len() &&
       std::iter::zip(self.body.iter(),other.body.iter()).all(|(l,r)| l.equals(r))
@@ -272,13 +276,17 @@ impl<S:Debug + Clone> FunctionDefinition<S> {
 
 #[derive(Clone)]
 pub struct Program<S:Debug + Clone> {
-   pub functions: Vec<FunctionDefinition<S>>,
+   pub functions: HashMap<String,FunctionDefinition<S>>,
    pub expressions: Vec<Expression<S>>,
 }
 impl<S:Debug + Clone> Program<S> {
    pub fn program(functions: Vec<FunctionDefinition<S>>, expressions: Vec<Expression<S>>) -> Program<S> {
+      let mut fs = HashMap::new();
+      for f in functions.into_iter() {
+         fs.insert(f.name.clone(), f);
+      }
       Program {
-         functions: functions,
+         functions: fs,
          expressions: expressions,
       }
    }
@@ -437,8 +445,8 @@ pub enum Expression<S:Debug + Clone> { //Expressions don't need to "clone"?
    LiteralIntroduction(Rc<Vec<LIPart<S>>>,Type,S),
    TupleIntroduction(Rc<Vec<TIPart<S>>>,Type,S),
    VariableReference(usize,Type,S),
-   FunctionReference(usize,Type,S),
-   FunctionApplication(usize,Rc<Vec<Expression<S>>>,Type,S),
+   FunctionReference(String,Type,S),
+   FunctionApplication(String,Rc<Vec<Expression<S>>>,Type,S),
    PatternMatch(Rc<Expression<S>>,Rc<Vec<(LHSPart,Expression<S>)>>,Type,S),
    Failure(Type,S),
 }
@@ -557,8 +565,8 @@ impl<S:Debug + Clone> Expression<S> {
          tps
       ), Type::default(), span)
    }
-   pub fn apply(fi: usize, args: Vec<Expression<S>>, span: S) -> Expression<S> {
-      Expression::FunctionApplication(fi,Rc::new(
+   pub fn apply(fi: &str, args: Vec<Expression<S>>, span: S) -> Expression<S> {
+      Expression::FunctionApplication(fi.to_string(),Rc::new(
          args
       ), Type::default(), span)
    }

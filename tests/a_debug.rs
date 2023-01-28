@@ -99,16 +99,16 @@ fn eval_tuples() {
 #[test]
 fn eval_functions() {
    assert_eq!(
-      format!("{:?}",Value::Function(0,None)),
-      "f#0",
+      format!("{:?}",Value::Function("+".to_string(),None)),
+      "+",
    );
    assert_eq!(
-      format!("{:?}",Value::Function(23,None)),
-      "f#23",
+      format!("{:?}",Value::Function("-".to_string(),None)),
+      "-",
    );
    assert_eq!(
-      format!("{:?}",Value::Function(456,None)),
-      "f#456",
+      format!("{:?}",Value::Function("==".to_string(),None)),
+      "==",
    );
 }
 
@@ -117,17 +117,17 @@ fn eval_heterogenous() {
    let a = Value::Literal(0,1,Rc::new(vec!['a']),None);
    let a0 = Value::Literal(0,0,Rc::new(vec!['a']),None);
    let bc = Value::Literal(1,3,Rc::new(vec!['a','b','c']),None);
-   let f1 = Value::Function(1,None);
-   let f23 = Value::Function(23,None);
+   let f1 = Value::Function("+".to_string(),None);
+   let f23 = Value::Function("-".to_string(),None);
    let t1 = Value::tuple(vec![a.clone(),f1.clone(),bc.clone()]);
    let t2 = Value::tuple(vec![a0.clone(),t1.clone(),f23.clone()]);
    assert_eq!(
       format!("{:?}",t1),
-      r#"("a",f#1,"bc")"#
+      r#"("a",+,"bc")"#
    );
    assert_eq!(
       format!("{:?}",t2),
-      r#"(0,("a",f#1,"bc"),f#23)"#
+      r#"(0,("a",+,"bc"),-)"#
    );
 }
 
