@@ -36,3 +36,8 @@ required-features = ["cranelift"]
 name = "b_jit1"
 path = "tests/b_jit1.rs"
 required-features = ["cranelift"]
+
+[[test]]
+name = "b_jit2"
+path = "tests/b_jit2.rs"
+required-features = ["cranelift"]
