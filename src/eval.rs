@@ -17,6 +17,7 @@ pub fn eval_lhs<S:Debug + Clone>(lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx: 
          true
       },
       LHSPart::Literal(lcs) => {
+         let lcs = lcs.chars().collect::<Vec<char>>();
          if let Value::Literal(rs,re,rcs,_tt) = rval {
             for li in 0..(re-rs) {
             if lcs[li] != rcs[rs+li] {
@@ -123,8 +124,8 @@ fn ucatu(lui: &mut BigUint, lcs: &mut Vec<char>, u:&BigUint) {
 pub fn eval_e<S:Debug + Clone>(mut lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx: &Program<S>, mut e: Expression<S>) -> Result<Value,Error<S>> {
    loop {
    match e {
-      Expression::UnaryIntroduction(ui,_tt,_span) => {
-         return Ok(Value::Unary(ui,None))
+      Expression::ValueIntroduction(ui,_tt,_span) => {
+         return Ok(ui)
       },
       Expression::LiteralIntroduction(lps,_tt,span) => {
          if lps.len()==1 {

@@ -40,7 +40,6 @@ fn eval_match1() {
       assert_eq!(Value::u64(321,"U64"), jval, "321");
    }
 }
-*/
 
 #[test]
 fn eval_match2() {
@@ -69,8 +68,8 @@ fn eval_match2() {
       assert_eq!(Value::u64(if x==3 {123} else {321},"U64"), jval, "if {}==3 then 123 else 321", x);
    }
 }
+*/
 
-/*
 #[test]
 fn eval_match3() {
    let nojit = Program::program(
@@ -80,7 +79,7 @@ fn eval_match3() {
             Expression::variable(24,()),
             vec![
                (
-                  LHSPart::literal("000"),
+                  LHSPart::literal("3"),
                   Expression::unary(b"123",()),
                ),
                (
@@ -104,6 +103,7 @@ fn eval_match3() {
    }
 }
 
+/*
 #[test]
 fn eval_add() {
    let nojit = Program::program(

@@ -388,7 +388,7 @@ impl LHSLiteralPart {
 
 pub enum LHSPart {
    Tuple(Vec<LHSPart>),
-   Literal(Vec<char>),
+   Literal(String),
    UnpackLiteral(Vec<LHSLiteralPart>,Option<usize>,Vec<LHSLiteralPart>),
    Variable(usize),
    Any,
@@ -428,14 +428,13 @@ impl LHSPart {
       LHSPart::Tuple(ts)
    }
    pub fn literal(cs: &str) -> LHSPart {
-      let cs = cs.chars().collect::<Vec<char>>();
-      LHSPart::Literal(cs)
+      LHSPart::Literal(cs.to_string())
    }
 }
 
 #[derive(Clone)]
 pub enum Expression<S:Debug + Clone> { //Expressions don't need to "clone"?
-   UnaryIntroduction(BigUint,Type,S),
+   ValueIntroduction(Value,Type,S),
    LiteralIntroduction(Rc<Vec<LIPart<S>>>,Type,S),
    TupleIntroduction(Rc<Vec<TIPart<S>>>,Type,S),
    VariableReference(usize,Type,S),
@@ -448,7 +447,7 @@ impl<S:Debug + Clone> Expression<S> {
    pub fn typed(self, nom: &str) -> Expression<S> {
       let nom = Type::nominal(nom);
       match self {
-         Expression::UnaryIntroduction(vi,_,span) => { Expression::UnaryIntroduction(vi,nom,span) },
+         Expression::ValueIntroduction(vi,_,span) => { Expression::ValueIntroduction(vi,nom,span) },
          Expression::LiteralIntroduction(vi,_,span) => { Expression::LiteralIntroduction(vi,nom,span) },
          Expression::TupleIntroduction(vi,_,span) => { Expression::TupleIntroduction(vi,nom,span) },
          Expression::VariableReference(vi,_,span) => { Expression::VariableReference(vi,nom,span) },
@@ -460,7 +459,7 @@ impl<S:Debug + Clone> Expression<S> {
    }
    pub fn typ(&self) -> Type {
       match self {
-         Expression::UnaryIntroduction(_vi,tt,_span) => { tt.clone() },
+         Expression::ValueIntroduction(_vi,tt,_span) => { tt.clone() },
          Expression::LiteralIntroduction(_vi,tt,_span) => { tt.clone() },
          Expression::TupleIntroduction(_vi,tt,_span) => { tt.clone() },
          Expression::VariableReference(_vi,tt,_span) => { tt.clone() },
@@ -475,7 +474,7 @@ impl<S:Debug + Clone> Expression<S> {
          Expression::VariableReference(vi,_,_) => {
             vars.push(*vi);
          },
-         Expression::UnaryIntroduction(_,_,_) => {},
+         Expression::ValueIntroduction(_,_,_) => {},
          Expression::Failure(_,_) => {},
          Expression::FunctionReference(_,_,_) => {},
          Expression::LiteralIntroduction(lis,_,_) => {
@@ -504,7 +503,7 @@ impl<S:Debug + Clone> Expression<S> {
    }
    pub fn equals(&self, other: &Expression<()>) -> bool {
       match (self,other) {
-         (Expression::UnaryIntroduction(lui,_,_),Expression::UnaryIntroduction(rui,_,_)) => { lui == rui },
+         (Expression::ValueIntroduction(lui,_,_),Expression::ValueIntroduction(rui,_,_)) => { lui == rui },
          (Expression::VariableReference(lui,_,_),Expression::VariableReference(rui,_,_)) => { lui == rui },
          (Expression::FunctionReference(lui,_,_),Expression::FunctionReference(rui,_,_)) => { lui == rui },
          (Expression::LiteralIntroduction(lli,_,_),Expression::LiteralIntroduction(rli,_,_)) => {
@@ -530,8 +529,7 @@ impl<S:Debug + Clone> Expression<S> {
       }
    }
    pub fn unary(ui: &[u8], span: S) -> Expression<S> {
-      let ui = BigUint::parse_bytes(ui, 10).unwrap();
-      Expression::UnaryIntroduction(ui, Type::default(), span)
+      Expression::ValueIntroduction(Value::unary(ui), Type::default(), span)
    }
    pub fn variable(vi: usize, span: S) -> Expression<S> {
       Expression::VariableReference(vi, Type::default(), span)

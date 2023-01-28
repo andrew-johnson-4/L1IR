@@ -124,13 +124,19 @@ pub fn compile_fn<'f,S: Clone + Debug>(jmod: &mut JITModule, builder_context: &m
    jmod.clear_context(&mut ctx);
 }
 
-pub fn compile_lhs<'f>(ctx: &mut FunctionBuilder<'f>, mut lblk: Block, rblk: Block, lhs: &LHSPart, nblk: Block, mut val: Value) {
+pub fn compile_lhs<'f>(ctx: &mut FunctionBuilder<'f>, mut lblk: Block, rblk: Block, lhs: &LHSPart, nblk: Block, mut val: Value, typ: &str) {
    println!("compile lhs");
    ctx.switch_to_block(lblk);
    match lhs {
       LHSPart::Tuple(_lts) => unimplemented!("compile_lhs(Tuple)"),
       LHSPart::Literal(lts) => {
-         let cond = ctx.ins().icmp_imm(IntCC::Equal, val, lts.len() as i64);
+         let cond = if typ=="U64" {
+            let v = lts.parse::<u64>().unwrap();
+            let v = unsafe { std::mem::transmute::<u64,i64>(v) };
+            ctx.ins().icmp_imm(IntCC::Equal, val, v)
+         } else {
+            unimplemented!("compile_lhs(Literal:{})", typ)
+         };
          ctx.ins().brnz(cond, rblk, &[]);
          ctx.ins().jump(nblk, &[]);
       },
@@ -258,12 +264,12 @@ pub fn try_inline_plurals<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut F
                   } else {
                      ctx.create_block()
                   };
-                  compile_lhs(ctx, current, next, lt, lblocks[li+1], header[lti]);
+                  compile_lhs(ctx, current, next, lt, lblocks[li+1], header[lti], "Value");
                   current = next;
                }
             },
             LHSPart::Any => {
-               compile_lhs(ctx, lblocks[li], rblocks[li], l, lblocks[li+1], noval);
+               compile_lhs(ctx, lblocks[li], rblocks[li], l, lblocks[li+1], noval, "Value");
             }
             _ => unreachable!(),
          }
@@ -294,8 +300,9 @@ pub fn try_inline_plurals<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut F
 pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, mut blk: Block, p: &Program<S>, e: &Expression<S>) -> (JExpr,JType) {
    println!("compile expr");
    match e {
-      Expression::UnaryIntroduction(ui,_tt,_span) => {
-         println!("unary introduction");
+      Expression::ValueIntroduction(ui,_tt,_span) => {
+      if let ast::Value::Unary(ui,_) = ui {
+         println!("value introduction");
          let ui = ui.to_i64().unwrap();
          let vlow = ctx.ins().iconst(types::I64, ui);
          let vhigh = ctx.ins().iconst(types::I64, (Tag::U64 as i64) * (2_i64.pow(48)));
@@ -306,7 +313,9 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
             name: "Value".to_string(),
             jtype: types::I128,
          })
-      },
+      } else {
+         unimplemented!("compile expression {:?}", ui)
+      }},
       Expression::LiteralIntroduction(lis,_tt,_span) => {
          let mut val = ctx.ins().iconst(types::I64, 0);
          for li in lis.iter() {
@@ -366,7 +375,7 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
          if let Some((je,jt)) = try_inline_plurals(jmod, ctx, blk, p, pe.as_ref(), lrs.as_ref(), span) {
             return (je,jt);
          }
-         let (je,_jt) = compile_expr(jmod, ctx, blk, p, pe);
+         let (je,jt) = compile_expr(jmod, ctx, blk, p, pe);
          blk = je.block;
 
          let failblk = ctx.create_block(); //failure block
@@ -384,12 +393,17 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
          ctx.seal_block(blk);             //seal pattern expression
 
          for (li,(l,_r)) in lrs.iter().enumerate() {
-            compile_lhs(ctx, lblocks[li], rblocks[li], l, lblocks[li+1], je.value);
+            compile_lhs(ctx, lblocks[li], rblocks[li], l, lblocks[li+1], je.value, &jt.name);
          }
 
+         let mut rjt = JType {
+            name: "Value".to_string(),
+            jtype: types::I128,
+         };
          for (ri,(_l,r)) in lrs.iter().enumerate() {
             ctx.switch_to_block(rblocks[ri]);
-            let (je,_jt) = compile_expr(jmod, ctx, rblocks[ri], p, r);
+            let (je,jt) = compile_expr(jmod, ctx, rblocks[ri], p, r);
+            rjt = jt;
             ctx.ins().jump(succblk, &[je.value]);
             ctx.seal_block(je.block);
          }
@@ -402,10 +416,7 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
          (JExpr {
             block: succblk,
             value: ctx.block_params(succblk)[0],
-         }, JType {
-            name: "Value".to_string(),
-            jtype: types::I128,
-         })
+         }, rjt)
       },
       Expression::Failure(_tt,_span) => unimplemented!("compile expression: Failure"),
    }
