@@ -6,6 +6,7 @@ fn eval_recursive_loop() {
    assert_eq!(
       format!("{:?}",eval(Program::program(
          vec![FunctionDefinition::define(
+            "loop",
             vec![(24,Type::nominal("U64"))],
             vec![Expression::pattern(
                Expression::variable(24,()),
@@ -16,7 +17,7 @@ fn eval_recursive_loop() {
                         Some(2),
                         vec![],
                      ),
-                     Expression::apply(0,vec![
+                     Expression::apply("loop",vec![
                         Expression::variable(2,()),
                      ],()),
                   ),
@@ -28,7 +29,7 @@ fn eval_recursive_loop() {
             ())],
          )],
          vec![
-            Expression::apply(0,vec![
+            Expression::apply("loop",vec![
                Expression::unary(b"999999", ())
             ],()),
          ],
@@ -43,6 +44,7 @@ fn eval_fibonacci() {
    assert_eq!(
       format!("{:?}",eval(Program::program(
          vec![FunctionDefinition::define(
+            "fib",
             vec![(24,Type::nominal("U64"))],
             vec![Expression::pattern(
                Expression::variable(24,()),
@@ -63,12 +65,12 @@ fn eval_fibonacci() {
                      ),
                      Expression::li(vec![
                         LIPart::expression(
-                           Expression::apply(0,vec![
+                           Expression::apply("fib",vec![
                               Expression::variable(2,()),
                            ],()),
                         ),
                         LIPart::expression(
-                           Expression::apply(0,vec![
+                           Expression::apply("fib",vec![
                               Expression::li(vec![
                                  LIPart::literal("0"),
                                  LIPart::variable(2),
@@ -81,7 +83,7 @@ fn eval_fibonacci() {
             ())],
          )],
          vec![
-            Expression::apply(0,vec![
+            Expression::apply("fib",vec![
                Expression::unary(b"25", ())
             ],()),
          ],

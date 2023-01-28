@@ -135,16 +135,16 @@ fn eq_tuples() {
 #[test]
 fn eq_functions() {
    assert_eq!(
-      Value::Function(0,None),
-      Value::Function(0,None),
+      Value::Function("+".to_string(),None),
+      Value::Function("+".to_string(),None),
    );
    assert_eq!(
-      Value::Function(23,None),
-      Value::Function(23,None),
+      Value::Function("-".to_string(),None),
+      Value::Function("-".to_string(),None),
    );
    assert_eq!(
-      Value::Function(456,None),
-      Value::Function(456,None),
+      Value::Function("==".to_string(),None),
+      Value::Function("==".to_string(),None),
    );
 }
 
@@ -153,8 +153,8 @@ fn eq_heterogenous() {
    let a = Value::Literal(0,1,Rc::new(vec!['a']),None);
    let a0 = Value::Literal(0,0,Rc::new(vec!['a']),None);
    let bc = Value::Literal(1,3,Rc::new(vec!['a','b','c']),None);
-   let f1 = Value::Function(1,None);
-   let f23 = Value::Function(23,None);
+   let f1 = Value::Function("+".to_string(),None);
+   let f23 = Value::Function("-".to_string(),None);
    let t1 = Value::tuple(vec![a.clone(),f1.clone(),bc.clone()]);
    let t2 = Value::tuple(vec![a0.clone(),t1.clone(),f23.clone()]);
    assert_eq!(

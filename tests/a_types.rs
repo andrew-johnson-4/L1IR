@@ -46,18 +46,18 @@ fn reject_nominal() {
 #[test]
 fn accept_function() {
    assert!(Type::accepts(
-      &Value::function(0),
-      &Type::function(0),
+      &Value::function("+"),
+      &Type::function("+"),
       (),
    ).is_ok());
    assert!(Type::accepts(
-      &Value::function(1),
-      &Type::function(1),
+      &Value::function("-"),
+      &Type::function("-"),
       (),
    ).is_ok());
    assert!(Type::accepts(
-      &Value::function(123),
-      &Type::function(123),
+      &Value::function("=="),
+      &Type::function("=="),
       (),
    ).is_ok());
 }
@@ -65,18 +65,18 @@ fn accept_function() {
 #[test]
 fn reject_function() {
    assert!(Type::accepts(
-      &Value::function(0),
-      &Type::function(1),
+      &Value::function("+"),
+      &Type::function("-"),
       (),
    ).is_err());
    assert!(Type::accepts(
-      &Value::function(1),
-      &Type::function(0),
+      &Value::function("-"),
+      &Type::function("+"),
       (),
    ).is_err());
    assert!(Type::accepts(
-      &Value::function(123),
-      &Type::function(321),
+      &Value::function("=="),
+      &Type::function("!="),
       (),
    ).is_err());
 }
@@ -84,13 +84,13 @@ fn reject_function() {
 #[test]
 fn accepts_any() {
    assert!(Type::accepts_any(
-      &Value::function(0),
-      &vec![ Type::function(0), Type::function(1) ],
+      &Value::function("+"),
+      &vec![ Type::function("+"), Type::function("-") ],
       (),
    ).is_ok());
    assert!(Type::accepts_any(
-      &Value::function(1),
-      &vec![ Type::function(0), Type::function(1) ],
+      &Value::function("-"),
+      &vec![ Type::function("+"), Type::function("-") ],
       (),
    ).is_ok());
 }
@@ -98,8 +98,8 @@ fn accepts_any() {
 #[test]
 fn rejects_any() {
    assert!(Type::accepts_any(
-      &Value::function(2),
-      &vec![ Type::function(0), Type::function(1) ],
+      &Value::function("=="),
+      &vec![ Type::function("+"), Type::function("-") ],
       (),
    ).is_err());
 }

@@ -88,6 +88,7 @@ fn eval_function() {
    assert_eq!(
       format!("{:?}",eval(Program::program(
          vec![FunctionDefinition::define(
+            "empty",
             vec![],
             vec![Expression::ti(vec![
                TIPart::tuple(vec![
@@ -103,11 +104,12 @@ fn eval_function() {
    assert_eq!(
       format!("{:?}",eval(Program::program(
          vec![FunctionDefinition::define(
+            "empty",
             vec![],
             vec![],
          )],
          vec![
-            Expression::apply(0,vec![],()),
+            Expression::apply("empty",vec![],()),
          ],
       ),&[]).unwrap()),
       r#"()"#
@@ -115,6 +117,7 @@ fn eval_function() {
    assert_eq!(
       format!("{:?}",eval(Program::program(
          vec![FunctionDefinition::define(
+            "jumble",
             vec![],
             vec![Expression::ti(vec![
                TIPart::tuple(vec![
@@ -124,7 +127,7 @@ fn eval_function() {
             ],())]
          )],
          vec![
-            Expression::apply(0,vec![],()),
+            Expression::apply("jumble",vec![],()),
          ],
       ),&[]).unwrap()),
       r#"("a","bc")"#
@@ -132,6 +135,7 @@ fn eval_function() {
    assert_eq!(
       format!("{:?}",eval(Program::program(
          vec![FunctionDefinition::define(
+            "jumble",
             vec![(24,Type::nominal("U64"))],
             vec![Expression::ti(vec![
                TIPart::tuple(vec![
@@ -141,7 +145,7 @@ fn eval_function() {
             ],())]
          )],
          vec![
-            Expression::apply(0,vec![
+            Expression::apply("jumble",vec![
                Expression::li(vec![
                   LIPart::literal("b"),
                   LIPart::literal("cd"),

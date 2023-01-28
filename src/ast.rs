@@ -66,12 +66,12 @@ impl Type {
          invariants: vec![],
       }
    }
-   pub fn function(f: String) -> Type {
+   pub fn function(f: &str) -> Type {
       Type {
          name: None,
          regex: None,
          strct: None,
-         fnid: Some(f),
+         fnid: Some(f.to_string()),
          invariants: vec![],
       }
    }
@@ -243,7 +243,7 @@ impl std::fmt::Debug for Value {
          }
          write!(f, r#")"#)
       } else if let Value::Function(fid,_tt) = self {
-         write!(f, "f#{}", fid)
+         write!(f, "{}", fid)
       } else if let Value::Unary(ui,_tt) = self {
          write!(f, "{}", ui)
       } else { unreachable!("exhaustive") }
