@@ -309,19 +309,34 @@ pub fn try_inline_plurals<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut F
 pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, mut blk: Block, p: &Program<S>, e: &Expression<S>) -> (JExpr,JType) {
    println!("compile expr");
    match e {
-      Expression::ValueIntroduction(ui,_tt,_span) => {
+      Expression::ValueIntroduction(ui,tt,_span) => {
       if let ast::Value::Unary(ui,_) = ui {
-         println!("value introduction");
-         let ui = ui.to_i64().unwrap();
-         let vlow = ctx.ins().iconst(types::I64, ui);
-         let vhigh = ctx.ins().iconst(types::I64, (Tag::U64 as i64) * (2_i64.pow(48)));
-         (JExpr {
-            block: blk,
-            value: ctx.ins().iconcat(vlow, vhigh),
-         }, JType {
-            name: "Value".to_string(),
-            jtype: types::I128,
-         })
+         let tname = tt.name.clone().unwrap_or("Value".to_string());
+         if "Value" == &tname {
+            println!("value introduction");
+            let ui = ui.to_i64().unwrap();
+            let vlow = ctx.ins().iconst(types::I64, ui);
+            let vhigh = ctx.ins().iconst(types::I64, (Tag::U64 as i64) * (2_i64.pow(48)));
+            (JExpr {
+               block: blk,
+               value: ctx.ins().iconcat(vlow, vhigh),
+            }, JType {
+               name: "Value".to_string(),
+               jtype: types::I128,
+            })
+         } else if "U64" == &tname {
+            let ui = ui.to_i64().unwrap();
+            let v = ctx.ins().iconst(types::I64, ui);
+            (JExpr {
+               block: blk,
+               value: v,
+            }, JType {
+               name: "U64".to_string(),
+               jtype: types::I64,
+            })
+         } else {
+            unimplemented!("compile expression Value::Unary({:?})", ui)
+         }
       } else {
          unimplemented!("compile expression {:?}", ui)
       }},
@@ -389,7 +404,8 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
 
          let failblk = ctx.create_block(); //failure block
          let succblk = ctx.create_block(); //success block
-         ctx.append_block_param(succblk, types::I128);
+         let st = type_by_name(&lrs[lrs.len()-1].1.typ());
+         ctx.append_block_param(succblk, st);
 
          let mut lblocks = Vec::new();
          let mut rblocks = Vec::new();

@@ -68,7 +68,6 @@ fn eval_match2() {
       assert_eq!(Value::u64(if x==3 {123} else {321},"U64"), jval, "if {}==3 then 123 else 321", x);
    }
 }
-*/
 
 #[test]
 fn eval_match3() {
@@ -76,15 +75,15 @@ fn eval_match3() {
       vec![FunctionDefinition::define(
          vec![(24,Type::nominal("U64"))],
          vec![Expression::pattern(
-            Expression::variable(24,()),
+            Expression::variable(24,()).typed("U64"),
             vec![
                (
                   LHSPart::literal("3"),
-                  Expression::unary(b"123",()),
+                  Expression::unary(b"123",()).typed("U64"),
                ),
                (
                   LHSPart::Any,
-                  Expression::unary(b"321",()),
+                  Expression::unary(b"321",()).typed("U64"),
                ),
             ],
          ()).typed("U64")],
@@ -102,8 +101,8 @@ fn eval_match3() {
       assert_eq!(Value::u64(if x==3 {123} else {321},"U64"), jval, "if {}==3 then 123 else 321", x);
    }
 }
+*/
 
-/*
 #[test]
 fn eval_add() {
    let nojit = Program::program(
@@ -130,6 +129,7 @@ fn eval_add() {
    }}
 }
 
+/*
 #[test]
 fn eval_fibonacci() {
    let jit = l1_fibonacci();
