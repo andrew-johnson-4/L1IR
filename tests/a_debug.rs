@@ -1,67 +1,67 @@
-use std::rc::Rc;
+use std::sync::Arc;
 use l1_ir::ast::{Value};
 
 #[test]
 fn eval_literals() {
    assert_eq!(
-      format!("{:?}",Value::Literal(0,1,Rc::new(vec!['a']),None)),
+      format!("{:?}",Value::Literal(0,1,Arc::new(vec!['a']),None)),
       r#""a""#,
    );
    assert_eq!(
-      format!("{:?}",Value::Literal(0,0,Rc::new(vec!['a']),None)),
+      format!("{:?}",Value::Literal(0,0,Arc::new(vec!['a']),None)),
       r#"0"#,
    );
    assert_eq!(
-      format!("{:?}",Value::Literal(1,1,Rc::new(vec!['a']),None)),
+      format!("{:?}",Value::Literal(1,1,Arc::new(vec!['a']),None)),
       r#"0"#,
    );
    assert_eq!(
-      format!("{:?}",Value::Literal(0,3,Rc::new(vec!['a','b','c']),None)),
+      format!("{:?}",Value::Literal(0,3,Arc::new(vec!['a','b','c']),None)),
       r#""abc""#,
    );
    assert_eq!(
-      format!("{:?}",Value::Literal(0,2,Rc::new(vec!['a','b','c']),None)),
+      format!("{:?}",Value::Literal(0,2,Arc::new(vec!['a','b','c']),None)),
       r#""ab""#,
    );
    assert_eq!(
-      format!("{:?}",Value::Literal(0,1,Rc::new(vec!['a','b','c']),None)),
+      format!("{:?}",Value::Literal(0,1,Arc::new(vec!['a','b','c']),None)),
       r#""a""#,
    );
    assert_eq!(
-      format!("{:?}",Value::Literal(0,0,Rc::new(vec!['a','b','c']),None)),
+      format!("{:?}",Value::Literal(0,0,Arc::new(vec!['a','b','c']),None)),
       r#"0"#,
    );
    assert_eq!(
-      format!("{:?}",Value::Literal(1,3,Rc::new(vec!['a','b','c']),None)),
+      format!("{:?}",Value::Literal(1,3,Arc::new(vec!['a','b','c']),None)),
       r#""bc""#,
    );
    assert_eq!(
-      format!("{:?}",Value::Literal(1,2,Rc::new(vec!['a','b','c']),None)),
+      format!("{:?}",Value::Literal(1,2,Arc::new(vec!['a','b','c']),None)),
       r#""b""#,
    );
    assert_eq!(
-      format!("{:?}",Value::Literal(1,1,Rc::new(vec!['a','b','c']),None)),
+      format!("{:?}",Value::Literal(1,1,Arc::new(vec!['a','b','c']),None)),
       r#"0"#,
    );
    assert_eq!(
-      format!("{:?}",Value::Literal(2,3,Rc::new(vec!['a','b','c']),None)),
+      format!("{:?}",Value::Literal(2,3,Arc::new(vec!['a','b','c']),None)),
       r#""c""#,
    );
    assert_eq!(
-      format!("{:?}",Value::Literal(2,2,Rc::new(vec!['a','b','c']),None)),
+      format!("{:?}",Value::Literal(2,2,Arc::new(vec!['a','b','c']),None)),
       r#"0"#,
    );
    assert_eq!(
-      format!("{:?}",Value::Literal(3,3,Rc::new(vec!['a','b','c']),None)),
+      format!("{:?}",Value::Literal(3,3,Arc::new(vec!['a','b','c']),None)),
       r#"0"#,
    );
 }
 
 #[test]
 fn eval_tuples() {
-   let a = Value::Literal(0,1,Rc::new(vec!['a']),None);
-   let b = Value::Literal(0,1,Rc::new(vec!['b']),None);
-   let cd = Value::Literal(0,2,Rc::new(vec!['c','d']),None);
+   let a = Value::Literal(0,1,Arc::new(vec!['a']),None);
+   let b = Value::Literal(0,1,Arc::new(vec!['b']),None);
+   let cd = Value::Literal(0,2,Arc::new(vec!['c','d']),None);
    assert_eq!(
       format!("{:?}",Value::tuple(vec![])),
       r#"()"#,
@@ -114,9 +114,9 @@ fn eval_functions() {
 
 #[test]
 fn eval_heterogenous() {
-   let a = Value::Literal(0,1,Rc::new(vec!['a']),None);
-   let a0 = Value::Literal(0,0,Rc::new(vec!['a']),None);
-   let bc = Value::Literal(1,3,Rc::new(vec!['a','b','c']),None);
+   let a = Value::Literal(0,1,Arc::new(vec!['a']),None);
+   let a0 = Value::Literal(0,0,Arc::new(vec!['a']),None);
+   let bc = Value::Literal(1,3,Arc::new(vec!['a','b','c']),None);
    let f1 = Value::Function("+".to_string(),None);
    let f23 = Value::Function("-".to_string(),None);
    let t1 = Value::tuple(vec![a.clone(),f1.clone(),bc.clone()]);
