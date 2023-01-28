@@ -468,7 +468,7 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
 
 pub fn apply_fn<'f, S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, blk: Block, p: &Program<S>, fi: String, args: Vec<(JExpr,JType)>) -> (JExpr,JType) {
    let mut coerced_args: Vec<(JExpr,JType)> = Vec::new();
-   let args = if let Some(ffi) = STDLIB.lock().unwrap().get(&fi) {
+   if let Some(ffi) = STDLIB.lock().unwrap().get(&fi) {
       for (ji,(mut je,mut jt)) in args.into_iter().enumerate() {
          let nt = jtype_by_name(&ffi.fdef.args[ji].1);
          je.value = type_cast(ctx, &jt.name, &nt.name, je.value);
@@ -489,7 +489,7 @@ pub fn apply_fn<'f, S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBu
    println!("apply fn {}({})", fi,
       args.iter().map(|(_je,jt)| format!("{:?}",jt.name)).collect::<Vec<String>>().join(",")
    );
-   if let Some((je,jt)) = check_hardcoded_call(ctx, blk, p, fi.clone(), &args) {
+   if let Some((je,jt)) = check_hardcoded_call(ctx, blk, fi.clone(), &args) {
       return (je, jt);
    }
    if let Some(FuncOrDataId::Func(fnid)) = jmod.get_name(&fi) {
@@ -633,7 +633,7 @@ impl JProgram {
    }
 }
 
-pub fn check_hardcoded_call<'f, S: Clone + Debug>(ctx: &mut FunctionBuilder<'f>, blk: Block, p: &Program<S>, fi: String, args: &Vec<(JExpr,JType)>) -> Option<(JExpr,JType)> {
+pub fn check_hardcoded_call<'f>(ctx: &mut FunctionBuilder<'f>, blk: Block, fi: String, args: &Vec<(JExpr,JType)>) -> Option<(JExpr,JType)> {
    let stdlib = STDLIB.lock().unwrap();
    if let Some(ffi) = stdlib.get(&fi) {
       let sig = args.iter().map(|(_je,jt)| jt.jtype).collect::<Vec<types::Type>>();

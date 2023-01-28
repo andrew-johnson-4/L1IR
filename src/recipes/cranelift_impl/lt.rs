@@ -1,29 +1,27 @@
-use crate::ast::{FunctionDefinition,Expression,LHSPart,LHSLiteralPart,Type};
+use crate::ast::{FunctionDefinition,Expression,LIPart,Type};
+use crate::recipes::cranelift::FFI;
 use cranelift::prelude::*;
 
-pub fn import<'f>() -> (Vec<types::Type>,FunctionDefinition<()>,fn(&mut FunctionBuilder<'f>,Vec<Value>) -> Value,String,types::Type) {
-      (vec![types::I64,types::I64],
-       FunctionDefinition::define(
-          vec![(0,Type::nominal("U64")), (1,Type::nominal("U64"))],
-          vec![Expression::pattern(
-             Expression::variable(1,()),
-             vec![(
-                LHSPart::ul(
-                   vec![LHSLiteralPart::variable(0),
-                        LHSLiteralPart::literal("0")],
-                   Some(2),
-                   vec![],
-                ),
-                Expression::unary(b"1",()),
-             ),(
-                LHSPart::Any,
-                Expression::unary(b"0",()),
-             )],
-         ())],
-      ),|ctx,val| {
-         let val0 = val[0].clone();
-         let val1 = val[1].clone();
-         let vi8 = ctx.ins().icmp(IntCC::UnsignedLessThan, val0, val1);
-         ctx.ins().uextend(types::I64, vi8)
-      }, "U64".to_string(), types::I64)
+fn f_u64<'f>(ctx: &mut FunctionBuilder<'f>, val: &[Value]) -> Value {
+   let val0 = val[0].clone();
+   let val1 = val[1].clone();
+   let vi8 = ctx.ins().icmp(IntCC::UnsignedLessThan, val0, val1);
+   ctx.ins().uextend(types::I64, vi8)
 }
+
+pub fn import() -> Vec<FFI> {vec![
+   FFI {
+      args: vec![types::I64,types::I64],
+      fdef: FunctionDefinition::define(
+         "<:(U64,U64)->U64",
+         vec![(0,Type::nominal("U64")), (1,Type::nominal("U64"))],
+         vec![Expression::li(vec![
+            LIPart::variable(0),
+            LIPart::variable(1),
+         ],())]
+      ),
+      cons: f_u64,
+      rname: "U64".to_string(),
+      rtype: types::I64,
+   }
+]}

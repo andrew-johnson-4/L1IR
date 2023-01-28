@@ -13,7 +13,6 @@ pub fn import<'f>() -> Vec<FFI> {
    let mut imported = Vec::new();
    imported.extend(crate::recipes::cranelift_impl::add::import());
    imported.extend(crate::recipes::cranelift_impl::sub::import());
-   /*
    imported.extend(crate::recipes::cranelift_impl::eq::import());
    imported.extend(crate::recipes::cranelift_impl::ne::import());
    imported.extend(crate::recipes::cranelift_impl::lt::import());
@@ -23,6 +22,5 @@ pub fn import<'f>() -> Vec<FFI> {
    imported.extend(crate::recipes::cranelift_impl::mul::import());
    imported.extend(crate::recipes::cranelift_impl::div::import());
    imported.extend(crate::recipes::cranelift_impl::rem::import());
-   */
    imported
 }
