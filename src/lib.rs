@@ -1,5 +1,8 @@
 #![feature(strict_provenance)]
 
+#[macro_use]
+extern crate lazy_static;
+
 //AST Definition
 pub mod ast;
 

@@ -7,6 +7,14 @@ use cranelift::prelude::*;
 use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{DataContext, Linkage, Module, FuncOrDataId};
 use num_traits::ToPrimitive;
+use std::collections::HashMap;
+use std::sync::Mutex;
+
+lazy_static! {
+   static ref TYPE_CONTEXT: Mutex<HashMap<usize, String>> = {
+      Mutex::new(HashMap::new())
+   };
+}
 
 static mut UNIQUE_ID: usize = 1000000;
 fn uid() -> usize {
@@ -46,6 +54,18 @@ pub fn type_by_name(tn: &ast::Type) -> types::Type {
       "U64" => types::I64,
       _ => unimplemented!("type_by_name({})", tn),
    }} else { types::I128 }
+}
+
+pub fn type_cast<'f>(ctx: &mut FunctionBuilder<'f>, ot: &str, nt: &str, v: Value) -> Value {
+   if ot == nt { v }
+   else if ot=="Value" && nt=="U64" {
+      let (low64,high64) = ctx.ins().isplit(v);
+      let high16 = ctx.ins().ushr_imm(high64, 48);
+      let aeq = ctx.ins().icmp_imm(IntCC::Equal, high16, (Tag::U64 as u16) as i64);
+      ctx.ins().trapz(aeq, TrapCode::BadConversionToInteger);
+      low64
+   }
+   else { panic!("Could not cast {} as {}", ot, nt) }
 }
 
 pub fn compile_fn<'f,S: Clone + Debug>(jmod: &mut JITModule, builder_context: &mut FunctionBuilderContext, p: &Program<S>, fi: usize) {
@@ -314,16 +334,22 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
          })
       }
       Expression::TupleIntroduction(_ti,_tt,_span) => unimplemented!("compile expression: TupleIntroduction"),
-      Expression::VariableReference(vi,_tt,_span) => {
+      Expression::VariableReference(vi,tt,_span) => {
          println!("variable reference");
          let jv = Variable::from_u32(*vi as u32);
          let jv = ctx.use_var(jv);
+         let jt = type_by_name(tt);
+         let nt = tt.name.clone().unwrap_or("Value".to_string());
+         let tc = TYPE_CONTEXT.lock().unwrap();
+         let ot = tc.get(vi).expect(&format!("Could not find Type of Variable v#{}", vi));
+         let nv = type_cast(ctx, ot, &nt, jv);
+         println!("variable reference v#{} : {} as {}", vi, ot, nt);
          (JExpr {
             block: blk,
-            value: jv
+            value: nv
          }, JType {
-            name: "Value".to_string(),
-            jtype: types::I128,
+            name: nt,
+            jtype: jt,
          })
       },
       Expression::FunctionReference(_vi,_tt,_span) => unimplemented!("compile expression: FunctionReference"),
@@ -467,6 +493,8 @@ impl JProgram {
       for pi in pars.iter() {
          let pv = Variable::from_u32(*pi as u32);
          main.declare_var(pv, types::I128);
+         TYPE_CONTEXT.lock().unwrap().insert(*pi, "Value".to_string());
+         
          let arg_base = main.block_params(blk)[0];
          let arg_offset = (16 * *pi) as i32;
          let arg_flags = MemFlags::new();
