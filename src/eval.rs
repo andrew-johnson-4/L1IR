@@ -39,8 +39,8 @@ pub fn eval_lhs<S:Debug + Clone>(lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx: 
             for pl in prel.iter() {
             if let LHSLiteralPart::Literal(pcs) = pl {
                if pcs.len().to_biguint().unwrap() > lu { return false; }
-               for pc in pcs.iter() {
-               if pc != &'0' {
+               for pc in pcs.chars() {
+               if pc != '0' {
                   return false;
                }}
                lu = lu - pcs.len().to_biguint().unwrap();
@@ -55,8 +55,8 @@ pub fn eval_lhs<S:Debug + Clone>(lctx: Rc<RefCell<HashMap<usize,Value>>>, pctx: 
             for sl in sufl.iter() {
             if let LHSLiteralPart::Literal(scs) = sl {
                if scs.len().to_biguint().unwrap() > lu { return false; }
-               for sc in scs.iter() {
-               if sc != &'0' {
+               for sc in scs.chars() {
+               if sc != '0' {
                   return false;
                }}
                lu = lu - scs.len().to_biguint().unwrap();

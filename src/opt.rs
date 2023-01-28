@@ -158,14 +158,20 @@ pub fn compile_lhs<'f>(ctx: &mut FunctionBuilder<'f>, mut lblk: Block, rblk: Blo
       LHSPart::UnpackLiteral(pres,mid,sufs) => {
          for p in pres.iter() {
          if let LHSLiteralPart::Literal(cs) = p {
-            let cond = ctx.ins().icmp_imm(IntCC::UnsignedLessThan, val, cs.len() as i64);
+            let sub = if typ=="U64" {
+               let v = cs.parse::<u64>().unwrap();
+               unsafe { std::mem::transmute::<u64,i64>(v) }
+            } else {
+               unimplemented!("compile_lhs(Literal:{})", typ)
+            };
+            let cond = ctx.ins().icmp_imm(IntCC::UnsignedLessThan, val, sub);
             let bb = ctx.create_block(); //basic blocks can't compute after jump
             ctx.ins().brnz(cond, nblk, &[]);
             ctx.ins().jump(bb, &[]);
             ctx.seal_block(lblk);
             ctx.switch_to_block(bb);
             lblk = bb;
-            let len = ctx.ins().iconst(types::I64, cs.len() as i64);
+            let len = ctx.ins().iconst(types::I64, sub);
             val = ctx.ins().isub(val, len);
          } else if let LHSLiteralPart::Variable(vi) = p {
             let jv = Variable::from_u32(*vi as u32);
@@ -369,7 +375,7 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
             block: blk,
             value: val,
          }, JType {
-            name: "Value".to_string(),
+            name: "U64".to_string(),
             jtype: types::I64,
          })
       }

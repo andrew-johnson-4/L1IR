@@ -366,7 +366,7 @@ impl<S: Debug + Clone> TIPart<S> {
 }
 
 pub enum LHSLiteralPart {
-   Literal(Vec<char>),
+   Literal(String),
    Variable(usize),
 }
 impl LHSLiteralPart {
@@ -378,8 +378,7 @@ impl LHSLiteralPart {
       }
    }
    pub fn literal(cs: &str) -> LHSLiteralPart {
-      let cs = cs.chars().collect::<Vec<char>>();
-      LHSLiteralPart::Literal(cs)
+      LHSLiteralPart::Literal(cs.to_string())
    }
    pub fn variable(v: usize) -> LHSLiteralPart {
       LHSLiteralPart::Variable(v)

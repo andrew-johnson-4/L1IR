@@ -127,7 +127,6 @@ fn eval_add() {
       assert_eq!(Value::u64(x + y,"U64"), jval, "{} + {}", x, y);
    }}
 }
-*/
 
 #[test]
 fn eval_fibonacci() {
@@ -178,7 +177,7 @@ fn l1_fibonacci() -> JProgram {
                            Expression::li(vec![
                               LIPart::literal("1"),
                               LIPart::variable(2),
-                           ],()),
+                           ],()).typed("U64"),
                         ],()),
                      ),
                   ],()).typed("U64"),
@@ -194,8 +193,8 @@ fn l1_fibonacci() -> JProgram {
    );
    JProgram::compile(&l1fib)
 }
+*/
 
-/*
 #[test]
 fn eval_two_pow_n() {
    let jit = l1_two_pow_n();
@@ -216,14 +215,14 @@ fn l1_two_pow_n() -> JProgram {
    let l12n = Program::program(
       vec![
          FunctionDefinition::define( // 0 = $"+"
-            vec![(0,Type::nominal("U64")), (1,Type::nominal("U64"))],
+            vec![(0,Type::nominal("U64")),(1,Type::nominal("U64"))],
             vec![Expression::li(vec![
                LIPart::variable(0),
                LIPart::variable(1),
             ],())]
          ),
          FunctionDefinition::define( // 1 = $"-"
-            vec![(0,Type::nominal("U64")), (1,Type::nominal("U64"))],
+            vec![(0,Type::nominal("U64")),(1,Type::nominal("U64"))],
             vec![Expression::pattern(
                Expression::variable(0,()),
                vec![
@@ -241,11 +240,11 @@ fn l1_two_pow_n() -> JProgram {
          FunctionDefinition::define(
             vec![(24,Type::nominal("U64"))],
             vec![Expression::pattern(
-               Expression::variable(24,()),
+               Expression::variable(24,()).typed("U64"),
                vec![
                   (
-                     LHSPart::literal(""),
-                     Expression::unary(b"1",()),
+                     LHSPart::literal("0"),
+                     Expression::unary(b"1",()).typed("U64"),
                   ),
                   (
                      LHSPart::Any,
@@ -262,10 +261,10 @@ fn l1_two_pow_n() -> JProgram {
                               Expression::unary(b"1",()),
                            ],()),
                         ],()),
-                     ],()),
+                     ],()).typed("U64"),
                   ),
                ],
-            ())],
+            ()).typed("U64")],
          ),
       ],
       vec![
@@ -276,4 +275,3 @@ fn l1_two_pow_n() -> JProgram {
    );
    JProgram::compile(&l12n)
 }
-*/
