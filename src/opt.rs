@@ -18,7 +18,7 @@ lazy_static! {
    static ref STDLIB: Mutex<HashMap<String, FFI>> = {
       let mut lib = HashMap::new();
       for ffi in crate::recipes::cranelift::import().into_iter() {
-         lib.insert(ffi.fdef.name.clone(), ffi);
+         lib.insert(ffi.name.clone(), ffi);
       }
       Mutex::new(lib)
    };
@@ -470,7 +470,7 @@ pub fn apply_fn<'f, S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBu
    let mut coerced_args: Vec<(JExpr,JType)> = Vec::new();
    if let Some(ffi) = STDLIB.lock().unwrap().get(&fi) {
       for (ji,(mut je,mut jt)) in args.into_iter().enumerate() {
-         let nt = jtype_by_name(&ffi.fdef.args[ji].1);
+         let nt = jtype_by_name(&ffi.arg_types[ji]);
          je.value = type_cast(ctx, &jt.name, &nt.name, je.value);
          jt = nt;
          coerced_args.push((je, jt));
