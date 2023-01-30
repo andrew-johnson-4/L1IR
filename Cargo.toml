@@ -13,14 +13,16 @@ keywords = ["compiler","interpreter","AST","IR","JIT"]
 num-traits = { version = "0.2" }
 num-derive = { version = "0.2" }
 num-bigint = { version = "0.4" }
-cranelift = { version = "0.91", optional = true }
-cranelift-module = { version = "0.91", optional = true }
-cranelift-jit = { version = "0.91", optional = true }
+cranelift = { version = "0.92", optional = true }
+cranelift-module = { version = "0.92", optional = true }
+cranelift-jit = { version = "0.92", optional = true }
+cranelift-codegen = { version = "0.92", optional = true }
+cranelift-native = { version = "0.92", optional = true }
 regex = { version = "1" }
 lazy_static = { version = "1.4" }
 
 [features]
-cranelift = ["dep:cranelift", "dep:cranelift-module", "dep:cranelift-jit"]
+cranelift = ["dep:cranelift", "dep:cranelift-module", "dep:cranelift-jit", "dep:cranelift-codegen", "dep:cranelift-native"]
 
 [[test]]
 name = "b_opt1"

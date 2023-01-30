@@ -7,6 +7,8 @@ use crate::recipes::cranelift::FFI;
 use cranelift::prelude::*;
 use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{DataContext, Linkage, Module, FuncOrDataId};
+use cranelift_codegen::settings::{self, Configurable};
+use cranelift_native;
 use num_traits::ToPrimitive;
 use std::collections::HashMap;
 use std::sync::{Mutex};
@@ -51,9 +53,9 @@ pub struct JType {
 pub fn function_parameters<S: Debug + Clone>(fd: &FunctionDefinition<S>) -> Vec<types::Type> {
    fd.args.iter().map(|(_ti,tt)|type_by_name(tt)).collect::<Vec<types::Type>>()
 }
-pub fn function_return<S: Debug + Clone>(fd: &FunctionDefinition<S>) -> Vec<types::Type> {
+pub fn function_return<S: Debug + Clone>(fd: &FunctionDefinition<S>) -> types::Type {
    let rt = type_by_name(&fd.body[fd.body.len()-1].typ());
-   vec![rt]
+   rt
 }
 
 pub fn type_by_name(tn: &ast::Type) -> types::Type {
@@ -101,9 +103,7 @@ pub fn compile_fn<'f,S: Clone + Debug>(jmod: &mut JITModule, builder_context: &m
    for pt in hpars.iter() {
       sig_fn.params.push(AbiParam::new(*pt));
    }
-   for rt in hrets.iter() {
-      sig_fn.returns.push(AbiParam::new(*rt));
-   }
+   sig_fn.returns.push(AbiParam::new(hrets));
 
    let fn0 = jmod
       .declare_function(&fi, Linkage::Local, &sig_fn)
@@ -518,8 +518,17 @@ pub fn apply_fn<'f, S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBu
 impl JProgram {
    //functions will not be compiled until referenced
    pub fn compile<S: Clone + Debug>(p: &Program<S>) -> JProgram {
-      let builder = JITBuilder::new(cranelift_module::default_libcall_names());
-      let mut module = JITModule::new(builder.unwrap());
+      let mut flag_builder = settings::builder();
+      flag_builder.set("use_colocated_libcalls", "false").unwrap();
+      flag_builder.set("is_pic", "true").unwrap();
+      flag_builder.set("enable_llvm_abi_extensions", "true").unwrap();
+      let isa_builder = cranelift_native::builder().unwrap_or_else(|msg| {
+          panic!("host machine is not supported: {}", msg);
+      });
+      let isa = isa_builder.finish(settings::Flags::new(flag_builder)).expect("Failed to build Cranelift ISA");
+
+      let builder = JITBuilder::with_isa(isa, cranelift_module::default_libcall_names());
+      let mut module = JITModule::new(builder);
       let mut builder_context = FunctionBuilderContext::new();
       let mut ctx = module.make_context();
       let mut _data_ctx = DataContext::new();
@@ -532,9 +541,8 @@ impl JProgram {
          for ptt in isig.into_iter() {
             sig_f.params.push(AbiParam::new(ptt));
          }
-         for rtt in function_return(pf).into_iter() {
-            sig_f.returns.push(AbiParam::new(rtt));
-         }
+         let rtt = function_return(pf);
+         sig_f.returns.push(AbiParam::new(rtt));
          module.declare_function(
             pn,
             Linkage::Local,
@@ -548,8 +556,7 @@ impl JProgram {
       let mut sig_main = module.make_signature();
       sig_main.params.push(AbiParam::new(types::I64));
       sig_main.params.push(AbiParam::new(types::I64));
-      sig_main.returns.push(AbiParam::new(types::I64));
-      sig_main.returns.push(AbiParam::new(types::I64));
+      sig_main.returns.push(AbiParam::new(types::I128));
 
       let fn_main = module
         .declare_function("main", Linkage::Local, &sig_main)
@@ -586,8 +593,7 @@ impl JProgram {
       if p.expressions.len()==0 {
          let jv = Variable::from_u32(0 as u32);
          let jv = main.use_var(jv);
-         let (lval,rval) = main.ins().isplit(jv);
-         main.ins().return_(&[lval,rval]);
+         main.ins().return_(&[jv]);
       } else {
          println!("compile program 6.1");
 
@@ -602,8 +608,7 @@ impl JProgram {
          blk = je.block;
 
          println!("compile program 6.4");
-         let (lval,rval) = main.ins().isplit(je.value);
-         main.ins().return_(&[lval,rval]);
+         main.ins().return_(&[je.value]);
       }
 
       main.seal_block(blk);
