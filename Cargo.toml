@@ -24,6 +24,11 @@ lazy_static = { version = "1.4" }
 [features]
 cranelift = ["dep:cranelift", "dep:cranelift-module", "dep:cranelift-jit", "dep:cranelift-codegen", "dep:cranelift-native"]
 
+[[bin]]
+name = "bench"
+path = "benches/rust/main.rs"
+required-features = ["cranelift"]
+
 [[test]]
 name = "b_opt1"
 path = "tests/b_opt1.rs"
