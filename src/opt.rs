@@ -330,7 +330,7 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
    match e {
       Expression::ValueIntroduction(ui,tt,_span) => {
       if let ast::Value::Unary(ui,_) = ui {
-         let tname = tt.name.clone().unwrap_or("Value".to_string());
+         let tname = tt.nom();
          if "Value" == &tname {
             println!("value introduction");
             let ui = ui.to_i64().unwrap();
@@ -359,31 +359,35 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
       } else {
          unimplemented!("compile expression {:?}", ui)
       }},
-      Expression::LiteralIntroduction(lis,_tt,_span) => {
-         let mut val = ctx.ins().iconst(types::I64, 0);
-         for li in lis.iter() {
-         match li {
-            LIPart::Expression(e) => {
-               let (je,_jt) = compile_expr(jmod, ctx, blk, p, e);
-               blk = je.block;
-               val = ctx.ins().iadd(val, je.value);
-            },
-            LIPart::Literal(cs) => {
-               val = ctx.ins().iadd_imm(val, cs.len() as i64);
-            },
-            LIPart::InlineVariable(vi) => {
-               let jv = Variable::from_u32(*vi as u32);
-               let jv = ctx.use_var(jv);
-               val = ctx.ins().iadd(val, jv);
-            },
-         }}
-         (JExpr {
-            block: blk,
-            value: val,
-         }, JType {
-            name: "U64".to_string(),
-            jtype: types::I64,
-         })
+      Expression::LiteralIntroduction(lis,tt,_span) => {
+         if tt.nom() == "U64" {
+            let mut val = ctx.ins().iconst(types::I64, 0);
+            for li in lis.iter() {
+            match li {
+               LIPart::Expression(e) => {
+                  let (je,_jt) = compile_expr(jmod, ctx, blk, p, e);
+                  blk = je.block;
+                  val = ctx.ins().iadd(val, je.value);
+               },
+               LIPart::Literal(cs) => {
+                  val = ctx.ins().iadd_imm(val, cs.len() as i64);
+               },
+               LIPart::InlineVariable(vi) => {
+                  let jv = Variable::from_u32(*vi as u32);
+                  let jv = ctx.use_var(jv);
+                  val = ctx.ins().iadd(val, jv);
+               },
+            }}
+            (JExpr {
+               block: blk,
+               value: val,
+            }, JType {
+               name: "U64".to_string(),
+               jtype: types::I64,
+            })
+         } else {
+            unimplemented!("Unknown literation introduction: {:?}", tt)
+         }
       }
       Expression::TupleIntroduction(_ti,_tt,_span) => unimplemented!("compile expression: TupleIntroduction"),
       Expression::VariableReference(vi,tt,_span) => {

@@ -31,13 +31,13 @@ pub struct Type {
 }
 impl std::fmt::Debug for Type {
    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-      if let Some(n) = &self.name {
-         write!(f, "{}", n)?
-      }
-      write!(f, "")
+      write!(f, "{}", self.nom())
    }
 }
 impl Type {
+   pub fn nom(&self) -> String {
+      self.name.clone().unwrap_or("Value".to_string())
+   }
    pub fn default() -> Type {
       Type {
          name: None,
