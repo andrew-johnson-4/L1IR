@@ -62,6 +62,7 @@ pub fn type_by_name(tn: &ast::Type) -> types::Type {
    if let Some(ref tn) = tn.name {
    match tn.as_str() {
       "U64" => types::I64,
+      "String" => types::I128,
       _ => unimplemented!("type_by_name({})", tn),
    }} else { types::I128 }
 }
@@ -88,6 +89,10 @@ pub fn type_cast<'f>(ctx: &mut FunctionBuilder<'f>, ot: &str, nt: &str, v: Value
       let high64 = ctx.ins().iconst(types::I64, high64);
       ctx.ins().iconcat(v, high64)
    }
+   else if ot=="String" && nt=="Value" { v }
+   else if ot=="Value" && nt=="String" { v }
+   else if ot=="Tuple" && nt=="Value" { v }
+   else if ot=="Value" && nt=="Tuple" { v }
    else { panic!("Could not cast {} as {}", ot, nt) }
 }
 

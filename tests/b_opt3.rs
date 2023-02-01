@@ -9,7 +9,7 @@ fn eval_string1() {
          vec![],
          vec![Expression::li(vec![
             LIPart::literal("abc"),
-         ],()),],
+         ],()).typed("String"),],
       )],
       vec![
          Expression::apply("abc",vec![],()),
