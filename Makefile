@@ -1,9 +1,9 @@
 test_all:
-	cargo test --features cranelift -- --nocapture
+	cargo test --features cranelift
 
 bench:
-	cargo build --features cranelift
-	./target/debug/bench
+	cargo build --release --features cranelift
+	./target/release/bench
 	ocamlopt -o target/bench_ml benches/main.ml
 	time ./target/bench_ml
 

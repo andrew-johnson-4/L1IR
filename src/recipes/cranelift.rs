@@ -1,9 +1,10 @@
-use crate::ast::{FunctionDefinition};
+use crate::ast;
 use cranelift::prelude::*;
 
 pub struct FFI {
    pub args: Vec<types::Type>,
-   pub fdef: FunctionDefinition<()>,
+   pub arg_types: Vec<ast::Type>,
+   pub name: String,
    pub cons: for<'f> fn(&mut FunctionBuilder<'f>,&[Value]) -> Value,
    pub rname: String,
    pub rtype: types::Type,
