@@ -130,13 +130,17 @@ pub fn eval_e<S:Debug + Clone>(mut lctx: Arc<RefCell<HashMap<usize,Value>>>, pct
       Expression::LiteralIntroduction(lps,_tt,span) => {
          if lps.len()==1 {
          if let LIPart::Literal(lcs) = &lps[0] {
-            return Ok(Value::Literal(0,lcs.len(),lcs.clone(),None));
+            let lcs = lcs.chars().collect::<Vec<char>>();
+            return Ok(Value::Literal(0,lcs.len(),Arc::new(lcs.clone()),None));
          }}
          let mut lui = 0.to_biguint().unwrap();
          let mut lcs = Vec::new();
          for lip in lps.iter() {
          match lip {
-            LIPart::Literal(cs) => { ucatcs(&mut lui, &mut lcs, 0, cs.len(), cs) }
+            LIPart::Literal(cs) => {
+               let cs = cs.chars().collect::<Vec<char>>();
+               ucatcs(&mut lui, &mut lcs, 0, cs.len(), &cs)
+            }
             LIPart::InlineVariable(vi) => {
                match lctx.borrow().get(vi) {
                   Some(Value::Literal(vs,ve,vcs,_tt)) => { ucatcs(&mut lui, &mut lcs, *vs, *ve, &vcs) },
