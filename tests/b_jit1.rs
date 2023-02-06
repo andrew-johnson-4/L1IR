@@ -19,6 +19,20 @@ fn eval_echo() {
 }
 
 #[test]
+fn eval_unit1() {
+   let nojit = Program::program(
+      vec![],
+      vec![
+         Expression::unit(()),
+      ],
+   );
+   let jit = JProgram::compile(&nojit);
+
+   let jval = jit.eval(&[]);
+   assert_eq!("()", format!("{:?}",jval), "()");
+}
+
+#[test]
 fn eval_match1() {
    let nojit = Program::program(
       vec![],

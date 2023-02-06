@@ -36,7 +36,7 @@ use crate::ast;
 #[derive(FromPrimitive,Copy,Clone,Debug)]
 #[repr(u16)]
 pub enum Tag {
-   Unit,
+   Unit = 0,
    I8, I82, I83, I84, I85, I86, I87, I88, I89, I810, I811, I812,
    U8, U82, U83, U84, U85, U86, U87, U88, U89, U810, U811, U812,
    U16, U162, U163, U164, U165, U166,

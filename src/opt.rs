@@ -365,7 +365,17 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
          unimplemented!("compile expression {:?}", ui)
       }},
       Expression::LiteralIntroduction(lis,tt,_span) => {
-         if tt.nom() == "U64" {
+         if tt.nom() == "Unit" {
+            let val = ctx.ins().iconst(types::I64, 0);
+            let val = ctx.ins().iconcat(val, val);
+            (JExpr {
+               block: blk,
+               value: val,
+            }, JType {
+               name: "Value".to_string(),
+               jtype: types::I128,
+            })
+         } else if tt.nom() == "U64" {
             let mut val = ctx.ins().iconst(types::I64, 0);
             for li in lis.iter() {
             match li {
@@ -393,7 +403,7 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
                jtype: types::I64,
             })
          } else {
-            unimplemented!("Unknown literation introduction: {:?}", tt)
+            unimplemented!("Unknown literal introduction: {:?}", tt)
          }
       }
       Expression::TupleIntroduction(_ti,_tt,_span) => unimplemented!("compile expression: TupleIntroduction"),

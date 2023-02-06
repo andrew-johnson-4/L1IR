@@ -545,6 +545,11 @@ impl<S:Debug + Clone> Expression<S> {
          LIPart::Literal(cs.to_string()),
       ]), Type::default(), span)
    }
+   pub fn unit(span: S) -> Expression<S> {
+      Expression::LiteralIntroduction(Arc::new(vec![
+         LIPart::Literal("".to_string()),
+      ]), Type::nominal("Unit"), span)
+   }
    pub fn li(lps: Vec<LIPart<S>>, span: S) -> Expression<S> {
       Expression::LiteralIntroduction(Arc::new(
          lps
