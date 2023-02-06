@@ -293,7 +293,7 @@ impl<S:Debug + Clone> Program<S> {
 
 #[derive(Clone)]
 pub enum LIPart<S:Debug + Clone> {
-   Literal(Arc<Vec<char>>),
+   Literal(String),
    InlineVariable(usize),
    Expression(Expression<S>),
 }
@@ -314,10 +314,7 @@ impl<S:Debug + Clone> LIPart<S> {
       }
    }
    pub fn literal(cs: &str) -> LIPart<S> {
-      let cs = cs.chars().collect::<Vec<char>>();
-      LIPart::Literal(Arc::new(
-         cs
-      ))
+      LIPart::Literal(cs.to_string())
    }
    pub fn variable(vi: usize) -> LIPart<S> {
       LIPart::InlineVariable(vi)
@@ -544,9 +541,8 @@ impl<S:Debug + Clone> Expression<S> {
       Expression::Failure(Type::default(), span)
    }
    pub fn literal(cs: &str, span: S) -> Expression<S> {
-      let cs = cs.chars().collect::<Vec<char>>();
       Expression::LiteralIntroduction(Arc::new(vec![
-         LIPart::Literal(Arc::new(cs)),
+         LIPart::Literal(cs.to_string()),
       ]), Type::default(), span)
    }
    pub fn li(lps: Vec<LIPart<S>>, span: S) -> Expression<S> {

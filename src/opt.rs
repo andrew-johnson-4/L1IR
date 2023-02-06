@@ -375,7 +375,9 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
                   val = ctx.ins().iadd(val, je.value);
                },
                LIPart::Literal(cs) => {
-                  val = ctx.ins().iadd_imm(val, cs.len() as i64);
+                  let v = cs.parse::<u64>().expect("U64");
+                  let v = unsafe { std::mem::transmute::<u64,i64>(v) };
+                  val = ctx.ins().iadd_imm(val, v);
                },
                LIPart::InlineVariable(vi) => {
                   let jv = Variable::from_u32(*vi as u32);
