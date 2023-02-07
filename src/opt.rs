@@ -8,6 +8,7 @@ use cranelift::prelude::*;
 use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{DataContext, Linkage, Module, FuncOrDataId, FuncId};
 use cranelift_codegen::settings::{self, Configurable};
+use cranelift_codegen::ir::FuncRef;
 use cranelift_native;
 use num_traits::ToPrimitive;
 use std::collections::HashMap;
@@ -103,7 +104,7 @@ pub fn type_cast<'f>(ctx: &mut FunctionBuilder<'f>, ot: &str, nt: &str, v: Value
    else { panic!("Could not cast {} as {}", ot, nt) }
 }
 
-pub fn compile_fn<'f,S: Clone + Debug>(jmod: &mut JITModule, builder_context: &mut FunctionBuilderContext, p: &Program<S>, fi: String) {
+pub fn compile_fn<'f,S: Clone + Debug>(global_finfs: &Vec<(String,FuncId)>, jmod: &mut JITModule, builder_context: &mut FunctionBuilderContext, p: &Program<S>, fi: String) {
    println!("compile fn {}", fi);
    let pf = p.functions.get(&fi).unwrap();
    let hpars = function_parameters(&pf);
@@ -123,6 +124,7 @@ pub fn compile_fn<'f,S: Clone + Debug>(jmod: &mut JITModule, builder_context: &m
    ctx.func.signature = sig_fn;
 
    let mut fnb = FunctionBuilder::new(&mut ctx.func, builder_context);
+   let finfs = inject_stdlib_locals(jmod, &mut fnb, global_finfs);
    let mut blk = fnb.create_block();
    fnb.append_block_params_for_function_params(blk);
    fnb.switch_to_block(blk);
@@ -142,10 +144,10 @@ pub fn compile_fn<'f,S: Clone + Debug>(jmod: &mut JITModule, builder_context: &m
       fnb.ins().return_(&[rval]);
    } else {
       for pi in 0..(pf.body.len()-1) {
-         let (je,_jt) = compile_expr(jmod, &mut fnb, blk, p, &pf.body[pi]);
+         let (je,_jt) = compile_expr(&finfs, jmod, &mut fnb, blk, p, &pf.body[pi]);
          blk = je.block;
       }
-      let (je,_jt) = compile_expr(jmod, &mut fnb, blk, p, &pf.body[pf.body.len()-1]);
+      let (je,_jt) = compile_expr(&finfs, jmod, &mut fnb, blk, p, &pf.body[pf.body.len()-1]);
       blk = je.block;
       fnb.ins().return_(&[je.value]);
    }
@@ -242,7 +244,7 @@ pub fn compile_lhs<'f>(ctx: &mut FunctionBuilder<'f>, mut lblk: Block, rblk: Blo
    ctx.seal_block(lblk);
 }
 
-pub fn try_inline_plurals<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, mut blk: Block, p: &Program<S>,
+pub fn try_inline_plurals<'f,S: Clone + Debug>(finfs: &HashMap<String,FuncRef>, jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, mut blk: Block, p: &Program<S>,
                                                pe: &Expression<S>, lrs: &Vec<(LHSPart,Expression<S>)>, _span: &S) -> Option<(JExpr,JType)> {
    println!("try inline plurals");
    if let Expression::TupleIntroduction(tis,_tt,_span) = pe {
@@ -267,7 +269,7 @@ pub fn try_inline_plurals<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut F
             header.push(jv);
          },
          TIPart::Expression(ve) => {
-            let (je,_jt) = compile_expr(jmod, ctx, blk, p, ve);
+            let (je,_jt) = compile_expr(finfs, jmod, ctx, blk, p, ve);
             blk = je.block;
             let id = uid();
             let jv = Variable::from_u32(id as u32);
@@ -317,7 +319,7 @@ pub fn try_inline_plurals<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut F
 
       for (ri,(_l,r)) in lrs.iter().enumerate() {
          ctx.switch_to_block(rblocks[ri]);
-         let (je,_jt) = compile_expr(jmod, ctx, rblocks[ri], p, r);
+         let (je,_jt) = compile_expr(finfs, jmod, ctx, rblocks[ri], p, r);
          ctx.ins().jump(succblk, &[je.value]);
          ctx.seal_block(je.block);
       }
@@ -337,7 +339,7 @@ pub fn try_inline_plurals<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut F
    } else { None }
 }
 
-pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, mut blk: Block, p: &Program<S>, e: &Expression<S>) -> (JExpr,JType) {
+pub fn compile_expr<'f,S: Clone + Debug>(finfs: &HashMap<String,FuncRef>, jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, mut blk: Block, p: &Program<S>, e: &Expression<S>) -> (JExpr,JType) {
    println!("compile expr");
    match e {
       Expression::ValueIntroduction(ui,tt,_span) => {
@@ -387,7 +389,7 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
             for li in lis.iter() {
             match li {
                LIPart::Expression(e) => {
-                  let (je,_jt) = compile_expr(jmod, ctx, blk, p, e);
+                  let (je,_jt) = compile_expr(finfs, jmod, ctx, blk, p, e);
                   blk = je.block;
                   val = ctx.ins().iadd(val, je.value);
                },
@@ -436,10 +438,10 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
       Expression::FunctionApplication(fi,args,_tt,_span) => {
          let mut arg_types = Vec::new();
          for a in args.iter() {
-            let jejt = compile_expr(jmod, ctx, blk, p, a);
+            let jejt = compile_expr(finfs, jmod, ctx, blk, p, a);
             arg_types.push(jejt);
          }
-         apply_fn(jmod, ctx, blk, p, fi.clone(), arg_types)
+         apply_fn(finfs, jmod, ctx, blk, p, fi.clone(), arg_types)
       },
       Expression::PatternMatch(pe,lrs,tt,span) => {
          let mut rjt = JType {
@@ -448,10 +450,10 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
          };
 
          println!("pattern match");
-         if let Some((je,jt)) = try_inline_plurals(jmod, ctx, blk, p, pe.as_ref(), lrs.as_ref(), span) {
+         if let Some((je,jt)) = try_inline_plurals(finfs, jmod, ctx, blk, p, pe.as_ref(), lrs.as_ref(), span) {
             return (je,jt);
          }
-         let (je,jt) = compile_expr(jmod, ctx, blk, p, pe);
+         let (je,jt) = compile_expr(finfs, jmod, ctx, blk, p, pe);
          blk = je.block;
 
          let failblk = ctx.create_block(); //failure block
@@ -475,7 +477,7 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
 
          for (ri,(_l,r)) in lrs.iter().enumerate() {
             ctx.switch_to_block(rblocks[ri]);
-            let (je,jt) = compile_expr(jmod, ctx, rblocks[ri], p, r);
+            let (je,jt) = compile_expr(finfs, jmod, ctx, rblocks[ri], p, r);
             rjt = jt;
             ctx.ins().jump(succblk, &[je.value]);
             ctx.seal_block(je.block);
@@ -495,7 +497,7 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
    }
 }
 
-pub fn apply_fn<'f, S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, blk: Block, p: &Program<S>, fi: String, args: Vec<(JExpr,JType)>) -> (JExpr,JType) {
+pub fn apply_fn<'f, S: Clone + Debug>(finfs: &HashMap<String,FuncRef>, jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, blk: Block, p: &Program<S>, fi: String, args: Vec<(JExpr,JType)>) -> (JExpr,JType) {
    let mut coerced_args: Vec<(JExpr,JType)> = Vec::new();
    if let Some(ffi) = STDLIB.lock().unwrap().get(&fi) {
       for (ji,(mut je,mut jt)) in args.into_iter().enumerate() {
@@ -518,7 +520,7 @@ pub fn apply_fn<'f, S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBu
    println!("apply fn {}({})", fi,
       args.iter().map(|(_je,jt)| format!("{:?}",jt.name)).collect::<Vec<String>>().join(",")
    );
-   if let Some((je,jt)) = check_hardcoded_call(ctx, blk, fi.clone(), &args) {
+   if let Some((je,jt)) = check_hardcoded_call(finfs, ctx, blk, fi.clone(), &args) {
       return (je, jt);
    }
    if let Some(FuncOrDataId::Func(fnid)) = jmod.get_name(&fi) {
@@ -563,6 +565,15 @@ fn inject_stdlib_symbols(module: &mut JITModule) -> Vec<(String,FuncId)> {
    fs
 }
 
+fn inject_stdlib_locals<'f>(module: &mut JITModule, ctx: &mut FunctionBuilder<'f>, finfs: &Vec<(String,FuncId)>) -> HashMap<String,FuncRef> {
+   let mut locs = HashMap::new();
+   for (k,fi) in finfs.iter() {
+      let l = module.declare_func_in_func(*fi, &mut ctx.func);
+      locs.insert(k.clone(), l);
+   }
+   locs
+}
+
 impl JProgram {
    //functions will not be compiled until referenced
    pub fn compile<S: Clone + Debug>(p: &Program<S>) -> JProgram {
@@ -586,7 +597,7 @@ impl JProgram {
       }
        
       let mut module = JITModule::new(builder);
-      let finfs = inject_stdlib_symbols(&mut module);
+      let global_finfs = inject_stdlib_symbols(&mut module);
       let mut builder_context = FunctionBuilderContext::new();
       let mut ctx = module.make_context();
       let mut _data_ctx = DataContext::new();
@@ -624,6 +635,8 @@ impl JProgram {
       println!("compile program 3");
 
       let mut main = FunctionBuilder::new(&mut ctx.func, &mut builder_context);
+      let finfs = inject_stdlib_locals(&mut module, &mut main, &global_finfs);
+
       let mut blk = main.create_block();
       main.append_block_params_for_function_params(blk);
       main.switch_to_block(blk);
@@ -657,11 +670,11 @@ impl JProgram {
 
          for pi in 0..(p.expressions.len()-1) {
             println!("compile program 6.2");
-            let (je,_jt) = compile_expr(&mut module, &mut main, blk, p, &p.expressions[pi]);
+            let (je,_jt) = compile_expr(&finfs, &mut module, &mut main, blk, p, &p.expressions[pi]);
             blk = je.block;
          }
          println!("compile program 6.3");
-         let (mut je,jt) = compile_expr(&mut module, &mut main, blk, p, &p.expressions[p.expressions.len()-1]);
+         let (mut je,jt) = compile_expr(&finfs, &mut module, &mut main, blk, p, &p.expressions[p.expressions.len()-1]);
          je.value = type_cast(&mut main, &jt.name, "Value", je.value);
          blk = je.block;
 
@@ -678,7 +691,7 @@ impl JProgram {
       println!("compile program 7");
 
       for (fi,_f) in p.functions.iter() {
-         compile_fn(&mut module, &mut builder_context, &p, fi.clone());
+         compile_fn(&global_finfs, &mut module, &mut builder_context, &p, fi.clone());
       }
 
       println!("compile program 8");
@@ -696,13 +709,12 @@ impl JProgram {
    }
 }
 
-pub fn check_hardcoded_call<'f>(ctx: &mut FunctionBuilder<'f>, blk: Block, fi: String, args: &Vec<(JExpr,JType)>) -> Option<(JExpr,JType)> {
+pub fn check_hardcoded_call<'f>(finfs: &HashMap<String,FuncRef>, ctx: &mut FunctionBuilder<'f>, blk: Block, fi: String, args: &Vec<(JExpr,JType)>) -> Option<(JExpr,JType)> {
    let stdlib = STDLIB.lock().unwrap();
    if let Some(ffi) = stdlib.get(&fi) {
       let sig = args.iter().map(|(_je,jt)| jt.jtype).collect::<Vec<types::Type>>();
       if sig != ffi.args { panic!("Wrong argument types to function: {}", fi) }
       let val = args.iter().map(|(je,_jt)| je.value).collect::<Vec<Value>>();
-      let finfs = HashMap::new();
       let rval = (ffi.cons)(&finfs, ctx, &val);
       return Some((
          JExpr { block: blk, value: rval },
