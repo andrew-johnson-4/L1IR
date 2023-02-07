@@ -1,6 +1,6 @@
 [package]
 name = "l1_ir"
-version = "0.0.28"
+version = "0.0.29"
 authors = ["Andrew <andrew@subarctic.org>"]
 license = "MIT"
 description = "L1 Intermediate Representation"

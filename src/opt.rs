@@ -441,7 +441,12 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
          }
          apply_fn(jmod, ctx, blk, p, fi.clone(), arg_types)
       },
-      Expression::PatternMatch(pe,lrs,_tt,span) => {
+      Expression::PatternMatch(pe,lrs,tt,span) => {
+         let mut rjt = JType {
+            name: tt.name.clone().unwrap_or("Value".to_string()),
+            jtype: type_by_name(tt),
+         };
+
          println!("pattern match");
          if let Some((je,jt)) = try_inline_plurals(jmod, ctx, blk, p, pe.as_ref(), lrs.as_ref(), span) {
             return (je,jt);
@@ -468,10 +473,6 @@ pub fn compile_expr<'f,S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut Functio
             compile_lhs(ctx, lblocks[li], rblocks[li], l, lblocks[li+1], je.value, &jt.name);
          }
 
-         let mut rjt = JType {
-            name: "Value".to_string(),
-            jtype: types::I128,
-         };
          for (ri,(_l,r)) in lrs.iter().enumerate() {
             ctx.switch_to_block(rblocks[ri]);
             let (je,jt) = compile_expr(jmod, ctx, rblocks[ri], p, r);
