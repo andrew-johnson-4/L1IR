@@ -89,6 +89,13 @@ pub fn type_cast<'f>(ctx: &mut FunctionBuilder<'f>, ot: &str, nt: &str, v: Value
       let high64 = ctx.ins().iconst(types::I64, high64);
       ctx.ins().iconcat(v, high64)
    }
+   else if ot=="U8" && nt=="Value" {
+      let low64  = ctx.ins().uextend(types::I64, v);
+      let high64 = ((Tag::U8 as u16) as u64) * (2_u64.pow(48));
+      let high64 = unsafe { std::mem::transmute::<u64,i64>(high64) };
+      let high64 = ctx.ins().iconst(types::I64, high64);
+      ctx.ins().iconcat(low64, high64)
+   }
    else if ot=="String" && nt=="Value" { v }
    else if ot=="Value" && nt=="String" { v }
    else if ot=="Tuple" && nt=="Value" { v }

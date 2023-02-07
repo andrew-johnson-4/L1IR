@@ -46,7 +46,7 @@ fn eval_eq() {
       let nojit = Program::program(
          vec![],
          vec![
-            Expression::apply("==:(U64,U64)->U64",vec![
+            Expression::apply("==:(U64,U64)->U8",vec![
                Expression::unary(format!("{}",x).as_bytes(), ()),
                Expression::unary(format!("{}",y).as_bytes(), ()),
             ],()),
@@ -65,7 +65,7 @@ fn eval_ne() {
       let nojit = Program::program(
          vec![],
          vec![
-            Expression::apply("!=:(U64,U64)->U64",vec![
+            Expression::apply("!=:(U64,U64)->U8",vec![
                Expression::unary(format!("{}",x).as_bytes(), ()),
                Expression::unary(format!("{}",y).as_bytes(), ()),
             ],()),
@@ -84,7 +84,7 @@ fn eval_lt() {
       let nojit = Program::program(
          vec![],
          vec![
-            Expression::apply("<:(U64,U64)->U64",vec![
+            Expression::apply("<:(U64,U64)->U8",vec![
                Expression::unary(format!("{}",x).as_bytes(), ()),
                Expression::unary(format!("{}",y).as_bytes(), ()),
             ],()),
@@ -103,7 +103,7 @@ fn eval_gt() {
       let nojit = Program::program(
          vec![],
          vec![
-            Expression::apply(">:(U64,U64)->U64",vec![
+            Expression::apply(">:(U64,U64)->U8",vec![
                Expression::unary(format!("{}",x).as_bytes(), ()),
                Expression::unary(format!("{}",y).as_bytes(), ()),
             ],()),
@@ -122,7 +122,7 @@ fn eval_gte() {
       let nojit = Program::program(
          vec![],
          vec![
-            Expression::apply(">=:(U64,U64)->U64",vec![
+            Expression::apply(">=:(U64,U64)->U8",vec![
                Expression::unary(format!("{}",x).as_bytes(), ()),
                Expression::unary(format!("{}",y).as_bytes(), ()),
             ],()),
@@ -141,7 +141,7 @@ fn eval_lte() {
       let nojit = Program::program(
          vec![],
          vec![
-            Expression::apply("<=:(U64,U64)->U64",vec![
+            Expression::apply("<=:(U64,U64)->U8",vec![
                Expression::unary(format!("{}",x).as_bytes(), ()),
                Expression::unary(format!("{}",y).as_bytes(), ()),
             ],()),
