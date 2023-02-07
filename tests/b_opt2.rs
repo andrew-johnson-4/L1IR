@@ -1,3 +1,63 @@
+use l1_ir::ast::{Expression,Program};
+use l1_ir::opt::{JProgram};
+
+#[test]
+fn eval_range1() {
+   for x in 0..20 {
+      let nojit = Program::program(
+         vec![],
+         vec![
+            Expression::apply("range:(U64)->U64[]",vec![
+               Expression::unary(format!("{}",x).as_bytes(), ()),
+            ],()),
+         ],
+      );
+      let jit = JProgram::compile(&nojit);
+      let jval = jit.eval(&[]);
+      assert_eq!(format!("{}",x), format!("{:?}",jval), "range({})", x);
+   }
+}
+
+#[test]
+fn eval_range2() {
+   for x in 0..20 {
+   for y in 0..20 {
+      let nojit = Program::program(
+         vec![],
+         vec![
+            Expression::apply("range:(U64,U64)->U64[]",vec![
+               Expression::unary(format!("{}",x).as_bytes(), ()),
+               Expression::unary(format!("{}",y).as_bytes(), ()),
+            ],()),
+         ],
+      );
+      let jit = JProgram::compile(&nojit);
+      let jval = jit.eval(&[]);
+      assert_eq!(format!("{}",x), format!("{:?}",jval), "range({},{})", x, y);
+   }}
+}
+
+#[test]
+fn eval_range3() {
+   for x in 0..20 {
+   for y in 0..20 {
+   for z in 1..20 {
+      let nojit = Program::program(
+         vec![],
+         vec![
+            Expression::apply("range:(U64,U64,U64)->U64[]",vec![
+               Expression::unary(format!("{}",x).as_bytes(), ()),
+               Expression::unary(format!("{}",y).as_bytes(), ()),
+               Expression::unary(format!("{}",z).as_bytes(), ()),
+            ],()),
+         ],
+      );
+      let jit = JProgram::compile(&nojit);
+      let jval = jit.eval(&[]);
+      assert_eq!(format!("{}",x), format!("{:?}",jval), "range({},{},{})", x, y, z);
+   }}}
+}
+
 /* TODO implement tuples
 use l1_ir::value;
 use l1_ir::ast::{Expression,Program,FunctionDefinition,LHSPart,TIPart,Value,Type};

@@ -6,9 +6,11 @@ pub struct FFI {
    pub arg_types: Vec<ast::Type>,
    pub name: String,
    pub cons: for<'f> fn(&mut FunctionBuilder<'f>,&[Value]) -> Value,
+   pub symbol: Option<*const u8>,
    pub rname: String,
    pub rtype: types::Type,
 }
+unsafe impl Send for FFI {}
 
 pub fn import<'f>() -> Vec<FFI> {
    let mut imported = Vec::new();
@@ -23,5 +25,9 @@ pub fn import<'f>() -> Vec<FFI> {
    imported.extend(crate::recipes::cranelift_impl::mul::import());
    imported.extend(crate::recipes::cranelift_impl::div::import());
    imported.extend(crate::recipes::cranelift_impl::rem::import());
+
+   imported.extend(crate::recipes::cranelift_impl::range1::import());
+   imported.extend(crate::recipes::cranelift_impl::range2::import());
+   imported.extend(crate::recipes::cranelift_impl::range3::import());
    imported
 }

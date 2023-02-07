@@ -14,6 +14,7 @@ pub fn import() -> Vec<FFI> {vec![
       arg_types: vec![Type::nominal("U64"), Type::nominal("U64")],
       name: "<=:(U64,U64)->U8".to_string(),
       cons: f_u64,
+      symbol: None,
       rname: "U8".to_string(),
       rtype: types::I8,
    }

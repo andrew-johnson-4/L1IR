@@ -10,3 +10,7 @@ pub mod gte;
 pub mod mul;
 pub mod div;
 pub mod rem;
+
+pub mod range1;
+pub mod range2;
+pub mod range3;

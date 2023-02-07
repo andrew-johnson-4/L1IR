@@ -6,23 +6,23 @@ use crate::ast::{Program,Expression,LHSPart,LHSLiteralPart,LIPart,TIPart,Functio
 use crate::recipes::cranelift::FFI;
 use cranelift::prelude::*;
 use cranelift_jit::{JITBuilder, JITModule};
-use cranelift_module::{DataContext, Linkage, Module, FuncOrDataId};
+use cranelift_module::{DataContext, Linkage, Module, FuncOrDataId, FuncId};
 use cranelift_codegen::settings::{self, Configurable};
 use cranelift_native;
 use num_traits::ToPrimitive;
 use std::collections::HashMap;
-use std::sync::{Mutex};
+use std::sync::{Arc,Mutex};
 
 lazy_static! {
    static ref TYPE_CONTEXT: Mutex<HashMap<usize, String>> = {
       Mutex::new(HashMap::new())
    };
-   static ref STDLIB: Mutex<HashMap<String, FFI>> = {
+   static ref STDLIB: Arc<Mutex<HashMap<String, FFI>>> = {
       let mut lib = HashMap::new();
       for ffi in crate::recipes::cranelift::import().into_iter() {
          lib.insert(ffi.name.clone(), ffi);
       }
-      Mutex::new(lib)
+      Arc::new(Mutex::new(lib))
    };
 }
 
@@ -544,6 +544,25 @@ pub fn apply_fn<'f, S: Clone + Debug>(jmod: &mut JITModule, ctx: &mut FunctionBu
    unreachable!("function undefined: {}", fi)
 }
 
+fn inject_stdlib_symbols(module: &mut JITModule) -> Vec<(String,FuncId)> {
+   let mut fs = Vec::new();
+   let stdlib = STDLIB.lock().unwrap();
+   for (sk,sv) in stdlib.iter() {
+   if let Some(_) = sv.symbol {
+      let mut sig_s = module.make_signature();
+      for at in sv.args.iter() {
+         sig_s.params.push(AbiParam::new(*at));
+      }
+      sig_s.returns.push(AbiParam::new(sv.rtype));
+
+      let func_s = module
+        .declare_function(sk, Linkage::Local, &sig_s)
+        .unwrap();
+      fs.push((sk.clone(), func_s));
+   }}
+   fs
+}
+
 impl JProgram {
    //functions will not be compiled until referenced
    pub fn compile<S: Clone + Debug>(p: &Program<S>) -> JProgram {
@@ -557,8 +576,17 @@ impl JProgram {
       });
       let isa = isa_builder.finish(settings::Flags::new(flag_builder)).expect("Failed to build Cranelift ISA");
 
-      let builder = JITBuilder::with_isa(isa, cranelift_module::default_libcall_names());
+      let mut builder = JITBuilder::with_isa(isa, cranelift_module::default_libcall_names());
+      {
+         let stdlib = STDLIB.lock().unwrap();
+         for (sk,sv) in stdlib.iter() {
+         if let Some(addr) = sv.symbol {
+            builder.symbol(sk, addr);
+         }}
+      }
+       
       let mut module = JITModule::new(builder);
+      let finfs = inject_stdlib_symbols(&mut module);
       let mut builder_context = FunctionBuilderContext::new();
       let mut ctx = module.make_context();
       let mut _data_ctx = DataContext::new();
