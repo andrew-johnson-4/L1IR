@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use cranelift_codegen::ir::FuncRef;
 
 fn s_u64(to: u64) -> u128 {
-   value::Value::u8(34,"U8").0
+   value::Value::range(0, to, 1).0
 }
 
 fn f_u64<'f>(frefs: &HashMap<String,FuncRef>, ctx: &mut FunctionBuilder<'f>, val: &[Value]) -> Value {

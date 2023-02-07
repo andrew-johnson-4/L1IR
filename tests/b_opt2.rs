@@ -1,5 +1,6 @@
 use l1_ir::ast::{Expression,Program};
 use l1_ir::opt::{JProgram};
+use l1_ir::value::{Value};
 
 #[test]
 fn eval_range1() {
@@ -14,11 +15,11 @@ fn eval_range1() {
       );
       let jit = JProgram::compile(&nojit);
       let jval = jit.eval(&[]);
-      assert_eq!(format!("{}",x), format!("{:?}",jval), "range({})", x);
+      let rval = Value::range(0,x,1);
+      assert_eq!(format!("{:?}",rval), format!("{:?}",jval), "range({})", x);
    }
 }
 
-/*
 #[test]
 fn eval_range2() {
    for x in 0..20 {
@@ -34,7 +35,8 @@ fn eval_range2() {
       );
       let jit = JProgram::compile(&nojit);
       let jval = jit.eval(&[]);
-      assert_eq!(format!("{}",x), format!("{:?}",jval), "range({},{})", x, y);
+      let rval = Value::range(x,y,1);
+      assert_eq!(format!("{:?}",rval), format!("{:?}",jval), "range({},{})", x, y);
    }}
 }
 
@@ -55,10 +57,10 @@ fn eval_range3() {
       );
       let jit = JProgram::compile(&nojit);
       let jval = jit.eval(&[]);
-      assert_eq!(format!("{}",x), format!("{:?}",jval), "range({},{},{})", x, y, z);
+      let rval = Value::range(x,y,z);
+      assert_eq!(format!("{:?}",rval), format!("{:?}",jval), "range({},{},{})", x, y, z);
    }}}
 }
-*/
 
 /* TODO implement tuples
 use l1_ir::value;

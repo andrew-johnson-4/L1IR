@@ -186,6 +186,13 @@ impl Value {
    pub fn unit(nom: &str) -> Value {
       Value::from_parts(Tag::Unit as u16, Value::push_name(nom), 0)
    }
+   pub fn range(from: u64, to: u64, step: u64) -> Value {
+      let mut vs = Vec::new();
+      for i in (from..to).step_by(step as usize) {
+         vs.push(Value::u64(i,"U64"));
+      }
+      Value::tuple(&vs,"Tuple")
+   }
    pub fn string(lit: &str, nom: &str) -> Value {
       let cs = lit.chars().collect::<Vec<char>>();
       let layout = Layout::from_size_align((cs.len()+1) * 32, 32).unwrap();
