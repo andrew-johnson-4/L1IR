@@ -1,8 +1,10 @@
 use crate::ast::{Type};
 use crate::recipes::cranelift::FFI;
 use cranelift::prelude::*;
+use std::collections::HashMap;
+use cranelift_codegen::ir::FuncRef;
 
-fn f_u64<'f>(ctx: &mut FunctionBuilder<'f>, val: &[Value]) -> Value {
+fn f_u64<'f>(_frefs: &HashMap<String,FuncRef>, ctx: &mut FunctionBuilder<'f>, val: &[Value]) -> Value {
    let val0 = val[0].clone();
    let val1 = val[1].clone();
    ctx.ins().udiv(val0, val1)

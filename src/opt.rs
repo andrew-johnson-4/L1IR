@@ -702,7 +702,8 @@ pub fn check_hardcoded_call<'f>(ctx: &mut FunctionBuilder<'f>, blk: Block, fi: S
       let sig = args.iter().map(|(_je,jt)| jt.jtype).collect::<Vec<types::Type>>();
       if sig != ffi.args { panic!("Wrong argument types to function: {}", fi) }
       let val = args.iter().map(|(je,_jt)| je.value).collect::<Vec<Value>>();
-      let rval = (ffi.cons)(ctx, &val);
+      let finfs = HashMap::new();
+      let rval = (ffi.cons)(&finfs, ctx, &val);
       return Some((
          JExpr { block: blk, value: rval },
          JType { name: ffi.rname.clone(), jtype: ffi.rtype },

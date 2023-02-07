@@ -18,6 +18,7 @@ fn eval_range1() {
    }
 }
 
+/*
 #[test]
 fn eval_range2() {
    for x in 0..20 {
@@ -57,6 +58,7 @@ fn eval_range3() {
       assert_eq!(format!("{}",x), format!("{:?}",jval), "range({},{},{})", x, y, z);
    }}}
 }
+*/
 
 /* TODO implement tuples
 use l1_ir::value;

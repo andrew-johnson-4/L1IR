@@ -1,11 +1,13 @@
 use crate::ast;
 use cranelift::prelude::*;
+use std::collections::HashMap;
+use cranelift_codegen::ir::FuncRef;
 
 pub struct FFI {
    pub args: Vec<types::Type>,
    pub arg_types: Vec<ast::Type>,
    pub name: String,
-   pub cons: for<'f> fn(&mut FunctionBuilder<'f>,&[Value]) -> Value,
+   pub cons: for<'f> fn(&HashMap<String,FuncRef>, &mut FunctionBuilder<'f>,&[Value]) -> Value,
    pub symbol: Option<*const u8>,
    pub rname: String,
    pub rtype: types::Type,
