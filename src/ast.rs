@@ -437,6 +437,7 @@ impl LHSPart {
 
 #[derive(Clone)]
 pub enum Expression<S:Debug + Clone> { //Expressions don't need to "clone"?
+   Map(Arc<LHSPart>,Arc<Expression<S>>,Arc<TIPart<S>>,Type,S),
    ValueIntroduction(Value,Type,S),
    LiteralIntroduction(Arc<Vec<LIPart<S>>>,Type,S),
    TupleIntroduction(Arc<Vec<TIPart<S>>>,Type,S),
@@ -450,6 +451,7 @@ impl<S:Debug + Clone> Expression<S> {
    pub fn typed(self, nom: &str) -> Expression<S> {
       let nom = Type::nominal(nom);
       match self {
+         Expression::Map(lhs,e,x,_,span) => { Expression::Map(lhs,e,x,nom,span) },
          Expression::ValueIntroduction(vi,_,span) => { Expression::ValueIntroduction(vi,nom,span) },
          Expression::LiteralIntroduction(vi,_,span) => { Expression::LiteralIntroduction(vi,nom,span) },
          Expression::TupleIntroduction(vi,_,span) => { Expression::TupleIntroduction(vi,nom,span) },
@@ -462,6 +464,7 @@ impl<S:Debug + Clone> Expression<S> {
    }
    pub fn typ(&self) -> Type {
       match self {
+         Expression::Map(_lhs,_e,_x,tt,_span) => { tt.clone() },
          Expression::ValueIntroduction(_vi,tt,_span) => { tt.clone() },
          Expression::LiteralIntroduction(_vi,tt,_span) => { tt.clone() },
          Expression::TupleIntroduction(_vi,tt,_span) => { tt.clone() },
@@ -474,6 +477,11 @@ impl<S:Debug + Clone> Expression<S> {
    }
    pub fn vars(&self, vars: &mut Vec<usize>) {
       match self {
+         Expression::Map(lhs,e,x,_,_) => {
+            lhs.vars(vars);
+            e.vars(vars);
+            x.vars(vars);
+         },
          Expression::VariableReference(vi,_,_) => {
             vars.push(*vi);
          },
@@ -530,6 +538,9 @@ impl<S:Debug + Clone> Expression<S> {
          (Expression::Failure(_,_),Expression::Failure(_,_)) => { true },
          _ => false
       }
+   }
+   pub fn map(lhs: LHSPart, e: Expression<S>, x: TIPart<S>, span: S) -> Expression<S> {
+      Expression::Map(Arc::new(lhs), Arc::new(e), Arc::new(x), Type::default(), span)
    }
    pub fn unary(ui: &[u8], span: S) -> Expression<S> {
       Expression::ValueIntroduction(Value::unary(ui), Type::default(), span)

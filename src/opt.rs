@@ -342,6 +342,9 @@ pub fn try_inline_plurals<'f,S: Clone + Debug>(finfs: &HashMap<String,FuncRef>, 
 pub fn compile_expr<'f,S: Clone + Debug>(finfs: &HashMap<String,FuncRef>, jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, mut blk: Block, p: &Program<S>, e: &Expression<S>) -> (JExpr,JType) {
    println!("compile expr");
    match e {
+      Expression::Map(_lhs,_e,_x,_tt,_span) => {
+         unimplemented!("compile_expr Expression::Map")
+      },
       Expression::ValueIntroduction(ui,tt,_span) => {
       if let ast::Value::Unary(ui,_) = ui {
          let tname = tt.nom();
