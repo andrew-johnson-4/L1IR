@@ -4,7 +4,9 @@
 [![Build](https://github.com/andrew-johnson-4/L1IR/workflows/Build/badge.svg)](https://github.com/andrew-johnson-4/L1IR)
 [![Documentation](https://img.shields.io/badge/api-rustdoc-blue.svg)](https://docs.rs/l1_ir/latest/l1_ir/)
 
-Intermediate Representation of [LSTS](https://github.com/andrew-johnson-4/LSTS) [L1 Language](https://github.com/andrew-johnson-4/LSTS/blob/main/preludes/l1.tlc)
+Intermediate Representation of [LSTS](https://github.com/andrew-johnson-4/LSTS) [L1 Language](https://github.com/andrew-johnson-4/LSTS/blob/main/preludes/l1.tlc).
+Built to support and manage JIT incremental compilation.
+Efficiently build and evaluate code fragments so that you can generate even more code faster!
 
 ```
 (Rust)   1M 2^20 in   4.8860006 seconds
