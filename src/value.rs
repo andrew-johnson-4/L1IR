@@ -29,14 +29,14 @@
 use num_derive::FromPrimitive;    
 use num_traits::FromPrimitive;
 use std::sync::Mutex;
-use std::alloc::{alloc, Layout};
+use std::alloc::{alloc_zeroed, Layout};
 use std::iter::FromIterator;
 use crate::ast;
 
 #[derive(FromPrimitive,Copy,Clone,Debug)]
 #[repr(u16)]
 pub enum Tag {
-   Unit = 0,
+   Zero = 0, Unit,
    I8, I82, I83, I84, I85, I86, I87, I88, I89, I810, I811, I812,
    U8, U82, U83, U84, U85, U86, U87, U88, U89, U810, U811, U812,
    U16, U162, U163, U164, U165, U166,
@@ -57,7 +57,7 @@ pub struct Value(pub u128);
 
 impl PartialEq for Value {
    fn eq(&self, other: &Self) -> bool {
-      self.0 == other.0
+      format!("{:?}",self) == format!("{:?}",other)
    }
 }
 impl Eq for Value {}
@@ -65,6 +65,7 @@ impl std::fmt::Debug for Value {
    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
       let tag = self.tag();
       match tag {
+         Tag::Zero => write!(f,"_"),
          Tag::Unit => write!(f,"()"),
          Tag::I8 => write!(f,"{}",self.slot(tag,0)),
          Tag::I82 => write!(f,"({},{})",self.slot(tag,0), self.slot(tag,1)),
@@ -183,6 +184,9 @@ impl Value {
       ns.push(nom.to_string());
       ni as u16
    }
+   pub fn zero() -> Value {
+      Value(0)
+   }
    pub fn unit(nom: &str) -> Value {
       Value::from_parts(Tag::Unit as u16, Value::push_name(nom), 0)
    }
@@ -197,7 +201,7 @@ impl Value {
       let cs = lit.chars().collect::<Vec<char>>();
       let layout = Layout::from_size_align((cs.len()+1) * 32, 32).unwrap();
       let ptr = unsafe {
-         let ptr = alloc(layout) as *mut u32;
+         let ptr = alloc_zeroed(layout) as *mut u32;
          if ptr.is_null() {
             panic!("Failed to allocate new memory for String");
          }
@@ -216,10 +220,17 @@ impl Value {
       raw |= ptr_bits;
       Value::from_parts(Tag::String as u16, Value::push_name(nom), raw)
    }
+   pub fn tuple_with_capacity(cap: u64) -> Value {
+      let mut vs = Vec::new();
+      for _ in 0..cap {
+         vs.push(Value::zero());
+      }
+      Value::tuple(&vs,"Tuple")
+   }
    pub fn tuple(vs: &[Value], nom: &str) -> Value {
       let layout = Layout::from_size_align((vs.len()+1) * 128, 128).unwrap();
       let ptr = unsafe {
-         let ptr = alloc(layout) as *mut u128;
+         let ptr = alloc_zeroed(layout) as *mut u128;
          if ptr.is_null() {
             panic!("Failed to allocate new memory for Tuple");
          }
@@ -243,6 +254,16 @@ impl Value {
       raw <<= 32; raw >>= 32;
       raw >>= 80;
       raw as usize
+   }
+   pub fn set_end(&mut self, end: usize) {
+      let start = self.start() as u128;
+      let end = end as u128;
+      let tptr = self.tptr() as u128;
+      let mut raw: u128 = 0;
+      raw |= start; raw <<= 16;
+      raw |= end;   raw <<= 64;
+      raw |= tptr;
+      self.0 = Value::from_parts(Tag::Tuple as u16, Value::push_name("Tuple"), raw).0;
    }
    pub fn end(&self) -> usize {
       let mut raw = self.0;
@@ -485,6 +506,16 @@ impl Value {
          },
          _ => { panic!("Could not cast {:?} as Tuple",tag) },         
       }
+   }
+   pub fn push(&self, x: Value) {
+      for i in self.start()..self.end() {
+      if self.vslot(i).0 == 0 {
+         let ptr = self.tptr();
+         unsafe {
+            *ptr.offset((1+i) as isize) = x.0;
+         }
+         break;
+      }}
    }
    pub fn slot(&self, tag: Tag, slot: usize) -> i128 {
       let mut s = ((self.0 << 32) >> 32) as u128;

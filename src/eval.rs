@@ -124,6 +124,9 @@ fn ucatu(lui: &mut BigUint, lcs: &mut Vec<char>, u:&BigUint) {
 pub fn eval_e<S:Debug + Clone>(mut lctx: Arc<RefCell<HashMap<usize,Value>>>, pctx: &Program<S>, mut e: Expression<S>) -> Result<Value,Error<S>> {
    loop {
    match e {
+      Expression::Map(_lhs,_e,_x,_tt,_span) => {
+         unimplemented!("eval_e Expression::Map")
+      },
       Expression::ValueIntroduction(ui,_tt,_span) => {
          return Ok(ui)
       },
