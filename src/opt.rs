@@ -65,6 +65,8 @@ pub fn type_by_name(tn: &ast::Type) -> types::Type {
    match tn.as_str() {
       "U64" => types::I64,
       "String" => types::I128,
+      "Tuple" => types::I128,
+      "Value" => types::I128,
       _ => unimplemented!("type_by_name({})", tn),
    }} else { types::I128 }
 }
