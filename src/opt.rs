@@ -74,7 +74,10 @@ pub fn jtype_by_name(tn: &ast::Type) -> JType {
    if let Some(ref tn) = tn.name {
    match tn.as_str() {
       "U64" => JType { name: tn.clone(), jtype: types::I64 },
-      _ => unimplemented!("type_by_name({})", tn),
+      "String" => JType { name: tn.clone(), jtype: types::I128 },
+      "Tuple" => JType { name: tn.clone(), jtype: types::I128 },
+      "Value" => JType { name: tn.clone(), jtype: types::I128 },
+      _ => unimplemented!("jtype_by_name({})", tn),
    }} else { JType { name: "Value".to_string(), jtype: types::I128 } }
 }
 
@@ -388,7 +391,6 @@ pub fn compile_expr<'f,S: Clone + Debug>(finfs: &mut HashMap<String,FuncRef>, jm
          let ii = *finfs.get("[]:(Tuple,U64)->Value").unwrap();
          let ii = ctx.ins().call(ii,&[e_val,i]);
          let ii = ctx.inst_results(ii)[0];
-         //TODO if x is guard, check if guarded, then skip
          match (*lhs).borrow() {
             LHSPart::Any => {},
             LHSPart::Variable(vi) => {
@@ -399,7 +401,7 @@ pub fn compile_expr<'f,S: Clone + Debug>(finfs: &mut HashMap<String,FuncRef>, jm
             },
             _ => panic!("Invalid IR: for loop bindings must not be fallible")
          }
-         let x_val = match (*x).borrow() {
+         let x_val = match x.borrow() {
             TIPart::Tuple(_ts) => unimplemented!(".flatmap Tuple"),
             TIPart::Variable(vi) => {
                let jv = Variable::from_u32(*vi as u32);
@@ -407,6 +409,29 @@ pub fn compile_expr<'f,S: Clone + Debug>(finfs: &mut HashMap<String,FuncRef>, jm
             }
             TIPart::InlineVariable(_vi) => unimplemented!(".flatmap InlineVariable"),
             TIPart::Expression(xe) => {
+               let mut xe = xe;
+               if let Expression::PatternMatch(guard_cond,plrs,_ptt,_span) = xe.borrow() {
+               if plrs.len()==1 {
+               if let (LHSPart::Literal(guard_literal),guarded) = &plrs[0] { 
+               if guard_literal=="1" {
+                  let (lie,_lit) = compile_expr(finfs, jmod, ctx, in_loop, p, guard_cond.borrow());
+                  in_loop = lie.block;
+
+                  let skip = ctx.create_block();
+                  let push = ctx.create_block();
+                  ctx.ins().brz(lie.value, skip, &[]);
+                  ctx.ins().jump(push, &[]);
+                  ctx.seal_block(in_loop);
+
+                  ctx.switch_to_block(skip);
+                  let i = ctx.ins().iadd_imm(i, 1);
+                  ctx.ins().jump(loop_controller, &[i]);
+                  ctx.seal_block(skip);
+
+                  ctx.switch_to_block(push);
+                  in_loop = push;
+                  xe = guarded;
+               }}}}
                let (lie,_lit) = compile_expr(finfs, jmod, ctx, in_loop, p, xe.borrow());
                in_loop = lie.block;
                lie.value
