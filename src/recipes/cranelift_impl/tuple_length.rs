@@ -1,11 +1,13 @@
 use crate::ast::{Type};
+use crate::value;
 use crate::recipes::cranelift::FFI;
 use cranelift::prelude::*;
 use std::collections::HashMap;
 use cranelift_codegen::ir::FuncRef;
 
-fn s_u64(_t: u128) -> u64 {
-   54321
+fn s_u64(t: u128) -> u64 {
+   let t = value::Value(t);
+   (t.end() - t.start()) as u64
 }
 
 fn f_u64<'f>(frefs: &HashMap<String,FuncRef>, ctx: &mut FunctionBuilder<'f>, val: &[Value]) -> Value {

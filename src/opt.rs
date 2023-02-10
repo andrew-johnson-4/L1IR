@@ -349,9 +349,10 @@ pub fn compile_expr<'f,S: Clone + Debug>(finfs: &mut HashMap<String,FuncRef>, jm
    match e {
       Expression::Map(_lhs,iterable,_x,_tt,_span) => {
          println!("compile expr Map");
-         compile_expr(finfs, jmod, ctx, blk, p, iterable)
+         let (je,_jt) = compile_expr(finfs, jmod, ctx, blk, p, iterable);
+         blk = je.block;
+         let e_val = je.value;
 
-         /*
          let map_len = *finfs.get(".length:(Tuple)->U64").unwrap();
          let map_len = ctx.ins().call(map_len,&[e_val]);
          let map_len = ctx.inst_results(map_len)[0];
@@ -363,7 +364,6 @@ pub fn compile_expr<'f,S: Clone + Debug>(finfs: &mut HashMap<String,FuncRef>, jm
             name: "U64".to_string(),
             jtype: types::I64,
          })
-         */
 
          //TODO let map_new: Tuple = Tuple::with_capacity(map_len)
          //TODO loop lhs=e[i] for i in 0..map_len
