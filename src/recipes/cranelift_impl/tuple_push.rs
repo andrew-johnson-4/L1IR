@@ -8,9 +8,7 @@ use cranelift_codegen::ir::FuncRef;
 fn s_u64(t: u128, xi: u128) -> u64 {
    let v = value::Value(t);
    let x = value::Value(xi);
-   println!(".push {:?} <- {:?}", v, x);
    v.push(x);
-   println!(".push result {:?}", v);
    0
 }
 

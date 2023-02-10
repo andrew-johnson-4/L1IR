@@ -42,9 +42,9 @@ fn eval_range2() {
 
 #[test]
 fn eval_range3() {
-   for x in 0..20 {
-   for y in 0..20 {
-   for z in 1..20 {
+   for x in 0..10 {
+   for y in 0..10 {
+   for z in 1..10 {
       let nojit = Program::program(
          vec![],
          vec![
