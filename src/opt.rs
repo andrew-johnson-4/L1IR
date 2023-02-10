@@ -445,8 +445,12 @@ pub fn compile_expr<'f,S: Clone + Debug>(finfs: &mut HashMap<String,FuncRef>, jm
       Expression::LiteralIntroduction(lis,tt,_span) => {
          println!("compile expr Literal Introduction");
          if tt.nom() == "Unit" {
-            let val = ctx.ins().iconst(types::I64, 0);
-            let val = ctx.ins().iconcat(val, val);
+            let v = value::Value::from_parts(value::Tag::Unit as u16, value::Value::push_name("()"), 0).0;
+            let high = (v >> 64) as i64;
+            let low = ((v << 64) >> 64) as i64;
+            let high = ctx.ins().iconst(types::I64, high);
+            let low = ctx.ins().iconst(types::I64, low);
+            let val = ctx.ins().iconcat(low, high);
             (JExpr {
                block: blk,
                value: val,
