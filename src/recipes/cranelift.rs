@@ -31,5 +31,7 @@ pub fn import<'f>() -> Vec<FFI> {
    imported.extend(crate::recipes::cranelift_impl::range1::import());
    imported.extend(crate::recipes::cranelift_impl::range2::import());
    imported.extend(crate::recipes::cranelift_impl::range3::import());
+
+   imported.extend(crate::recipes::cranelift_impl::tuple_length::import());
    imported
 }

@@ -29,7 +29,7 @@
 use num_derive::FromPrimitive;    
 use num_traits::FromPrimitive;
 use std::sync::Mutex;
-use std::alloc::{alloc, Layout};
+use std::alloc::{alloc_zeroed, Layout};
 use std::iter::FromIterator;
 use crate::ast;
 
@@ -197,7 +197,7 @@ impl Value {
       let cs = lit.chars().collect::<Vec<char>>();
       let layout = Layout::from_size_align((cs.len()+1) * 32, 32).unwrap();
       let ptr = unsafe {
-         let ptr = alloc(layout) as *mut u32;
+         let ptr = alloc_zeroed(layout) as *mut u32;
          if ptr.is_null() {
             panic!("Failed to allocate new memory for String");
          }
@@ -219,7 +219,7 @@ impl Value {
    pub fn tuple(vs: &[Value], nom: &str) -> Value {
       let layout = Layout::from_size_align((vs.len()+1) * 128, 128).unwrap();
       let ptr = unsafe {
-         let ptr = alloc(layout) as *mut u128;
+         let ptr = alloc_zeroed(layout) as *mut u128;
          if ptr.is_null() {
             panic!("Failed to allocate new memory for Tuple");
          }

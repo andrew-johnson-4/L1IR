@@ -236,7 +236,12 @@ pub fn compile_lhs<'f>(ctx: &mut FunctionBuilder<'f>, mut lblk: Block, rblk: Blo
          }
          ctx.ins().jump(rblk, &[]);
       },
-      LHSPart::Variable(_lv) => unimplemented!("compile_lhs(Variable)"),
+      LHSPart::Variable(vi) => {
+         let jv = Variable::from_u32(*vi as u32);
+         ctx.declare_var(jv, types::I64);
+         TYPE_CONTEXT.lock().unwrap().insert(*vi, typ.to_string());
+         ctx.def_var(jv, val);
+      },
       LHSPart::Any => {
          ctx.ins().jump(rblk, &[]);
       },
@@ -342,16 +347,32 @@ pub fn try_inline_plurals<'f,S: Clone + Debug>(finfs: &mut HashMap<String,FuncRe
 pub fn compile_expr<'f,S: Clone + Debug>(finfs: &mut HashMap<String,FuncRef>, jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, mut blk: Block, p: &Program<S>, e: &Expression<S>) -> (JExpr,JType) {
    println!("compile expr");
    match e {
-      Expression::Map(_lhs,_e,_x,_tt,_span) => {
-         //TODO let map_len: U64 = e.len()
-         //TODO let map_new: Tuple = Tuple::with_capacity(e.len())
+      Expression::Map(_lhs,iterable,_x,_tt,_span) => {
+         println!("compile expr Map");
+         compile_expr(finfs, jmod, ctx, blk, p, iterable)
+
+         /*
+         let map_len = *finfs.get(".length:(Tuple)->U64").unwrap();
+         let map_len = ctx.ins().call(map_len,&[e_val]);
+         let map_len = ctx.inst_results(map_len)[0];
+
+         (JExpr {
+            block: blk,
+            value: map_len,
+         }, JType {
+            name: "U64".to_string(),
+            jtype: types::I64,
+         })
+         */
+
+         //TODO let map_new: Tuple = Tuple::with_capacity(map_len)
          //TODO loop lhs=e[i] for i in 0..map_len
          //TODO if x is guard, check if guarded, then skip
          //TODO map_new.push( $x.0 )
          //TODO return map_new
-         unimplemented!("compile_expr Expression::Map")
       },
       Expression::ValueIntroduction(ui,tt,_span) => {
+         println!("compile expr Value Introduction");
       if let ast::Value::Unary(ui,_) = ui {
          let tname = tt.nom();
          if "Value" == &tname {
@@ -383,6 +404,7 @@ pub fn compile_expr<'f,S: Clone + Debug>(finfs: &mut HashMap<String,FuncRef>, jm
          unimplemented!("compile expression {:?}", ui)
       }},
       Expression::LiteralIntroduction(lis,tt,_span) => {
+         println!("compile expr Literal Introduction");
          if tt.nom() == "Unit" {
             let val = ctx.ins().iconst(types::I64, 0);
             let val = ctx.ins().iconcat(val, val);
@@ -445,10 +467,12 @@ pub fn compile_expr<'f,S: Clone + Debug>(finfs: &mut HashMap<String,FuncRef>, jm
       },
       Expression::FunctionReference(_vi,_tt,_span) => unimplemented!("compile expression: FunctionReference"),
       Expression::FunctionApplication(fi,args,_tt,_span) => {
+         println!("compile expr FunctionApplication");
          let mut arg_types = Vec::new();
          for a in args.iter() {
-            let jejt = compile_expr(finfs, jmod, ctx, blk, p, a);
-            arg_types.push(jejt);
+            let (je,jt) = compile_expr(finfs, jmod, ctx, blk, p, a);
+            blk = je.block;
+            arg_types.push((je,jt));
          }
          apply_fn(finfs, jmod, ctx, blk, p, fi.clone(), arg_types)
       },

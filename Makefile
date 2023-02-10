@@ -1,3 +1,6 @@
+test_active_branch:
+	cargo test --features cranelift eval_flatmap1 -- --nocapture
+
 test_all:
 	cargo test --features cranelift
 

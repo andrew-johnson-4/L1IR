@@ -24,7 +24,7 @@ pub fn import() -> Vec<FFI> {vec![
       name: "range:(U64,U64)->U64[]".to_string(),
       cons: f_u64,
       symbol: Some(s_u64 as *const u8),
-      rname: "Tuple".to_string(),
+      rname: "Value".to_string(),
       rtype: types::I128,
    }
 ]}
