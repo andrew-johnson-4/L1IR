@@ -21,3 +21,4 @@ pub mod tuple_length;
 pub mod tuple_trim;
 pub mod tuple_new;
 pub mod tuple_index;
+pub mod tuple_push;

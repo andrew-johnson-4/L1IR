@@ -383,7 +383,6 @@ pub fn compile_expr<'f,S: Clone + Debug>(finfs: &mut HashMap<String,FuncRef>, jm
 
          ctx.switch_to_block(in_loop);
          let i = ctx.block_params(in_loop)[0];
-         //compile_lhs(ctx, lblocks[li], rblocks[li], l, lblocks[li+1], je.value, "Value");
          let ii = *finfs.get("[]:(Tuple,U64)->Value").unwrap();
          let ii = ctx.ins().call(ii,&[e_val,i]);
          let ii = ctx.inst_results(ii)[0];
@@ -399,21 +398,20 @@ pub fn compile_expr<'f,S: Clone + Debug>(finfs: &mut HashMap<String,FuncRef>, jm
             _ => panic!("Invalid IR: for loop bindings must not be fallible")
          }
          let x_val = match (*x).borrow() {
-            TIPart::Tuple(ts) => unimplemented!(".flatmap Tuple"),
+            TIPart::Tuple(_ts) => unimplemented!(".flatmap Tuple"),
             TIPart::Variable(vi) => {
                let jv = Variable::from_u32(*vi as u32);
                ctx.use_var(jv)
             }
-            TIPart::InlineVariable(vi) => unimplemented!(".flatmap InlineVariable"),
+            TIPart::InlineVariable(_vi) => unimplemented!(".flatmap InlineVariable"),
             TIPart::Expression(xe) => {
-               let (lie,lit) = compile_expr(finfs, jmod, ctx, in_loop, p, xe.borrow());
+               let (lie,_lit) = compile_expr(finfs, jmod, ctx, in_loop, p, xe.borrow());
                in_loop = lie.block;
                lie.value
             }
          };
-         //TODO .push(x)
-         let pr = *finfs.get("println:(Value)->U64").unwrap();
-         let pr = ctx.ins().call(pr,&[x_val]);
+         let xi = *finfs.get(".push:(Tuple,Value)->U64").unwrap();
+         ctx.ins().call(xi,&[map_new,x_val]);
          let i = ctx.ins().iadd_imm(i, 1);
          ctx.ins().jump(loop_controller, &[i]);
          //seal in_loop

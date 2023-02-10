@@ -57,7 +57,7 @@ pub struct Value(pub u128);
 
 impl PartialEq for Value {
    fn eq(&self, other: &Self) -> bool {
-      self.0 == other.0
+      format!("{:?}",self) == format!("{:?}",other)
    }
 }
 impl Eq for Value {}
@@ -222,7 +222,7 @@ impl Value {
    }
    pub fn tuple_with_capacity(cap: u64) -> Value {
       let mut vs = Vec::new();
-      for i in 0..cap {
+      for _ in 0..cap {
          vs.push(Value::zero());
       }
       Value::tuple(&vs,"Tuple")
@@ -506,6 +506,16 @@ impl Value {
          },
          _ => { panic!("Could not cast {:?} as Tuple",tag) },         
       }
+   }
+   pub fn push(&self, x: Value) {
+      for i in self.start()..self.end() {
+      if self.vslot(i).0 == 0 {
+         let ptr = self.tptr();
+         unsafe {
+            *ptr.offset((1+i) as isize) = x.0;
+         }
+         break;
+      }}
    }
    pub fn slot(&self, tag: Tag, slot: usize) -> i128 {
       let mut s = ((self.0 << 32) >> 32) as u128;

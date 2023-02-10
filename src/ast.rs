@@ -477,7 +477,7 @@ impl<S:Debug + Clone> Expression<S> {
    }
    pub fn vars(&self, vars: &mut Vec<usize>) {
       match self {
-         Expression::Map(lhs,e,x,_,_) => {            
+         Expression::Map(_lhs,e,_x,_,_) => {
             e.vars(vars);
             //TODO hide shadowed variables
             //x.vars(vars);
@@ -505,7 +505,7 @@ impl<S:Debug + Clone> Expression<S> {
          },
          Expression::PatternMatch(e,lrs,_,_) => {
             e.vars(vars);
-            for (l,r) in lrs.iter() {
+            for (_l,r) in lrs.iter() {
                //TODO hide shadowed variables
                r.vars(vars);
             }
