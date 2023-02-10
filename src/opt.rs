@@ -382,12 +382,15 @@ pub fn compile_expr<'f,S: Clone + Debug>(finfs: &mut HashMap<String,FuncRef>, jm
 
          ctx.switch_to_block(in_loop);
          let i = ctx.block_params(in_loop)[0];
-         let fm = ctx.ins().iconst(types::I64, 0);
-         let fm = ctx.ins().iconcat(fm,fm);
+         //compile_lhs(ctx, lblocks[li], rblocks[li], l, lblocks[li+1], je.value, "Value");
+         let ii = *finfs.get("[]:(Tuple,U64)->Value").unwrap();
+         let ii = ctx.ins().call(ii,&[e_val,i]);
+         let ii = ctx.inst_results(ii)[0];
          let pr = *finfs.get("println:(Value)->U64").unwrap();
-         let pr = ctx.ins().call(pr,&[fm]);
+         let pr = ctx.ins().call(pr,&[ii]);
          //TODO if x is guard, check if guarded, then skip
          //TODO let lhs=e[i] in map_new.push(x)
+
          let i = ctx.ins().iadd_imm(i, 1);
          ctx.ins().jump(loop_controller, &[i]);
          //seal in_loop
