@@ -398,9 +398,13 @@ pub fn compile_expr<'f,S: Clone + Debug>(finfs: &mut HashMap<String,FuncRef>, jm
 
          ctx.switch_to_block(after_loop);
 
+         let map_out = *finfs.get("trim_capacity:(Tuple)->Tuple").unwrap();
+         let map_out = ctx.ins().call(map_out,&[map_new]);
+         let map_out = ctx.inst_results(map_out)[0];
+
          (JExpr {
             block: after_loop,
-            value: map_new,
+            value: map_out,
          }, JType {
             name: "Value".to_string(),
             jtype: types::I128,

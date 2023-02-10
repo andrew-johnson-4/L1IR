@@ -155,13 +155,9 @@ impl std::fmt::Debug for Value {
             let start = self.start();
             let end = self.end();
             write!(f, "(")?;
-            let mut started = false;
             for ti in start..end {
-               let tv = self.vslot(ti);
-               if tv.0 == 0 { continue; }
-               if started { write!(f, ",")?; }
+               if ti>start { write!(f, ",")?; }
                write!(f, "{:?}", self.vslot(ti))?;
-               started = true;
             }
             write!(f, ")")
          }
@@ -258,6 +254,16 @@ impl Value {
       raw <<= 32; raw >>= 32;
       raw >>= 80;
       raw as usize
+   }
+   pub fn set_end(&mut self, end: usize) {
+      let start = self.start() as u128;
+      let end = end as u128;
+      let tptr = self.tptr() as u128;
+      let mut raw: u128 = 0;
+      raw |= start; raw <<= 16;
+      raw |= end;   raw <<= 64;
+      raw |= tptr;
+      self.0 = Value::from_parts(Tag::Tuple as u16, Value::push_name("Tuple"), raw).0;
    }
    pub fn end(&self) -> usize {
       let mut raw = self.0;
