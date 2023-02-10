@@ -36,7 +36,7 @@ use crate::ast;
 #[derive(FromPrimitive,Copy,Clone,Debug)]
 #[repr(u16)]
 pub enum Tag {
-   Unit = 0,
+   Zero = 0, Unit,
    I8, I82, I83, I84, I85, I86, I87, I88, I89, I810, I811, I812,
    U8, U82, U83, U84, U85, U86, U87, U88, U89, U810, U811, U812,
    U16, U162, U163, U164, U165, U166,
@@ -65,6 +65,7 @@ impl std::fmt::Debug for Value {
    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
       let tag = self.tag();
       match tag {
+         Tag::Zero => write!(f,"_"),
          Tag::Unit => write!(f,"()"),
          Tag::I8 => write!(f,"{}",self.slot(tag,0)),
          Tag::I82 => write!(f,"({},{})",self.slot(tag,0), self.slot(tag,1)),
@@ -154,9 +155,13 @@ impl std::fmt::Debug for Value {
             let start = self.start();
             let end = self.end();
             write!(f, "(")?;
+            let mut started = false;
             for ti in start..end {
-               if ti>start { write!(f, ",")?; }
+               let tv = self.vslot(ti);
+               if tv.0 == 0 { continue; }
+               if started { write!(f, ",")?; }
                write!(f, "{:?}", self.vslot(ti))?;
+               started = true;
             }
             write!(f, ")")
          }
@@ -182,6 +187,9 @@ impl Value {
       let ni = ns.len();
       ns.push(nom.to_string());
       ni as u16
+   }
+   pub fn zero() -> Value {
+      Value(0)
    }
    pub fn unit(nom: &str) -> Value {
       Value::from_parts(Tag::Unit as u16, Value::push_name(nom), 0)
@@ -215,6 +223,13 @@ impl Value {
       raw |= end;   raw <<= 64;
       raw |= ptr_bits;
       Value::from_parts(Tag::String as u16, Value::push_name(nom), raw)
+   }
+   pub fn tuple_with_capacity(cap: u64) -> Value {
+      let mut vs = Vec::new();
+      for i in 0..cap {
+         vs.push(Value::zero());
+      }
+      Value::tuple(&vs,"Tuple")
    }
    pub fn tuple(vs: &[Value], nom: &str) -> Value {
       let layout = Layout::from_size_align((vs.len()+1) * 128, 128).unwrap();

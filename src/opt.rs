@@ -357,15 +357,18 @@ pub fn compile_expr<'f,S: Clone + Debug>(finfs: &mut HashMap<String,FuncRef>, jm
          let map_len = ctx.ins().call(map_len,&[e_val]);
          let map_len = ctx.inst_results(map_len)[0];
 
+         let map_new = *finfs.get("with_capacity:(U64)->Tuple").unwrap();
+         let map_new = ctx.ins().call(map_new,&[map_len]);
+         let map_new = ctx.inst_results(map_new)[0];
+
          (JExpr {
             block: blk,
-            value: map_len,
+            value: map_new,
          }, JType {
-            name: "U64".to_string(),
-            jtype: types::I64,
+            name: "Value".to_string(),
+            jtype: types::I128,
          })
 
-         //TODO let map_new: Tuple = Tuple::with_capacity(map_len)
          //TODO loop lhs=e[i] for i in 0..map_len
          //TODO if x is guard, check if guarded, then skip
          //TODO map_new.push( $x.0 )

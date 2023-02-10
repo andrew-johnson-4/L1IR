@@ -16,3 +16,4 @@ pub mod range2;
 pub mod range3;
 
 pub mod tuple_length;
+pub mod tuple_new;
