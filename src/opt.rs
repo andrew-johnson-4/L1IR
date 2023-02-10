@@ -361,18 +361,50 @@ pub fn compile_expr<'f,S: Clone + Debug>(finfs: &mut HashMap<String,FuncRef>, jm
          let map_new = ctx.ins().call(map_new,&[map_len]);
          let map_new = ctx.inst_results(map_new)[0];
 
+         let loop_controller = ctx.create_block();
+         ctx.append_block_param(loop_controller, types::I64);
+
+         let in_loop = ctx.create_block();
+         ctx.append_block_param(in_loop, types::I64);
+
+         let after_loop = ctx.create_block();
+
+         let zero = ctx.ins().iconst(types::I64, 0);
+         ctx.ins().jump(loop_controller, &[zero]); //start loop at i=0
+         //seal blk
+
+         ctx.switch_to_block(loop_controller);     //loop while i < map_len
+         let i = ctx.block_params(loop_controller)[0];
+         let cond = ctx.ins().icmp(IntCC::UnsignedLessThan, i, map_len);
+         ctx.ins().brnz(cond, in_loop, &[i]);
+         ctx.ins().jump(after_loop, &[]);
+         //seal loop_controller
+
+         ctx.switch_to_block(in_loop);
+         let i = ctx.block_params(in_loop)[0];
+         let fm = ctx.ins().iconst(types::I64, 0);
+         let fm = ctx.ins().iconcat(fm,fm);
+         let pr = *finfs.get("println:(Value)->U64").unwrap();
+         let pr = ctx.ins().call(pr,&[fm]);
+         //TODO if x is guard, check if guarded, then skip
+         //TODO let lhs=e[i] in map_new.push(x)
+         let i = ctx.ins().iadd_imm(i, 1);
+         ctx.ins().jump(loop_controller, &[i]);
+         //seal in_loop
+
+         ctx.seal_block(blk);                      //seal iterable expression block
+         ctx.seal_block(loop_controller);
+         ctx.seal_block(in_loop);
+
+         ctx.switch_to_block(after_loop);
+
          (JExpr {
-            block: blk,
+            block: after_loop,
             value: map_new,
          }, JType {
             name: "Value".to_string(),
             jtype: types::I128,
          })
-
-         //TODO loop lhs=e[i] for i in 0..map_len
-         //TODO if x is guard, check if guarded, then skip
-         //TODO map_new.push( $x.0 )
-         //TODO return map_new
       },
       Expression::ValueIntroduction(ui,tt,_span) => {
          println!("compile expr Value Introduction");

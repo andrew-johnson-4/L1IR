@@ -28,6 +28,8 @@ pub fn import<'f>() -> Vec<FFI> {
    imported.extend(crate::recipes::cranelift_impl::div::import());
    imported.extend(crate::recipes::cranelift_impl::rem::import());
 
+   imported.extend(crate::recipes::cranelift_impl::std_println::import());
+
    imported.extend(crate::recipes::cranelift_impl::range1::import());
    imported.extend(crate::recipes::cranelift_impl::range2::import());
    imported.extend(crate::recipes::cranelift_impl::range3::import());
