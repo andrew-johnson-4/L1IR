@@ -15,8 +15,8 @@ use std::collections::HashMap;
 use std::sync::{Arc,Mutex};
 
 lazy_static! {
-   static ref TYPE_CONTEXT: Mutex<HashMap<usize, String>> = {
-      Mutex::new(HashMap::new())
+   static ref TYPE_CONTEXT: Arc<Mutex<HashMap<usize, String>>> = {
+      Arc::new(Mutex::new(HashMap::new()))
    };
    static ref STDLIB: Arc<Mutex<HashMap<String, FFI>>> = {
       let mut lib = HashMap::new();
