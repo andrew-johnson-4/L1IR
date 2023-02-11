@@ -95,7 +95,7 @@ fn eval_flatmap4() {
 }
 
 #[test]
-fn eval_flatmap5() {
+fn eval_flatmap6() {
    let nojit = Program::program(
       vec![],
       vec![
@@ -107,7 +107,8 @@ fn eval_flatmap5() {
                ],()).typed("Value"),
                TIPart::expression(Expression::map(
                   LHSPart::variable(11),
-                  Expression::apply("range:(U64)->U64[]",vec![
+                  Expression::apply("range:(U64,U64)->U64[]",vec![
+                     Expression::literal("1", ()).typed("U64"),
                      Expression::variable(10,())
                   ],()).typed("Value"),
                   TIPart::variable(11)
@@ -118,5 +119,5 @@ fn eval_flatmap5() {
    );
    let jit = JProgram::compile(&nojit);
    let jval = jit.eval(&[]);
-   assert_eq!("(0,0,1,0,1,2,0,1,2,3)", format!("{:?}",jval), "for x in range(5) yield x");
+   assert_eq!("(1,1,2,1,2,3)", format!("{:?}",jval), "for x in range(5) yield x");
 }
