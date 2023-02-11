@@ -159,6 +159,7 @@ impl std::fmt::Debug for Value {
                if ti>start { write!(f, ",")?; }
                write!(f, "{:?}", self.vslot(ti))?;
             }
+            if start==end { write!(f,",")?; }
             write!(f, ")")
          }
       }

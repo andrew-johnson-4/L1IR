@@ -15,7 +15,7 @@ fn s_u64(t: u128) -> u128 {
    let n = value::Value::tuple_with_capacity(capacity as u64);
    for ti in v.start()..v.end() {
       let vi = v.vslot(ti);
-      for vti in vi.start()..v.end() {
+      for vti in vi.start()..vi.end() {
          n.push(vi.vslot(vti));
       }
    }
