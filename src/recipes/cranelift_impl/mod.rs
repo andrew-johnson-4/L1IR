@@ -11,6 +11,10 @@ pub mod mul;
 pub mod div;
 pub mod rem;
 
+pub mod and;
+pub mod or;
+pub mod not;
+
 pub mod std_println;
 
 pub mod range1;
