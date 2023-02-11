@@ -540,7 +540,31 @@ pub fn compile_expr<'f,S: Clone + Debug>(finfs: &mut HashMap<String,FuncRef>, jm
             unimplemented!("Unknown literal introduction: {:?}", tt)
          }
       }
-      Expression::TupleIntroduction(_ti,_tt,_span) => unimplemented!("compile expression: TupleIntroduction"),
+      Expression::TupleIntroduction(ts,_tt,_span) => {
+         if ts.len()==1 {
+         if let TIPart::Tuple(tes) = &ts[0] {
+            let map_len = ctx.ins().iconst(types::I64, tes.len() as i64);
+            let map_new = *finfs.get("with_capacity:(U64)->Tuple").unwrap();
+            let map_new = ctx.ins().call(map_new,&[map_len]);
+            let map_new = ctx.inst_results(map_new)[0];
+
+            for te in tes.iter() {
+               let (je,_jt) = compile_expr(finfs, jmod, ctx, blk, p, te.borrow());
+               blk = je.block;
+               let xi = *finfs.get(".push:(Tuple,Value)->U64").unwrap();
+               ctx.ins().call(xi,&[map_new,je.value]);
+            }
+
+            return (JExpr {
+               block: blk,
+               value: map_new,
+            }, JType {
+               name: "Value".to_string(),
+               jtype: types::I128,
+            })
+         }}
+         unimplemented!("compile_expr Expression::TupleIntroduction")
+      },
       Expression::VariableReference(vi,tt,_span) => {
          println!("variable reference");
          let jv = Variable::from_u32(*vi as u32);

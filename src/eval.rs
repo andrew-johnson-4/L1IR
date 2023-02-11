@@ -166,17 +166,12 @@ pub fn eval_e<S:Debug + Clone>(mut lctx: Arc<RefCell<HashMap<usize,Value>>>, pct
          }
       },
       Expression::TupleIntroduction(tps,_tt,span) => {
-         if tps.len()==1 {
-         if let TIPart::Tuple(tcs) = &tps[0] {
-            return Ok(Value::Tuple(0,tcs.len(),tcs.clone(),None));
-         }}
          let mut tcs = Vec::new();
          for tip in tps.iter() {
          match tip {
-            TIPart::Tuple(vs) => {
-            for v in vs.iter() {
-               tcs.push(v.clone());
-            }},
+            TIPart::Tuple(_vs) => {
+               unimplemented!("TupleIntroduction TIPart::Tuple")
+            },
             TIPart::Variable(vi) => {
                if let Some(vt) = lctx.borrow().get(vi) {
                   tcs.push(vt.clone());

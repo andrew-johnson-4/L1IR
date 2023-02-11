@@ -33,6 +33,23 @@ fn eval_unit1() {
 }
 
 #[test]
+fn eval_tuple1() {
+   let nojit = Program::program(
+      vec![],
+      vec![
+         Expression::tuple(vec![
+            Expression::unit(()),
+            Expression::unary(b"123",()),
+         ],()),
+      ],
+   );
+   let jit = JProgram::compile(&nojit);
+
+   let jval = jit.eval(&[]);
+   assert_eq!("((),123)", format!("{:?}",jval), "()");
+}
+
+#[test]
 fn eval_match1() {
    let nojit = Program::program(
       vec![],

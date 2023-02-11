@@ -326,7 +326,7 @@ impl<S:Debug + Clone> LIPart<S> {
 
 #[derive(Clone)]
 pub enum TIPart<S: Debug + Clone> {
-   Tuple(Arc<Vec<Value>>),
+   Tuple(Arc<Vec<Expression<S>>>),
    Variable(usize),
    InlineVariable(usize),
    Expression(Expression<S>),
@@ -346,7 +346,7 @@ impl<S: Debug + Clone> TIPart<S> {
          (TIPart::Variable(lv),TIPart::Variable(rv)) => { lv == rv },
          (TIPart::Tuple(lts),TIPart::Tuple(rts)) => {
             lts.len() == rts.len() &&
-            std::iter::zip(lts.iter(),rts.iter()).all(|(l,r)| l == r)
+            std::iter::zip(lts.iter(),rts.iter()).all(|(l,r)| l.equals(r))
          },
          (TIPart::Expression(le),TIPart::Expression(re)) => {
             le.equals(re)
@@ -354,7 +354,7 @@ impl<S: Debug + Clone> TIPart<S> {
          _ => false,
       }
    }
-   pub fn tuple(ts: Vec<Value>) -> TIPart<S> {
+   pub fn tuple(ts: Vec<Expression<S>>) -> TIPart<S> {
       TIPart::Tuple(Arc::new(
          ts
       ))
@@ -566,7 +566,7 @@ impl<S:Debug + Clone> Expression<S> {
          lps
       ), Type::default(), span)
    }
-   pub fn tuple(tps: Vec<Value>, span: S) -> Expression<S> {
+   pub fn tuple(tps: Vec<Expression<S>>, span: S) -> Expression<S> {
       Expression::TupleIntroduction(Arc::new(vec![
          TIPart::tuple(tps)
       ]), Type::default(), span)
