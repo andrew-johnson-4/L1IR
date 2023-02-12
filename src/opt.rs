@@ -63,6 +63,7 @@ pub fn function_return<S: Debug + Clone>(fd: &FunctionDefinition<S>) -> types::T
 pub fn type_by_name(tn: &ast::Type) -> types::Type {
    if let Some(ref tn) = tn.name {
    match tn.as_str() {
+      "U8" => types::I8,
       "U64" => types::I64,
       "String" => types::I128,
       "Tuple" => types::I128,
@@ -73,6 +74,7 @@ pub fn type_by_name(tn: &ast::Type) -> types::Type {
 pub fn jtype_by_name(tn: &ast::Type) -> JType {
    if let Some(ref tn) = tn.name {
    match tn.as_str() {
+      "U8" => JType { name: tn.clone(), jtype: types::I8 },
       "U64" => JType { name: tn.clone(), jtype: types::I64 },
       "String" => JType { name: tn.clone(), jtype: types::I128 },
       "Tuple" => JType { name: tn.clone(), jtype: types::I128 },
