@@ -704,7 +704,7 @@ fn inject_stdlib_symbols(module: &mut JITModule, stdlib: &mut HashMap<String,FFI
       sig_s.returns.push(AbiParam::new(sv.rtype));
 
       let func_s = module
-        .declare_function(sk, Linkage::Export, &sig_s)
+        .declare_function(sk, Linkage::Import, &sig_s)
         .unwrap();
       fs.push((sk.clone(), func_s));
    }}
