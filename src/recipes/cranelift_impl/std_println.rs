@@ -5,7 +5,7 @@ use cranelift::prelude::*;
 use std::collections::HashMap;
 use cranelift_codegen::ir::FuncRef;
 
-fn s_u64(v: u128) -> u64 {
+pub fn extern s_u64(v: u128) -> u64 {
    println!("{:?}", value::Value(v));
    0
 }

@@ -5,7 +5,7 @@ use cranelift::prelude::*;
 use std::collections::HashMap;
 use cranelift_codegen::ir::FuncRef;
 
-pub fn s_u64(t: u128) -> u128 {
+pub extern fn s_u64(t: u128) -> u128 {
    let mut v = value::Value(t);
    println!(".trim({:?})", v);
    let mut ei = v.end();
