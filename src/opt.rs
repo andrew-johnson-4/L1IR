@@ -434,7 +434,6 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
          ctx.seal_block(in_loop);
 
          ctx.switch_to_block(after_loop);
-
          let map_out = *finfs.get("trim_capacity:(Tuple)->Tuple").unwrap();
          let map_out = ctx.ins().call(map_out,&[map_new]);
          let map_out = ctx.inst_results(map_out)[0];

@@ -1,14 +1,5 @@
 test_all:
-	cargo test --test b_opt3 --features cranelift
-	cargo test --test b_opt3 --features cranelift
-	cargo test --test b_opt3 --features cranelift
-	cargo test --test b_opt3 --features cranelift
-	cargo test --test b_opt3 --features cranelift
-	cargo test --test b_opt3 --features cranelift
-	cargo test --test b_opt3 --features cranelift
-	cargo test --test b_opt3 --features cranelift
-	cargo test --test b_opt3 --features cranelift
-	cargo test --test b_opt3 --features cranelift
+	cargo test --features cranelift
 
 bench:
 	cargo build --release --features cranelift
