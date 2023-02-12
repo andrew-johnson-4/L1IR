@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use cranelift_codegen::ir::FuncRef;
 
 pub fn s_u64(t: u64) -> u128 {
+   println!("with_capacity({})", t);
    value::Value::tuple_with_capacity(t).0
 }
 

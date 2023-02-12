@@ -7,6 +7,7 @@ use cranelift_codegen::ir::FuncRef;
 
 pub fn s_u64(t: u128, i: u64) -> u128 {
    let v = value::Value(t);
+   println!("[]({:?},{})", v, i);
    v.vslot(i as usize).0
 }
 

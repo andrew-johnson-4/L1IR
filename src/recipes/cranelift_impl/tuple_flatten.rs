@@ -7,6 +7,7 @@ use cranelift_codegen::ir::FuncRef;
 
 pub fn s_u64(t: u128) -> u128 {
    let v = value::Value(t);
+   println!(".flatten({:?})", v);
    let mut capacity = 0;
    for ti in v.start()..v.end() {
       let vi = v.vslot(ti);
