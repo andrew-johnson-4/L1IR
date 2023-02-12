@@ -173,7 +173,10 @@ pub fn compile_lhs<'f>(ctx: &mut FunctionBuilder<'f>, mut lblk: Block, rblk: Blo
    match lhs {
       LHSPart::Tuple(_lts) => unimplemented!("compile_lhs(Tuple)"),
       LHSPart::Literal(lts) => {
-         let cond = if typ=="U64" {
+         let cond = if typ=="U8" {
+            let v = lts.parse::<u64>().unwrap() as i64;
+            ctx.ins().icmp_imm(IntCC::Equal, val, v)
+         } else if typ=="U64" {
             let v = lts.parse::<u64>().unwrap();
             let v = unsafe { std::mem::transmute::<u64,i64>(v) };
             ctx.ins().icmp_imm(IntCC::Equal, val, v)
