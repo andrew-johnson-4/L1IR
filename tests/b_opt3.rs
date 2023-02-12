@@ -152,27 +152,36 @@ fn eval_flatmap7() {
    );
    let jit = JProgram::compile(&nojit);
    let jval = jit.eval(&[]);
-   /*
-   10: 0
-   10: 1
-   10: 2
-      11: 1
-         yield (2,1)         
-   10: 3
-      11: 1
-         yield (3,1)
-      11: 2
-         yield (3,2)
-   10: 4
-      11: 1
-         yield (4,1)
-      11: 2
-         yield (4,2)
-      11: 3
-         yield (4,3)
-
-   (2,1,3,1,3,2,4,1,4,2,4,3)
-   */
-   //actual (2,3,1,3,2,4,1,4,2,4,_,_)
    assert_eq!("(2,1,3,1,3,2,4,1,4,2,4,3)", format!("{:?}",jval), "for x in range(5) yield x");
+}
+
+#[test]
+fn eval_free_var1() {
+   let nojit = Program::program(
+      vec![],
+      vec![
+            Expression::map(
+               LHSPart::variable(10),
+               Expression::apply("range:(U64)->U64[]",vec![
+                  Expression::literal("5", ()).typed("U64"),
+               ],()).typed("Value"),
+               TIPart::expression(Expression::apply(".flatten:(Tuple)->Tuple",vec![
+                  Expression::map(
+                     LHSPart::variable(11),
+                     Expression::apply("range:(U64,U64)->U64[]",vec![
+                        Expression::literal("1", ()).typed("U64"),
+                        Expression::variable(10,()).typed("U64"),
+                     ],()).typed("Value"),
+                     TIPart::expression(Expression::tuple(vec![
+                        Expression::variable(10,()).typed("Value"),
+                        Expression::variable(11,()).typed("Value"),
+                     ],()))
+                  ,()).typed("Value")
+               ],()).typed("Value"))
+            ,()).typed("Value")
+      ],
+   );
+   let jit = JProgram::compile(&nojit);
+   let jval = jit.eval(&[]);
+   assert_eq!("((,),(,),(2,1),(3,1,3,2),(4,1,4,2,4,3))", format!("{:?}",jval), "for x in range(5) yield x");
 }

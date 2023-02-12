@@ -809,7 +809,10 @@ impl JProgram {
       for pe in p.expressions.iter() {
          pe.vars(&mut pars);
       }
+      let mut pi_declared = Vec::new();
       for pi in pars.iter() {
+         if pi_declared.contains(pi) { continue; }
+         pi_declared.push(*pi);
          let pv = Variable::from_u32(*pi as u32);
          main.declare_var(pv, types::I128);
          TYPE_CONTEXT.lock().unwrap().insert(*pi, "Value".to_string());

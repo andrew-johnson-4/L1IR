@@ -397,7 +397,21 @@ pub enum LHSPart {
    Any,
 }
 impl LHSPart {
-   pub fn vars(&self, _vars: &mut Vec<usize>) {
+   pub fn vars(&self, vars: &mut Vec<usize>) {
+      match self {
+         LHSPart::Tuple(ts) => {
+            for t in ts.iter() {
+               t.vars(vars);
+            }
+         },
+         LHSPart::UnpackLiteral(_,Some(vi),_) => {
+            vars.push(*vi);
+         },
+         LHSPart::Variable(vi) => {
+            vars.push(*vi);
+         },
+         _ => {}
+      }
    }
    pub fn equals(&self, other: &LHSPart) -> bool {
       match (self,other) {
@@ -477,10 +491,16 @@ impl<S:Debug + Clone> Expression<S> {
    }
    pub fn vars(&self, vars: &mut Vec<usize>) {
       match self {
-         Expression::Map(_lhs,e,_x,_,_) => {
+         Expression::Map(lhs,e,x,_,_) => {
             e.vars(vars);
-            //TODO hide shadowed variables
-            //x.vars(vars);
+            let mut bound = Vec::new();
+            lhs.vars(&mut bound);
+            let mut unbound = Vec::new();
+            x.vars(&mut unbound);
+            for xi in unbound.iter() {
+            if !bound.contains(xi) {
+               vars.push(*xi);
+            }}
          },
          Expression::VariableReference(vi,_,_) => {
             vars.push(*vi);
@@ -505,9 +525,15 @@ impl<S:Debug + Clone> Expression<S> {
          },
          Expression::PatternMatch(e,lrs,_,_) => {
             e.vars(vars);
-            for (_l,r) in lrs.iter() {
-               //TODO hide shadowed variables
-               r.vars(vars);
+            for (l,r) in lrs.iter() {
+               let mut bound = Vec::new();
+               l.vars(&mut bound);
+               let mut unbound = Vec::new();
+               r.vars(&mut unbound);
+               for xi in unbound.iter() {
+               if !bound.contains(xi) {
+                  vars.push(*xi);
+               }}
             }
          },
       }
