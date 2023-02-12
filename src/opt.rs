@@ -478,7 +478,7 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
       }},
       Expression::LiteralIntroduction(lis,tt,_span) => {
          if tt.nom() == "Unit" {
-            let v = value::Value::from_parts(value::Tag::Unit as u16, value::Value::push_name("()"), 0).0;
+            let v = value::Value::from_parts(value::Tag::Unit as u16, 0, 0).0;
             let high = (v >> 64) as i64;
             let low = ((v << 64) >> 64) as i64;
             let high = ctx.ins().iconst(types::I64, high);

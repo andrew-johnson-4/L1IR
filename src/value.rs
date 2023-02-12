@@ -33,7 +33,7 @@ use std::alloc::{alloc_zeroed, Layout};
 use std::iter::FromIterator;
 use crate::ast;
 
-#[derive(FromPrimitive,Copy,Clone,Debug)]
+#[derive(FromPrimitive,Copy,Clone,Debug,PartialEq,Eq)]
 #[repr(u16)]
 pub enum Tag {
    Zero = 0, Unit,
@@ -50,8 +50,6 @@ pub enum Tag {
    String,
    Tuple,
 }
-
-static NAMES: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
 pub struct Value(pub u128);
 
@@ -175,21 +173,11 @@ impl Value {
       let name = (name as u128) << 96;
       Value(tag | name | slots)
    }
-   pub fn push_name(nom: &str) -> u16 {
-      let mut ns = NAMES.lock().unwrap();
-      for (ni,n) in ns.iter().enumerate() {
-      if n == nom {
-         return ni as u16;
-      }}
-      let ni = ns.len();
-      ns.push(nom.to_string());
-      ni as u16
-   }
    pub fn zero() -> Value {
       Value(0)
    }
    pub fn unit(nom: &str) -> Value {
-      Value::from_parts(Tag::Unit as u16, Value::push_name(nom), 0)
+      Value::from_parts(Tag::Unit as u16, 0, 0)
    }
    pub fn range(from: u64, to: u64, step: u64) -> Value {
       let mut vs = Vec::new();
@@ -219,7 +207,7 @@ impl Value {
       raw |= start; raw <<= 16;
       raw |= end;   raw <<= 64;
       raw |= ptr_bits;
-      Value::from_parts(Tag::String as u16, Value::push_name(nom), raw)
+      Value::from_parts(Tag::String as u16, 0, raw)
    }
    pub fn tuple_with_capacity(cap: u64) -> Value {
       let mut vs = Vec::new();
@@ -248,7 +236,7 @@ impl Value {
       raw |= start; raw <<= 16;
       raw |= end;   raw <<= 64;
       raw |= ptr_bits;
-      Value::from_parts(Tag::Tuple as u16, Value::push_name(nom), raw)
+      Value::from_parts(Tag::Tuple as u16, 0, raw)
    }
    pub fn start(&self) -> usize {
       let mut raw = self.0;
@@ -257,14 +245,15 @@ impl Value {
       raw as usize
    }
    pub fn set_end(&mut self, end: usize) {
+      assert!(end <= self.end(), "set end expected: {} < {}", end, self.end());
+      let ptr_bits = (self.ptr().expose_addr() as u64) as u128;
       let start = self.start() as u128;
       let end = end as u128;
-      let tptr = self.tptr() as u128;
       let mut raw: u128 = 0;
       raw |= start; raw <<= 16;
       raw |= end;   raw <<= 64;
-      raw |= tptr;
-      self.0 = Value::from_parts(Tag::Tuple as u16, Value::push_name("Tuple"), raw).0;
+      raw |= ptr_bits;
+      self.0 = Value::from_parts(Tag::Tuple as u16, 0, raw).0;
    }
    pub fn end(&self) -> usize {
       let mut raw = self.0;
@@ -283,10 +272,10 @@ impl Value {
       raw as *mut u128
    }
    pub fn i8(slot: i8, nom: &str) -> Value {
-      Value::from_parts(Tag::I8 as u16, Value::push_name(nom), (slot as u8) as u128)
+      Value::from_parts(Tag::I8 as u16, 0, (slot as u8) as u128)
    }
    pub fn u8(slot: u8, nom: &str) -> Value {
-      Value::from_parts(Tag::U8 as u16, Value::push_name(nom), (slot as u8) as u128)
+      Value::from_parts(Tag::U8 as u16, 0, (slot as u8) as u128)
    }
    pub fn i8s(slots: &[i8], nom: &str) -> Value {
       let mut v: u128 = 0;
@@ -305,19 +294,19 @@ impl Value {
          if slots.len()>=1  { v += std::mem::transmute::<i8,u8>(slots[0])  as u128; }
       }
       match slots.len() {
-         0 => Value::from_parts(Tag::Unit as u16, Value::push_name(nom), v),
-         1 => Value::from_parts(Tag::I8 as u16, Value::push_name(nom), v),
-         2 => Value::from_parts(Tag::I82 as u16, Value::push_name(nom), v),
-         3 => Value::from_parts(Tag::I83 as u16, Value::push_name(nom), v),
-         4 => Value::from_parts(Tag::I84 as u16, Value::push_name(nom), v),
-         5 => Value::from_parts(Tag::I85 as u16, Value::push_name(nom), v),
-         6 => Value::from_parts(Tag::I86 as u16, Value::push_name(nom), v),
-         7 => Value::from_parts(Tag::I87 as u16, Value::push_name(nom), v),
-         8 => Value::from_parts(Tag::I88 as u16, Value::push_name(nom), v),
-         9 => Value::from_parts(Tag::I89 as u16, Value::push_name(nom), v),
-         10 => Value::from_parts(Tag::I810 as u16, Value::push_name(nom), v),
-         11 => Value::from_parts(Tag::I811 as u16, Value::push_name(nom), v),
-         12 => Value::from_parts(Tag::I812 as u16, Value::push_name(nom), v),
+         0 => Value::from_parts(Tag::Unit as u16, 0, v),
+         1 => Value::from_parts(Tag::I8 as u16, 0, v),
+         2 => Value::from_parts(Tag::I82 as u16, 0, v),
+         3 => Value::from_parts(Tag::I83 as u16, 0, v),
+         4 => Value::from_parts(Tag::I84 as u16, 0, v),
+         5 => Value::from_parts(Tag::I85 as u16, 0, v),
+         6 => Value::from_parts(Tag::I86 as u16, 0, v),
+         7 => Value::from_parts(Tag::I87 as u16, 0, v),
+         8 => Value::from_parts(Tag::I88 as u16, 0, v),
+         9 => Value::from_parts(Tag::I89 as u16, 0, v),
+         10 => Value::from_parts(Tag::I810 as u16, 0, v),
+         11 => Value::from_parts(Tag::I811 as u16, 0, v),
+         12 => Value::from_parts(Tag::I812 as u16, 0, v),
          _ => unreachable!(),
       }
    }
@@ -336,27 +325,27 @@ impl Value {
       if slots.len()>=2  { v += slots[1]  as u128; } v <<= 8;
       if slots.len()>=1  { v += slots[0]  as u128; }
       match slots.len() {
-         0 => Value::from_parts(Tag::Unit as u16, Value::push_name(nom), v),
-         1 => Value::from_parts(Tag::U8 as u16, Value::push_name(nom), v),
-         2 => Value::from_parts(Tag::U82 as u16, Value::push_name(nom), v),
-         3 => Value::from_parts(Tag::U83 as u16, Value::push_name(nom), v),
-         4 => Value::from_parts(Tag::U84 as u16, Value::push_name(nom), v),
-         5 => Value::from_parts(Tag::U85 as u16, Value::push_name(nom), v),
-         6 => Value::from_parts(Tag::U86 as u16, Value::push_name(nom), v),
-         7 => Value::from_parts(Tag::U87 as u16, Value::push_name(nom), v),
-         8 => Value::from_parts(Tag::U88 as u16, Value::push_name(nom), v),
-         9 => Value::from_parts(Tag::U89 as u16, Value::push_name(nom), v),
-         10 => Value::from_parts(Tag::U810 as u16, Value::push_name(nom), v),
-         11 => Value::from_parts(Tag::U811 as u16, Value::push_name(nom), v),
-         12 => Value::from_parts(Tag::U812 as u16, Value::push_name(nom), v),
+         0 => Value::from_parts(Tag::Unit as u16, 0, v),
+         1 => Value::from_parts(Tag::U8 as u16, 0, v),
+         2 => Value::from_parts(Tag::U82 as u16, 0, v),
+         3 => Value::from_parts(Tag::U83 as u16, 0, v),
+         4 => Value::from_parts(Tag::U84 as u16, 0, v),
+         5 => Value::from_parts(Tag::U85 as u16, 0, v),
+         6 => Value::from_parts(Tag::U86 as u16, 0, v),
+         7 => Value::from_parts(Tag::U87 as u16, 0, v),
+         8 => Value::from_parts(Tag::U88 as u16, 0, v),
+         9 => Value::from_parts(Tag::U89 as u16, 0, v),
+         10 => Value::from_parts(Tag::U810 as u16, 0, v),
+         11 => Value::from_parts(Tag::U811 as u16, 0, v),
+         12 => Value::from_parts(Tag::U812 as u16, 0, v),
          _ => unreachable!(),
       }
    }
    pub fn i16(slot: i16, nom: &str) -> Value {
-      Value::from_parts(Tag::I16 as u16, Value::push_name(nom), (slot as u16) as u128)
+      Value::from_parts(Tag::I16 as u16, 0, (slot as u16) as u128)
    }
    pub fn u16(slot: u16, nom: &str) -> Value {
-      Value::from_parts(Tag::U16 as u16, Value::push_name(nom), (slot as u16) as u128)
+      Value::from_parts(Tag::U16 as u16, 0, (slot as u16) as u128)
    }
    pub fn i16s(slots: &[i16], nom: &str) -> Value {
       let mut v: u128 = 0;
@@ -369,13 +358,13 @@ impl Value {
          if slots.len()>=1  { v += std::mem::transmute::<i16,u16>(slots[0])  as u128; }
       }
       match slots.len() {
-         0 => Value::from_parts(Tag::Unit as u16, Value::push_name(nom), v),
-         1 => Value::from_parts(Tag::I16 as u16, Value::push_name(nom), v),
-         2 => Value::from_parts(Tag::I162 as u16, Value::push_name(nom), v),
-         3 => Value::from_parts(Tag::I163 as u16, Value::push_name(nom), v),
-         4 => Value::from_parts(Tag::I164 as u16, Value::push_name(nom), v),
-         5 => Value::from_parts(Tag::I165 as u16, Value::push_name(nom), v),
-         6 => Value::from_parts(Tag::I166 as u16, Value::push_name(nom), v),
+         0 => Value::from_parts(Tag::Unit as u16, 0, v),
+         1 => Value::from_parts(Tag::I16 as u16, 0, v),
+         2 => Value::from_parts(Tag::I162 as u16, 0, v),
+         3 => Value::from_parts(Tag::I163 as u16, 0, v),
+         4 => Value::from_parts(Tag::I164 as u16, 0, v),
+         5 => Value::from_parts(Tag::I165 as u16, 0, v),
+         6 => Value::from_parts(Tag::I166 as u16, 0, v),
          _ => unreachable!(),
       }
    }
@@ -388,21 +377,21 @@ impl Value {
       if slots.len()>=2  { v += slots[1]  as u128; } v <<= 16;
       if slots.len()>=1  { v += slots[0]  as u128; }
       match slots.len() {
-         0 => Value::from_parts(Tag::Unit as u16, Value::push_name(nom), v),
-         1 => Value::from_parts(Tag::U16 as u16, Value::push_name(nom), v),
-         2 => Value::from_parts(Tag::U162 as u16, Value::push_name(nom), v),
-         3 => Value::from_parts(Tag::U163 as u16, Value::push_name(nom), v),
-         4 => Value::from_parts(Tag::U164 as u16, Value::push_name(nom), v),
-         5 => Value::from_parts(Tag::U165 as u16, Value::push_name(nom), v),
-         6 => Value::from_parts(Tag::U166 as u16, Value::push_name(nom), v),
+         0 => Value::from_parts(Tag::Unit as u16, 0, v),
+         1 => Value::from_parts(Tag::U16 as u16, 0, v),
+         2 => Value::from_parts(Tag::U162 as u16, 0, v),
+         3 => Value::from_parts(Tag::U163 as u16, 0, v),
+         4 => Value::from_parts(Tag::U164 as u16, 0, v),
+         5 => Value::from_parts(Tag::U165 as u16, 0, v),
+         6 => Value::from_parts(Tag::U166 as u16, 0, v),
          _ => unreachable!(),
       }
    }
    pub fn i32(slot: i32, nom: &str) -> Value {
-      Value::from_parts(Tag::I32 as u16, Value::push_name(nom), (slot as u32) as u128)
+      Value::from_parts(Tag::I32 as u16, 0, (slot as u32) as u128)
    }
    pub fn u32(slot: u32, nom: &str) -> Value {
-      Value::from_parts(Tag::U32 as u16, Value::push_name(nom), (slot as u32) as u128)
+      Value::from_parts(Tag::U32 as u16, 0, (slot as u32) as u128)
    }
    pub fn i32s(slots: &[i32], nom: &str) -> Value {
       let mut v: u128 = 0;
@@ -412,10 +401,10 @@ impl Value {
          if slots.len()>=1  { v += std::mem::transmute::<i32,u32>(slots[0])  as u128; }
       }
       match slots.len() {
-         0 => Value::from_parts(Tag::Unit as u16, Value::push_name(nom), v),
-         1 => Value::from_parts(Tag::I32 as u16, Value::push_name(nom), v),
-         2 => Value::from_parts(Tag::I322 as u16, Value::push_name(nom), v),
-         3 => Value::from_parts(Tag::I323 as u16, Value::push_name(nom), v),
+         0 => Value::from_parts(Tag::Unit as u16, 0, v),
+         1 => Value::from_parts(Tag::I32 as u16, 0, v),
+         2 => Value::from_parts(Tag::I322 as u16, 0, v),
+         3 => Value::from_parts(Tag::I323 as u16, 0, v),
          _ => unreachable!(),
       }
    }
@@ -425,16 +414,16 @@ impl Value {
       if slots.len()>=2  { v += slots[1]  as u128; } v <<= 32;
       if slots.len()>=1  { v += slots[0]  as u128; }
       match slots.len() {
-         0 => Value::from_parts(Tag::Unit as u16, Value::push_name(nom), v),
-         1 => Value::from_parts(Tag::U32 as u16, Value::push_name(nom), v),
-         2 => Value::from_parts(Tag::U322 as u16, Value::push_name(nom), v),
-         3 => Value::from_parts(Tag::U323 as u16, Value::push_name(nom), v),
+         0 => Value::from_parts(Tag::Unit as u16, 0, v),
+         1 => Value::from_parts(Tag::U32 as u16, 0, v),
+         2 => Value::from_parts(Tag::U322 as u16, 0, v),
+         3 => Value::from_parts(Tag::U323 as u16, 0, v),
          _ => unreachable!(),
       }
    }
    pub fn f32(slot: f32, nom: &str) -> Value {
       let slot = unsafe { std::mem::transmute::<f32,u32>(slot) };
-      Value::from_parts(Tag::F32 as u16, Value::push_name(nom), slot as u128)
+      Value::from_parts(Tag::F32 as u16, 0, slot as u128)
    }
    pub fn f32s(slots: &[f32], nom: &str) -> Value {
       let mut v: u128 = 0;
@@ -444,22 +433,22 @@ impl Value {
          if slots.len()>=1  { v += std::mem::transmute::<f32,u32>(slots[0])  as u128; }
       }
       match slots.len() {
-         0 => Value::from_parts(Tag::Unit as u16, Value::push_name(nom), v),
-         1 => Value::from_parts(Tag::F32 as u16, Value::push_name(nom), v),
-         2 => Value::from_parts(Tag::F322 as u16, Value::push_name(nom), v),
-         3 => Value::from_parts(Tag::F323 as u16, Value::push_name(nom), v),
+         0 => Value::from_parts(Tag::Unit as u16, 0, v),
+         1 => Value::from_parts(Tag::F32 as u16, 0, v),
+         2 => Value::from_parts(Tag::F322 as u16, 0, v),
+         3 => Value::from_parts(Tag::F323 as u16, 0, v),
          _ => unreachable!(),
       }
    }
    pub fn i64(slot: i64, nom: &str) -> Value {
-      Value::from_parts(Tag::I64 as u16, Value::push_name(nom), (slot as u64) as u128)
+      Value::from_parts(Tag::I64 as u16, 0, (slot as u64) as u128)
    }
    pub fn u64(slot: u64, nom: &str) -> Value {
-      Value::from_parts(Tag::U64 as u16, Value::push_name(nom), (slot as u64) as u128)
+      Value::from_parts(Tag::U64 as u16, 0, (slot as u64) as u128)
    }
    pub fn f64(slot: f64, nom: &str) -> Value {
       let slot = unsafe { std::mem::transmute::<f64,u64>(slot) };
-      Value::from_parts(Tag::F64 as u16, Value::push_name(nom), slot as u128)
+      Value::from_parts(Tag::F64 as u16, 0, slot as u128)
    }
    pub fn tag(&self) -> Tag {
       let t = (self.0 >> 112) as u16;
@@ -469,9 +458,7 @@ impl Value {
       format!("{:?}", self.tag())
    }
    pub fn name(&self) -> String {
-      let ni = ((self.0 << 16) >> 112) as usize;
-      let ns = NAMES.lock().unwrap();
-      ns[ni].clone()
+      "_".to_string()
    }
    pub fn slice(&self, start: usize, end: usize) -> Value {
       let tag = (self.0 >> 112) as u16;
@@ -500,6 +487,8 @@ impl Value {
       let tag = self.tag();
       match tag {
          Tag::Tuple => {
+            assert!(slot >= self.start(), ".vslot({}) out of bounds", slot);
+            assert!(slot < self.end(), ".vslot({}) out of bounds", slot);
             let ptr = self.tptr();
             unsafe {
                Value( *ptr.offset((slot+1) as isize) )

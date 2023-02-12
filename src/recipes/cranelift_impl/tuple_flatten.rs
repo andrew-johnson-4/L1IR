@@ -10,11 +10,13 @@ pub fn s_u64(t: u128) -> u128 {
    let mut capacity = 0;
    for ti in v.start()..v.end() {
       let vi = v.vslot(ti);
+      if vi.tag() != value::Tag::Tuple { continue; }
       capacity += vi.end() - vi.start();
    }
    let n = value::Value::tuple_with_capacity(capacity as u64);
    for ti in v.start()..v.end() {
       let vi = v.vslot(ti);
+      if vi.tag() != value::Tag::Tuple { continue; }
       for vti in vi.start()..vi.end() {
          n.push(vi.vslot(vti));
       }
