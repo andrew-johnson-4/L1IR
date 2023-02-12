@@ -563,8 +563,17 @@ impl<S:Debug + Clone> Expression<S> {
                ti.dump_l1ir(indent+1);
             }
          },
+         Expression::PatternMatch(me,mlrs,tt,_) => {
+            println!("{}Match: {:?}", padding, tt);
+            me.dump_l1ir(indent+1);
+            let inner_padding = std::iter::repeat("  ").take(indent+1).collect::<String>();
+            for (lhs,rhs) in mlrs.iter() {
+               println!("{}Case:", inner_padding);
+               lhs.dump_l1ir(indent+2);
+               rhs.dump_l1ir(indent+2);
+            }
+         },
          Expression::ValueIntroduction(_,_,_) => unimplemented!("Dump Expression::ValueIntroduction"),
-         Expression::PatternMatch(_,_,_,_) => unimplemented!("Dump Expression::PatternMatch"),
       }
    }
    pub fn typed(self, nom: &str) -> Expression<S> {

@@ -1,5 +1,5 @@
 test_all:
-	cargo test eval_flatmap7 --features cranelift -- --nocapture
+	cargo test bug_nested_flatmap --features cranelift -- --nocapture
 
 bench:
 	cargo build --release --features cranelift
