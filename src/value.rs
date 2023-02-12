@@ -30,7 +30,7 @@ use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 use std::alloc::{alloc_zeroed, Layout};
 use std::iter::FromIterator;
-use crate::ast;
+use std::io::Write;
 
 #[derive(FromPrimitive,Copy,Clone,Debug,PartialEq,Eq)]
 #[repr(u16)]
@@ -164,21 +164,29 @@ impl std::fmt::Debug for Value {
 }
 
 impl Value {
-   pub fn ast(&self) -> ast::Value {
-      unimplemented!("Value::ast")
-   }
    pub fn from_parts(tag: u16, name: u16, slots: u128) -> Value {
+      dprintln!("from parts: ({},{},{})", tag, name, slots);
       let tag = (tag as u128) << 112;
       let name = (name as u128) << 96;
       Value(tag | name | slots)
    }
+   pub fn to_parts(&self) -> (u16,u16,u128) {
+      dprintln!("to parts: ({})", self.0);
+      let tag = self.0 >> 112;
+      let name = (self.0 << 16) >> 112;
+      let slots = (self.0 << 32) >> 32;
+      (tag as u16, name as u16, slots)
+   }
    pub fn zero() -> Value {
+      dprintln!("Value::zero");
       Value(0)
    }
    pub fn unit(_nom: &str) -> Value {
+      dprintln!("Value::unit");
       Value::from_parts(Tag::Unit as u16, 0, 0)
    }
    pub fn range(from: u64, to: u64, step: u64) -> Value {
+      dprintln!("Value::range({},{},{})", from, to, step);
       let mut vs = Vec::new();
       for i in (from..to).step_by(step as usize) {
          vs.push(Value::u64(i,"U64"));
@@ -186,6 +194,7 @@ impl Value {
       Value::tuple(&vs,"Tuple")
    }
    pub fn string(lit: &str, _nom: &str) -> Value {
+      dprintln!("Value::string({})", lit);
       let cs = lit.chars().collect::<Vec<char>>();
       let layout = Layout::from_size_align((cs.len()+1) * 32, 32).unwrap();
       let ptr = unsafe {
@@ -209,6 +218,7 @@ impl Value {
       Value::from_parts(Tag::String as u16, 0, raw)
    }
    pub fn tuple_with_capacity(cap: u64) -> Value {
+      dprintln!("Value::tuple_with_capacity({})", cap);
       let mut vs = Vec::new();
       for _ in 0..cap {
          vs.push(Value::zero());
@@ -216,6 +226,7 @@ impl Value {
       Value::tuple(&vs,"Tuple")
    }
    pub fn tuple(vs: &[Value], _nom: &str) -> Value {
+      dprintln!("Value::tuple([{}])", vs.len());
       let layout = Layout::from_size_align((vs.len()+1) * 128, 128).unwrap();
       let ptr = unsafe {
          let ptr = alloc_zeroed(layout) as *mut u128;
@@ -228,24 +239,32 @@ impl Value {
          }
          ptr
       };
-      let ptr_bits = (ptr.expose_addr() as u64) as u128;
+      let ptr_bits_64 = ptr.expose_addr() as u64;
+      let ptr_bits = ptr_bits_64 as u128;
       let start = 0 as u128;
       let end = vs.len() as u128;
       let mut raw: u128 = 0;
       raw |= start; raw <<= 16;
       raw |= end;   raw <<= 64;
       raw |= ptr_bits;
-      Value::from_parts(Tag::Tuple as u16, 0, raw)
+      dprintln!("ptr_bits {}:u64 {}:u128 {}:start {}:end {}:raw", ptr_bits_64, ptr_bits, start, end, raw);
+      let v = Value::from_parts(Tag::Tuple as u16, 0, raw);
+      dprintln!("actual {}:ptr {}:start {}:end", v.tptr() as u128, v.start(), v.end());
+      v
    }
    pub fn start(&self) -> usize {
+      assert!(self.tag() == Tag::Tuple ||
+              self.tag() == Tag::String, ".start must be `Tuple or `String");
       let mut raw = self.0;
       raw <<= 32; raw >>= 32;
       raw >>= 80;
       raw as usize
    }
    pub fn set_end(&mut self, end: usize) {
+      dprintln!("Value::set_end({})", end);
+      assert!(self.tag() == Tag::Tuple, "set_end must be `Tuple");
       assert!(end <= self.end(), "set end expected: {} < {}", end, self.end());
-      let ptr_bits = (self.ptr().expose_addr() as u64) as u128;
+      let ptr_bits = (self.tptr().expose_addr() as u64) as u128;
       let start = self.start() as u128;
       let end = end as u128;
       let mut raw: u128 = 0;
@@ -255,17 +274,21 @@ impl Value {
       self.0 = Value::from_parts(Tag::Tuple as u16, 0, raw).0;
    }
    pub fn end(&self) -> usize {
+      assert!(self.tag() == Tag::Tuple ||
+              self.tag() == Tag::String, ".end must be `Tuple or `String");
       let mut raw = self.0;
       raw <<= 48; raw >>= 48;
       raw >>= 64;
       raw as usize
    }
    pub fn ptr(&self) -> *mut u32 {
+      assert!(self.tag() == Tag::String, "String::ptr must be `String");
       let mut raw = self.0;
       raw <<= 64; raw >>= 64;
       raw as *mut u32
    }
    pub fn tptr(&self) -> *mut u128 {
+      assert!(self.tag() == Tag::Tuple, "Tuple::ptr must be `Tuple");
       let mut raw = self.0;
       raw <<= 64; raw >>= 64;
       raw as *mut u128
@@ -274,6 +297,7 @@ impl Value {
       Value::from_parts(Tag::I8 as u16, 0, (slot as u8) as u128)
    }
    pub fn u8(slot: u8, _nom: &str) -> Value {
+      dprintln!("Value::u8");
       Value::from_parts(Tag::U8 as u16, 0, (slot as u8) as u128)
    }
    pub fn i8s(slots: &[i8], _nom: &str) -> Value {
@@ -440,9 +464,11 @@ impl Value {
       }
    }
    pub fn i64(slot: i64, _nom: &str) -> Value {
+      dprintln!("Value::i64({})", slot);
       Value::from_parts(Tag::I64 as u16, 0, (slot as u64) as u128)
    }
    pub fn u64(slot: u64, _nom: &str) -> Value {
+      dprintln!("Value::u64({})", slot);
       Value::from_parts(Tag::U64 as u16, 0, (slot as u64) as u128)
    }
    pub fn f64(slot: f64, _nom: &str) -> Value {
@@ -454,12 +480,15 @@ impl Value {
       FromPrimitive::from_i32(t.into()).expect(&format!("Invalid Tag in Value: {}", t))
    }
    pub fn tag_as_str(&self) -> String {
+      dprintln!("Value::tag_as_str");
       format!("{:?}", self.tag())
    }
    pub fn name(&self) -> String {
+      dprintln!("Value::name");
       "_".to_string()
    }
    pub fn slice(&self, start: usize, end: usize) -> Value {
+      dprintln!("Value::slice({},{})",start,end);
       let tag = (self.0 >> 112) as u16;
       let nom = ((self.0 << 16) >> 112) as u16;
       let ptr_bits = (self.ptr().expose_addr() as u64) as u128;
@@ -472,6 +501,7 @@ impl Value {
       Value::from_parts(tag, nom, raw)
    }
    pub fn literal(&self) -> String {
+      dprintln!("Value::literal");
       let start = self.start();
       let end = self.end();
       let ptr = self.ptr();
@@ -483,6 +513,7 @@ impl Value {
       String::from_iter(val)
    }
    pub fn vslot(&self, slot: usize) -> Value {
+      assert!(self.tag() == Tag::Tuple, "vslot must be `Tuple");
       let tag = self.tag();
       match tag {
          Tag::Tuple => {
@@ -497,6 +528,8 @@ impl Value {
       }
    }
    pub fn push(&self, x: Value) {
+      assert!(self.tag() == Tag::Tuple, "push must be `Tuple");
+      dprintln!("Value::push");
       for i in self.start()..self.end() {
       if self.vslot(i).0 == 0 {
          let ptr = self.tptr();

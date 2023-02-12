@@ -6,7 +6,9 @@ use std::collections::HashMap;
 use cranelift_codegen::ir::FuncRef;
 
 pub fn s_u64(t: u64) -> u128 {
+   println!("Tuple::new({})", t);
    let r = value::Value::tuple_with_capacity(t);
+   println!("Tuple::new yields {:?}", r);
    r.0
 }
 
@@ -24,7 +26,7 @@ pub fn import() -> Vec<FFI> {vec![
       name: "with_capacity:(U64)->Tuple".to_string(),
       cons: f_u64,
       symbol: Some(s_u64 as *const u8),
-      rname: "Tuple".to_string(),
+      rname: "Value".to_string(),
       rtype: types::I128,
    }
 ]}

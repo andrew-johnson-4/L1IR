@@ -4,9 +4,14 @@ use crate::recipes::cranelift::FFI;
 use cranelift::prelude::*;
 use std::collections::HashMap;
 use cranelift_codegen::ir::FuncRef;
+use std::io::Write;
 
 pub fn s_u64(v: u128) -> u64 {
-   println!("{:?}", value::Value(v));
+   let v = value::Value(v);
+   dprintln!("println {}", v.0);
+   let (tag, nom, slots) = v.to_parts();
+   dprintln!("println: tag:{} name:{} slots:{}", tag, nom, slots);
+   dprintln!("{:?}", v);
    0
 }
 

@@ -349,9 +349,18 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
          let map_len = ctx.ins().call(map_len,&[e_val]);
          let map_len = ctx.inst_results(map_len)[0];
 
+         let pr = *finfs.get("println:(Value)->U64").unwrap();
+         ctx.ins().call(pr,&[e_val]);
+
          let map_new = *finfs.get("with_capacity:(U64)->Tuple").unwrap();
          let map_new = ctx.ins().call(map_new,&[map_len]);
          let map_new = ctx.inst_results(map_new)[0];
+
+         let pr = *finfs.get("println:(Value)->U64").unwrap();
+         ctx.ins().call(pr,&[e_val]);
+
+         let pr = *finfs.get("println:(Value)->U64").unwrap();
+         ctx.ins().call(pr,&[e_val]);
 
          let loop_controller = ctx.create_block();
          ctx.append_block_param(loop_controller, types::I64);
@@ -738,7 +747,7 @@ impl JProgram {
       let mut flag_builder = settings::builder();
       flag_builder.set("use_colocated_libcalls", "false").unwrap();
       flag_builder.set("is_pic", "true").unwrap();
-      flag_builder.set("enable_llvm_abi_extensions", "true").unwrap();
+      //flag_builder.set("enable_llvm_abi_extensions", "true").unwrap();
       flag_builder.set("opt_level", "speed").unwrap();
       let isa_builder = cranelift_native::builder().unwrap_or_else(|msg| {
           panic!("host machine is not supported: {}", msg);

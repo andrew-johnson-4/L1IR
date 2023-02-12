@@ -6,7 +6,9 @@ use std::collections::HashMap;
 use cranelift_codegen::ir::FuncRef;
 
 pub fn s_u64(t: u128) -> u64 {
+   println!(".length");
    let t = value::Value(t);
+   println!(".length({:?})", t);
    (t.end() - t.start()) as u64
 }
 
