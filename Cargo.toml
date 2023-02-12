@@ -1,6 +1,6 @@
 [package]
 name = "l1_ir"
-version = "0.0.41"
+version = "0.0.42"
 authors = ["Andrew <andrew@subarctic.org>"]
 license = "MIT"
 description = "L1 Intermediate Representation"
@@ -19,7 +19,6 @@ cranelift-jit = { version = "0.92", optional = true }
 cranelift-codegen = { version = "0.92", optional = true }
 cranelift-native = { version = "0.92", optional = true }
 regex = { version = "1" }
-lazy_static = { version = "1.4" }
 
 [features]
 cranelift = ["dep:cranelift", "dep:cranelift-module", "dep:cranelift-jit", "dep:cranelift-codegen", "dep:cranelift-native"]

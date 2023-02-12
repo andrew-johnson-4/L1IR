@@ -12,7 +12,6 @@ pub struct FFI {
    pub rname: String,
    pub rtype: types::Type,
 }
-unsafe impl Send for FFI {}
 
 pub fn import<'f>() -> Vec<FFI> {
    let mut imported = Vec::new();

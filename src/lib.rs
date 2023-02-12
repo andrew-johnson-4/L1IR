@@ -1,9 +1,5 @@
 #![feature(strict_provenance)]
 
-#[cfg(feature = "cranelift")]
-#[macro_use]
-extern crate lazy_static;
-
 //AST Definition
 pub mod ast;
 
