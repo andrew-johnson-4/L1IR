@@ -311,6 +311,21 @@ pub enum LIPart<S:Debug + Clone> {
    Expression(Expression<S>),
 }
 impl<S:Debug + Clone> LIPart<S> {
+   pub fn dump_l1ir(&self, indent: usize) {
+      let padding = std::iter::repeat("  ").take(indent).collect::<String>();
+      match self {
+         LIPart::Literal(l) => {
+            println!("{}LI Literal '{}'", padding, l);
+         },
+         LIPart::InlineVariable(vi) => {
+            println!("{}LI Inline v#{}", padding, vi);
+         },
+         LIPart::Expression(e) => {
+            println!("{}LI Expr:", padding);
+            e.dump_l1ir(indent+1);
+         },
+      }
+   }
    pub fn vars(&self, vars: &mut Vec<usize>) {
       match self {
          LIPart::Literal(_lcs) => {},
@@ -345,6 +360,27 @@ pub enum TIPart<S: Debug + Clone> {
    Expression(Expression<S>),
 }
 impl<S: Debug + Clone> TIPart<S> {
+   pub fn dump_l1ir(&self, indent: usize) {
+      let padding = std::iter::repeat("  ").take(indent).collect::<String>();
+      match self {
+         TIPart::Tuple(tes) => {
+            println!("{}TIPart Tuple:", padding);
+            for e in tes.iter() {
+               e.dump_l1ir(indent+1);
+            }
+         },
+         TIPart::Variable(vi) => {
+            println!("{}TIPart v#{}", padding, vi);
+         },
+         TIPart::InlineVariable(vi) => {
+            println!("{}TIPart inline v#{}", padding, vi);
+         },
+         TIPart::Expression(e) => {
+            println!("{}TIPart expression", padding);
+            e.dump_l1ir(indent+1)
+         },
+      }
+   }
    pub fn vars(&self, vars: &mut Vec<usize>) {
       match self {
          TIPart::Tuple(_ts) => {},
@@ -410,6 +446,22 @@ pub enum LHSPart {
    Any,
 }
 impl LHSPart {
+   pub fn dump_l1ir(&self, indent: usize) {
+      let padding = std::iter::repeat("  ").take(indent).collect::<String>();
+      match self {
+         LHSPart::Tuple(_) => unimplemented!("dump_l1ir LHSPart::Tuple"),
+         LHSPart::UnpackLiteral(_,_,_) => unimplemented!("dump_l1ir LHSPart::Tuple"),
+         LHSPart::Literal(l) => {
+            println!("{}LHS '{}'", padding, l);
+         },
+         LHSPart::Variable(vi) => {
+            println!("{}LHS v#{}", padding, vi);
+         },
+         LHSPart::Any => {
+            println!("{}LHS _", padding);
+         },
+      }
+   }
    pub fn vars(&self, vars: &mut Vec<usize>) {
       match self {
          LHSPart::Tuple(ts) => {
@@ -487,11 +539,31 @@ impl<S:Debug + Clone> Expression<S> {
          Expression::Failure(_,_) => {
             println!("{}Failure", padding);
          },
-         Expression::Map(_,_,_,_,_) => unimplemented!("Dump Expression::Map"),
+         Expression::FunctionApplication(fi,args,tt,_) => {
+            println!("{}Apply {}: {:?}", padding, fi, tt);
+            for a in args.iter() {
+               a.dump_l1ir(indent+1);
+            }
+         },
+         Expression::Map(lhs,iterable,map_yield,tt,_) => {
+            println!("{}Map: {:?}", padding, tt);
+            lhs.dump_l1ir(indent+1);
+            iterable.dump_l1ir(indent+1);
+            map_yield.dump_l1ir(indent+1);
+         },
+         Expression::LiteralIntroduction(lis,tt,_) => {
+            println!("{}Literal: {:?}", padding, tt);
+            for li in lis.iter() {
+               li.dump_l1ir(indent+1);
+            }
+         },
+         Expression::TupleIntroduction(tis,tt,_) => {
+            println!("{}Tuple: {:?}", padding, tt);
+            for ti in tis.iter() {
+               ti.dump_l1ir(indent+1);
+            }
+         },
          Expression::ValueIntroduction(_,_,_) => unimplemented!("Dump Expression::ValueIntroduction"),
-         Expression::LiteralIntroduction(_,_,_) => unimplemented!("Dump Expression::LiteralIntroduction"),
-         Expression::TupleIntroduction(_,_,_) => unimplemented!("Dump Expression::TupleIntroduction"),
-         Expression::FunctionApplication(_,_,_,_) => unimplemented!("Dump Expression::FunctionApplication"),
          Expression::PatternMatch(_,_,_,_) => unimplemented!("Dump Expression::PatternMatch"),
       }
    }
