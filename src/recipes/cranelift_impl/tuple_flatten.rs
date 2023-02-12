@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use cranelift_codegen::ir::FuncRef;
 
 pub extern fn s_u64(t: u128) -> u128 {
+   println!("in .flatten");
    let v = value::Value(t);
    println!(".flatten({:?})", v);
    let mut capacity = 0;
@@ -20,6 +21,7 @@ pub extern fn s_u64(t: u128) -> u128 {
          n.push(vi.vslot(vti));
       }
    }
+   println!(".flatten={:?}", n);
    n.0
 }
 

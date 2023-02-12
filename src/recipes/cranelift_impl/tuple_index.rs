@@ -6,9 +6,12 @@ use std::collections::HashMap;
 use cranelift_codegen::ir::FuncRef;
 
 pub extern fn s_u64(t: u128, i: u64) -> u128 {
+   println!("in []");
    let v = value::Value(t);
    println!("[]({:?},{})", v, i);
-   v.vslot(i as usize).0
+   let vi = v.vslot(i as usize);
+   println!("[]={:?}", vi);
+   vi.0
 }
 
 pub fn f_u64<'f>(frefs: &HashMap<String,FuncRef>, ctx: &mut FunctionBuilder<'f>, val: &[Value]) -> Value {

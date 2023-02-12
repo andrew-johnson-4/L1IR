@@ -7,7 +7,9 @@ use cranelift_codegen::ir::FuncRef;
 
 pub extern fn s_u64(t: u64) -> u128 {
    println!("with_capacity({})", t);
-   value::Value::tuple_with_capacity(t).0
+   let r = value::Value::tuple_with_capacity(t);
+   println!("with_capacity={:?}", r);
+   r.0
 }
 
 pub fn f_u64<'f>(frefs: &HashMap<String,FuncRef>, ctx: &mut FunctionBuilder<'f>, val: &[Value]) -> Value {

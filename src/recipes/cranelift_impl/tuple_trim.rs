@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use cranelift_codegen::ir::FuncRef;
 
 pub extern fn s_u64(t: u128) -> u128 {
+   println!("in .trim");
    let mut v = value::Value(t);
    println!(".trim({:?})", v);
    let mut ei = v.end();
@@ -16,6 +17,7 @@ pub extern fn s_u64(t: u128) -> u128 {
       }
    }
    v.set_end(ei);
+   println!(".trim={:?}", v);
    v.0
 }
 
