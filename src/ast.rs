@@ -256,6 +256,10 @@ pub struct FunctionDefinition<S:Debug + Clone> {
    pub body: Vec<Expression<S>>,
 }
 impl<S:Debug + Clone> FunctionDefinition<S> {
+   pub fn dump_l1ir(&self, indent: usize) {
+      let padding = std::iter::repeat("  ").take(indent).collect::<String>();
+      println!("{}let {}", padding, self.name);
+   }
    pub fn define(name: &str, args: Vec<(usize,Type)>, body: Vec<Expression<S>>) -> FunctionDefinition<S> {
       FunctionDefinition {
          name: name.to_string(),
@@ -279,6 +283,15 @@ pub struct Program<S:Debug + Clone> {
    pub expressions: Vec<Expression<S>>,
 }
 impl<S:Debug + Clone> Program<S> {
+   pub fn dump_l1ir(&self) {
+      println!("L1IR:");
+      for (_,f) in self.functions.iter() {
+         f.dump_l1ir(1);
+      }
+      for e in self.expressions.iter() {
+         e.dump_l1ir(1);
+      }
+   }
    pub fn program(functions: Vec<FunctionDefinition<S>>, expressions: Vec<Expression<S>>) -> Program<S> {
       let mut fs = HashMap::new();
       for f in functions.into_iter() {
@@ -462,6 +475,10 @@ pub enum Expression<S:Debug + Clone> { //Expressions don't need to "clone"?
    Failure(Type,S),
 }
 impl<S:Debug + Clone> Expression<S> {
+   pub fn dump_l1ir(&self, indent: usize) {
+      let padding = std::iter::repeat("  ").take(indent).collect::<String>();
+      println!("{}expr:", padding);
+   }
    pub fn typed(self, nom: &str) -> Expression<S> {
       let nom = Type::nominal(nom);
       match self {

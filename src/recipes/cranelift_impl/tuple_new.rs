@@ -5,7 +5,7 @@ use cranelift::prelude::*;
 use std::collections::HashMap;
 use cranelift_codegen::ir::FuncRef;
 
-pub extern fn s_u64(t: u64) -> u128 {
+pub fn s_u64(t: u64) -> u128 {
    println!("with_capacity({})", t);
    let r = value::Value::tuple_with_capacity(t);
    println!("with_capacity={:?}", r);

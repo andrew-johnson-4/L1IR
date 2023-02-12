@@ -5,7 +5,7 @@ use cranelift::prelude::*;
 use std::collections::HashMap;
 use cranelift_codegen::ir::FuncRef;
 
-pub extern fn s_u64(from: u64, to: u64, step: u64) -> u128 {
+pub fn s_u64(from: u64, to: u64, step: u64) -> u128 {
    value::Value::range(from, to, step).0
 }
 

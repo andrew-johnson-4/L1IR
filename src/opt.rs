@@ -99,7 +99,6 @@ pub fn type_cast<'f>(ctx: &mut FunctionBuilder<'f>, ot: &str, nt: &str, v: Value
 }
 
 pub fn compile_fn<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, String>, stdlib: &mut HashMap<String,FFI>, global_finfs: &Vec<(String,FuncId)>, jmod: &mut JITModule, builder_context: &mut FunctionBuilderContext, p: &Program<S>, fi: String) {
-   println!("compile fn {}", fi);
    let pf = p.functions.get(&fi).unwrap();
    let hpars = function_parameters(&pf);
    let hrets = function_return(&pf);
@@ -154,7 +153,6 @@ pub fn compile_fn<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, String>
 }
 
 pub fn compile_lhs<'f>(type_context: &mut HashMap<usize, String>, ctx: &mut FunctionBuilder<'f>, mut lblk: Block, rblk: Block, lhs: &LHSPart, nblk: Block, mut val: Value, typ: &str) {
-   println!("compile lhs");
    ctx.switch_to_block(lblk);
    match lhs {
       LHSPart::Tuple(_lts) => unimplemented!("compile_lhs(Tuple)"),
@@ -248,7 +246,6 @@ pub fn compile_lhs<'f>(type_context: &mut HashMap<usize, String>, ctx: &mut Func
 
 pub fn try_inline_plurals<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, String>, stdlib: &mut HashMap<String,FFI>, finfs: &mut HashMap<String,FuncRef>, jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, mut blk: Block, p: &Program<S>,
                                                pe: &Expression<S>, lrs: &Vec<(LHSPart,Expression<S>)>, _span: &S) -> Option<(JExpr,JType)> {
-   println!("try inline plurals");
    if let Expression::TupleIntroduction(tis,_tt,_span) = pe {
       for ts in tis.iter() {
       match ts {
@@ -342,10 +339,8 @@ pub fn try_inline_plurals<'f,S: Clone + Debug>(type_context: &mut HashMap<usize,
 }
 
 pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, String>, stdlib: &mut HashMap<String,FFI>, finfs: &mut HashMap<String,FuncRef>, jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, mut blk: Block, p: &Program<S>, e: &Expression<S>) -> (JExpr,JType) {
-   println!("compile expr");
    match e {
       Expression::Map(lhs,iterable,x,_tt,_span) => {
-         println!("compile expr Map");
          let (je,_jt) = compile_expr(type_context, stdlib, finfs, jmod, ctx, blk, p, iterable);
          blk = je.block;
          let e_val = je.value;
@@ -453,11 +448,9 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
          })
       },
       Expression::ValueIntroduction(ui,tt,_span) => {
-         println!("compile expr Value Introduction");
       if let ast::Value::Unary(ui,_) = ui {
          let tname = tt.nom();
          if "Value" == &tname {
-            println!("value introduction");
             let ui = ui.to_i64().unwrap();
             let vlow = ctx.ins().iconst(types::I64, ui);
             let vhigh = ctx.ins().iconst(types::I64, (Tag::U64 as i64) * (2_i64.pow(48)));
@@ -485,7 +478,6 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
          unimplemented!("compile expression {:?}", ui)
       }},
       Expression::LiteralIntroduction(lis,tt,_span) => {
-         println!("compile expr Literal Introduction");
          if tt.nom() == "Unit" {
             let v = value::Value::from_parts(value::Tag::Unit as u16, value::Value::push_name("()"), 0).0;
             let high = (v >> 64) as i64;
@@ -557,14 +549,12 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
          unimplemented!("compile_expr Expression::TupleIntroduction")
       },
       Expression::VariableReference(vi,tt,_span) => {
-         println!("variable reference");
          let jv = Variable::from_u32(*vi as u32);
          let jv = ctx.use_var(jv);
          let jt = type_by_name(tt);
          let nt = tt.name.clone().unwrap_or("Value".to_string());
          let ot = type_context.get(vi).expect(&format!("Could not find Type of Variable v#{}", vi));
          let nv = type_cast(ctx, ot, &nt, jv);
-         println!("variable reference v#{} : {} as {}", vi, ot, nt);
          (JExpr {
             block: blk,
             value: nv
@@ -575,7 +565,6 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
       },
       Expression::FunctionReference(_vi,_tt,_span) => unimplemented!("compile expression: FunctionReference"),
       Expression::FunctionApplication(fi,args,_tt,_span) => {
-         println!("compile expr FunctionApplication");
          let mut arg_types = Vec::new();
          for a in args.iter() {
             let (je,jt) = compile_expr(type_context, stdlib, finfs, jmod, ctx, blk, p, a);
@@ -590,7 +579,6 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
             jtype: type_by_name(tt),
          };
 
-         println!("pattern match");
          if let Some((je,jt)) = try_inline_plurals(type_context, stdlib, finfs, jmod, ctx, blk, p, pe.as_ref(), lrs.as_ref(), span) {
             return (je,jt);
          }
@@ -658,9 +646,6 @@ pub fn apply_fn<'f, S: Clone + Debug>(stdlib: &mut HashMap<String,FFI>, finfs: &
       panic!("attempt to apply undefined function, fn {}", fi)
    };
    let args = coerced_args;
-   println!("apply fn {}({})", fi,
-      args.iter().map(|(_je,jt)| format!("{:?}",jt.name)).collect::<Vec<String>>().join(",")
-   );
    if let Some((je,jt)) = check_hardcoded_call(stdlib, finfs, ctx, blk, fi.clone(), &args) {
       return (je, jt);
    }
@@ -723,6 +708,10 @@ fn inject_stdlib_locals<'f>(module: &mut JITModule, ctx: &mut FunctionBuilder<'f
 impl JProgram {
    //functions will not be compiled until referenced
    pub fn compile<S: Clone + Debug>(p: &Program<S>) -> JProgram {
+      if cfg!(debug_assertions) {
+         p.dump_l1ir()
+      }
+
       let mut type_context: HashMap<usize, String> = HashMap::new();
       let mut stdlib: HashMap<String, FFI> = {
          let mut lib = HashMap::new();
@@ -754,8 +743,6 @@ impl JProgram {
       let mut ctx = module.make_context();
       let mut _data_ctx = DataContext::new();
 
-      println!("compile program 1");
-
       for (pn,pf) in p.functions.iter() {
          let isig = function_parameters(pf);
          let mut sig_f = module.make_signature();
@@ -771,8 +758,6 @@ impl JProgram {
          ).unwrap();
       }
 
-      println!("compile program 2");
-
       //int main(int *args, size_t args_count);
       let mut sig_main = module.make_signature();
       sig_main.params.push(AbiParam::new(types::I64));
@@ -784,16 +769,12 @@ impl JProgram {
         .unwrap();
       ctx.func.signature = sig_main;
 
-      println!("compile program 3");
-
       let mut main = FunctionBuilder::new(&mut ctx.func, &mut builder_context);
       let mut finfs = inject_stdlib_locals(&mut module, &mut main, &global_finfs);
 
       let mut blk = main.create_block();
       main.append_block_params_for_function_params(blk);
       main.switch_to_block(blk);
-
-      println!("compile program 4");
 
       let mut pars = Vec::new();
       for pe in p.expressions.iter() {
@@ -814,26 +795,19 @@ impl JProgram {
          main.def_var(pv, arg_value);
       }
 
-      println!("compile program 5");
-
       if p.expressions.len()==0 {
          let jv = Variable::from_u32(0 as u32);
          let jv = main.use_var(jv);
          main.ins().return_(&[jv]);
       } else {
-         println!("compile program 6.1");
-
          for pi in 0..(p.expressions.len()-1) {
-            println!("compile program 6.2");
             let (je,_jt) = compile_expr(&mut type_context, &mut stdlib, &mut finfs, &mut module, &mut main, blk, p, &p.expressions[pi]);
             blk = je.block;
          }
-         println!("compile program 6.3");
          let (mut je,jt) = compile_expr(&mut type_context, &mut stdlib, &mut finfs, &mut module, &mut main, blk, p, &p.expressions[p.expressions.len()-1]);
          je.value = type_cast(&mut main, &jt.name, "Value", je.value);
          blk = je.block;
 
-         println!("compile program 6.4");
          main.ins().return_(&[je.value]);
       }
 
@@ -843,13 +817,9 @@ impl JProgram {
       module.define_function(fn_main, &mut ctx).unwrap();
       module.clear_context(&mut ctx);
 
-      println!("compile program 7");
-
       for (fi,_f) in p.functions.iter() {
          compile_fn(&mut type_context, &mut stdlib, &global_finfs, &mut module, &mut builder_context, &p, fi.clone());
       }
-
-      println!("compile program 8");
 
       module.finalize_definitions().unwrap();
       JProgram {
