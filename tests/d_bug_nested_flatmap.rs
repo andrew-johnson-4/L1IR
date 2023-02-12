@@ -9,18 +9,10 @@ fn bug_nested_flatmap() {
             Expression::map(
                LHSPart::variable(130),
                Expression::apply("range:(U64)->U64[]",vec![
-                  Expression::literal("5", ()).typed("U64"),
+                  Expression::literal("25", ()).typed("U64"),
                ],()).typed("Value"),
                TIPart::expression(
-                  Expression::map(
-                     LHSPart::variable(137),
-                     Expression::apply("range:(U64)->U64[]",vec![
-                        Expression::literal("5", ()).typed("U64"),
-                     ],()).typed("Value"),
-                     TIPart::expression(
-                        Expression::literal("11", ()).typed("Value"),
-                     )
-                  ,()).typed("Value")
+                  Expression::literal("11", ()).typed("Value"),
                )
             ,()).typed("Value")
       ],
