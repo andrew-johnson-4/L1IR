@@ -477,7 +477,23 @@ pub enum Expression<S:Debug + Clone> { //Expressions don't need to "clone"?
 impl<S:Debug + Clone> Expression<S> {
    pub fn dump_l1ir(&self, indent: usize) {
       let padding = std::iter::repeat("  ").take(indent).collect::<String>();
-      println!("{}expr:", padding);
+      match self {
+         Expression::VariableReference(vi,tt,_) => {
+            println!("{}Variable {}: {:?}", padding, vi, tt);
+         },
+         Expression::FunctionReference(fi,tt,_) => {
+            println!("{}Function {}: {:?}", padding, fi, tt);
+         },
+         Expression::Failure(_,_) => {
+            println!("{}Failure", padding);
+         },
+         Expression::Map(_,_,_,_,_) => unimplemented!("Dump Expression::Map"),
+         Expression::ValueIntroduction(_,_,_) => unimplemented!("Dump Expression::ValueIntroduction"),
+         Expression::LiteralIntroduction(_,_,_) => unimplemented!("Dump Expression::LiteralIntroduction"),
+         Expression::TupleIntroduction(_,_,_) => unimplemented!("Dump Expression::TupleIntroduction"),
+         Expression::FunctionApplication(_,_,_,_) => unimplemented!("Dump Expression::FunctionApplication"),
+         Expression::PatternMatch(_,_,_,_) => unimplemented!("Dump Expression::PatternMatch"),
+      }
    }
    pub fn typed(self, nom: &str) -> Expression<S> {
       let nom = Type::nominal(nom);
