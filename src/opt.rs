@@ -113,7 +113,7 @@ pub fn compile_fn<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, String>
    sig_fn.returns.push(AbiParam::new(hrets));
 
    let fn0 = jmod
-      .declare_function(&fi, Linkage::Local, &sig_fn)
+      .declare_function(&fi, Linkage::Export, &sig_fn)
       .unwrap();
    ctx.func.signature = sig_fn;
 
@@ -746,8 +746,8 @@ impl JProgram {
       for (sk,sv) in stdlib.iter() {
       if let Some(addr) = sv.symbol {
          builder.symbol(sk, addr);
-      }}
-       
+      }}       
+
       let mut module = JITModule::new(builder);
       let global_finfs = inject_stdlib_symbols(&mut module, &mut stdlib);
       let mut builder_context = FunctionBuilderContext::new();
@@ -766,7 +766,7 @@ impl JProgram {
          sig_f.returns.push(AbiParam::new(rtt));
          module.declare_function(
             pn,
-            Linkage::Local,
+            Linkage::Export,
             &sig_f
          ).unwrap();
       }
