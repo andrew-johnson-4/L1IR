@@ -518,6 +518,21 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
                name: "U64".to_string(),
                jtype: types::I64,
             })
+         } else if tt.nom() == "Value" {
+            //just checking
+            let v = value::Value::from_parts(value::Tag::U64 as u16, 0, 123).0;
+            let high = (v >> 64) as i64;
+            let low = ((v << 64) >> 64) as i64;
+            let high = ctx.ins().iconst(types::I64, high);
+            let low = ctx.ins().iconst(types::I64, low);
+            let val = ctx.ins().iconcat(low, high);
+            (JExpr {
+               block: blk,
+               value: val,
+            }, JType {
+               name: "Value".to_string(),
+               jtype: types::I128,
+            })
          } else {
             unimplemented!("Unknown literal introduction: {:?}", tt)
          }
