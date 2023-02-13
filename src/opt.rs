@@ -573,14 +573,18 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
             let map_len = ctx.ins().iconst(types::I64, tes.len() as i64);
             let map_new = *finfs.get("with_capacity:(U64)->Tuple").unwrap();
             let map_new = ctx.ins().call(map_new,&[map_len]);
-            let map_new = ctx.inst_results(map_new)[0];
+            let map_lo = ctx.inst_results(map_new)[0];
+            let map_hi = ctx.inst_results(map_new)[1];
 
             for te in tes.iter() {
                let (je,_jt) = compile_expr(type_context, stdlib, finfs, jmod, ctx, blk, p, te.borrow());
                blk = je.block;
+               let (je_lo,je_hi) = ctx.ins().isplit(je.value);
                let xi = *finfs.get(".push:(Tuple,Value)->U64").unwrap();
-               ctx.ins().call(xi,&[map_new,je.value]);
+               
+               ctx.ins().call(xi,&[map_lo,map_hi,je_lo,je_hi]);
             }
+            let map_new = ctx.ins().iconcat(map_lo,map_hi);
 
             return (JExpr {
                block: blk,

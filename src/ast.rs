@@ -573,7 +573,9 @@ impl<S:Debug + Clone> Expression<S> {
                rhs.dump_l1ir(indent+2);
             }
          },
-         Expression::ValueIntroduction(_,_,_) => unimplemented!("Dump Expression::ValueIntroduction"),
+         Expression::ValueIntroduction(v,tt,_) => {
+            println!("{}Value, {:?}: {:?}", padding, v, tt);
+         },
       }
    }
    pub fn typed(self, nom: &str) -> Expression<S> {
