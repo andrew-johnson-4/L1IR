@@ -3,10 +3,10 @@
 #[macro_export]
 macro_rules! dprintln {
    ( $( $x:expr ),* ) => {
-      //println!($(
-      //  $x,
-      //)*);
-      //std::io::stdout().flush().expect("some error message");
+      println!($(
+        $x,
+      )*);
+      std::io::stdout().flush().expect("some error message");
    };
 }
 

@@ -4,11 +4,12 @@ use crate::recipes::cranelift::FFI;
 use cranelift::prelude::*;
 use std::collections::HashMap;
 use cranelift_codegen::ir::FuncRef;
+use std::io::Write;
 
 pub fn s_u64(t: u64) -> (u64,u64) {
-   println!("Tuple::new({})", t);
+   dprintln!("Tuple::new({})", t);
    let r = value::Value::tuple_with_capacity(t);
-   println!("Tuple::new yields {:?}", r);
+   dprintln!("Tuple::new yields {:?}", r);
    r.lohi()
 }
 

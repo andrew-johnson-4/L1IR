@@ -12,7 +12,8 @@ fn bug_nested_flatmap() {
                   Expression::literal("25", ()).typed("U64"),
                ],()).typed("Value"),
                TIPart::expression(
-                  Expression::literal("11", ()).typed("Value"),
+                  Expression::literal("25", ()).typed("Value"),
+                  //Expression::variable(130, ()).typed("Value"),
                )
             ,()).typed("Value")
       ],

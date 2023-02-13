@@ -364,24 +364,22 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
       Expression::Map(lhs,iterable,x,_tt,_span) => {
          let (je,_jt) = compile_expr(type_context, stdlib, finfs, jmod, ctx, blk, p, iterable);
          blk = je.block;
-         let e_val = je.value;
+         let (e_lo,e_hi) = ctx.ins().isplit(je.value);
 
          let map_len = *finfs.get(".length:(Tuple)->U64").unwrap();
-         let map_len = ctx.ins().call(map_len,&[e_val]);
+         let map_len = ctx.ins().call(map_len,&[e_lo,e_hi]);
          let map_len = ctx.inst_results(map_len)[0];
 
          let pr = *finfs.get("println:(Value)->U64").unwrap();
-         ctx.ins().call(pr,&[e_val]);
+         ctx.ins().call(pr,&[e_lo,e_hi]);
 
          let map_new = *finfs.get("with_capacity:(U64)->Tuple").unwrap();
          let map_new = ctx.ins().call(map_new,&[map_len]);
-         let map_new = ctx.inst_results(map_new)[0];
+         let map_new_lo = ctx.inst_results(map_new)[0];
+         let map_new_hi = ctx.inst_results(map_new)[1];
 
          let pr = *finfs.get("println:(Value)->U64").unwrap();
-         ctx.ins().call(pr,&[e_val]);
-
-         let pr = *finfs.get("println:(Value)->U64").unwrap();
-         ctx.ins().call(pr,&[e_val]);
+         ctx.ins().call(pr,&[e_lo,e_hi]);
 
          let loop_controller = ctx.create_block();
          ctx.append_block_param(loop_controller, types::I64);
@@ -405,8 +403,10 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
          ctx.switch_to_block(in_loop);
          let i = ctx.block_params(in_loop)[0];
          let ii = *finfs.get("[]:(Tuple,U64)->Value").unwrap();
-         let ii = ctx.ins().call(ii,&[e_val,i]);
-         let ii = ctx.inst_results(ii)[0];
+         let ii = ctx.ins().call(ii,&[e_lo,e_hi,i]);
+         let ii_lo = ctx.inst_results(ii)[0];
+         let ii_hi = ctx.inst_results(ii)[1];
+         let ii = ctx.ins().iconcat(ii_lo, ii_hi);
          match (*lhs).borrow() {
             LHSPart::Any => {},
             LHSPart::Variable(vi) => {
@@ -453,8 +453,9 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
                lie.value
             }
          };
+         let (x_val_lo,x_val_hi) = ctx.ins().isplit(x_val);
          let xi = *finfs.get(".push:(Tuple,Value)->U64").unwrap();
-         ctx.ins().call(xi,&[map_new,x_val]);
+         ctx.ins().call(xi,&[map_new_lo,map_new_hi,x_val_lo,x_val_hi]);
          let i = ctx.ins().iadd_imm(i, 1);
          ctx.ins().jump(loop_controller, &[i]);
          //seal in_loop
@@ -465,8 +466,10 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
 
          ctx.switch_to_block(after_loop);
          let map_out = *finfs.get("trim_capacity:(Tuple)->Tuple").unwrap();
-         let map_out = ctx.ins().call(map_out,&[map_new]);
-         let map_out = ctx.inst_results(map_out)[0];
+         let map_out = ctx.ins().call(map_out,&[map_new_lo,map_new_hi]);
+         let map_out_lo = ctx.inst_results(map_out)[0];
+         let map_out_hi = ctx.inst_results(map_out)[1];
+         let map_out = ctx.ins().iconcat(map_out_lo,map_out_hi);
 
          (JExpr {
             block: after_loop,
@@ -706,15 +709,30 @@ pub fn apply_fn<'f, S: Clone + Debug>(stdlib: &mut HashMap<String,FFI>, finfs: &
          finfs.insert(fi, fnref);
          fnref
       };
-      let args = args.iter().map(|(e,_t)| e.value).collect::<Vec<Value>>();
+      let mut cargs = Vec::new();
+      for (ce,ct) in args.iter() {
+         if ct.jtype == types::I128 {
+            let (clo,chi) = ctx.ins().isplit(ce.value);
+            cargs.push(clo);
+            cargs.push(chi);
+         } else {
+            cargs.push(ce.value);
+         }
+      }
       let call = ctx.ins().call(
          fnref,
-         &args
+         &cargs
       );
-      let cval = ctx.inst_results(call)[0];
       let ftype = pf.body[pf.body.len()-1].typ();
       let rname = ftype.name.clone().unwrap_or("Value".to_string());
       let rtype = type_by_name(&ftype);
+      let cval = if rtype == types::I128 {
+         let clo = ctx.inst_results(call)[0];
+         let chi = ctx.inst_results(call)[1];
+         ctx.ins().iconcat(clo,chi)
+      } else {
+         ctx.inst_results(call)[0]
+      };
       return (JExpr {
          block: blk,
          value: cval,
@@ -898,7 +916,16 @@ pub fn check_hardcoded_call<'f>(stdlib: &mut HashMap<String,FFI>, finfs: &mut Ha
    if let Some(ffi) = stdlib.get(&fi) {
       let sig = args.iter().map(|(_je,jt)| jt.jtype).collect::<Vec<types::Type>>();
       if sig != ffi.args { panic!("Wrong argument types to function: {}", fi) }
-      let val = args.iter().map(|(je,_jt)| je.value).collect::<Vec<Value>>();
+      let mut val = Vec::new();
+      for (je,jt) in args.iter() {
+         if jt.jtype == types::I128 {
+            let (jlo,jhi) = ctx.ins().isplit(je.value);
+            val.push(jlo);
+            val.push(jhi);
+         } else {
+            val.push(je.value);
+         }
+      }
       let rval = (ffi.cons)(finfs, ctx, &val);
       return Some((
          JExpr { block: blk, value: rval },
