@@ -298,6 +298,7 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
          match (*lhs).borrow() {
             LHSPart::Any => {},
             LHSPart::Variable(vi) => {
+               println!("declare variable: {}", vi);
                let jv = Variable::from_u32(*vi as u32);
                ctx.declare_var(jv, types::I128);
                type_context.insert(*vi, "Value".to_string());
@@ -305,23 +306,18 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
             },
             _ => panic!("Invalid IR: for loop bindings must not be fallible")
          }
-         //TODO .flatmap yield x
-         let xi = *finfs.get(".push:(Tuple,Value)->U64").unwrap();
-         ctx.ins().call(xi,&[map_new_lo,map_new_hi,ii_lo,ii_hi]);
-         let i = ctx.ins().iadd_imm(i, 1);
-         ctx.ins().jump(loop_controller, &[i]);
-         //seal in_loop
-
-
-         /*
          let x_val = match x.borrow() {
             TIPart::Tuple(_ts) => unimplemented!(".flatmap Tuple"),
             TIPart::Variable(vi) => {
-               let jv = Variable::from_u32(*vi as u32);
-               ctx.use_var(jv)
+               println!("use variable: {}", vi);
+               ii
+               //let jv = Variable::from_u32(*vi as u32);
+               //ctx.use_var(jv)
             }
             TIPart::InlineVariable(_vi) => unimplemented!(".flatmap InlineVariable"),
             TIPart::Expression(xe) => {
+               unimplemented!("Map TIPart Expression");
+               /*
                let mut xe = xe;
                if let Expression::PatternMatch(guard_cond,plrs,_ptt,_span) = xe.borrow() {
                if plrs.len()==1 {
@@ -348,10 +344,16 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
                let (lie,_lit) = compile_expr(type_context, stdlib, finfs, jmod, ctx, in_loop, p, xe.borrow());
                in_loop = lie.block;
                lie.value
+               */
             }
          };
          let (x_val_lo,x_val_hi) = ctx.ins().isplit(x_val);
-         */
+
+         let xi = *finfs.get(".push:(Tuple,Value)->U64").unwrap();
+         ctx.ins().call(xi,&[map_new_lo,map_new_hi,x_val_lo,x_val_hi]);
+         let i = ctx.ins().iadd_imm(i, 1);
+         ctx.ins().jump(loop_controller, &[i]);
+         //seal in_loop
 
          ctx.seal_block(in_loop);
          ctx.seal_block(loop_controller);

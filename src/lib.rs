@@ -1,5 +1,3 @@
-#![feature(strict_provenance)]
-
 #[macro_export]
 macro_rules! dprintln {
    ( $( $x:expr ),* ) => {

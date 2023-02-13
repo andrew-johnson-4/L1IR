@@ -216,7 +216,7 @@ impl Value {
          }
          ptr
       };
-      let ptr_bits = (ptr.expose_addr() as u64) as u128;
+      let ptr_bits = (ptr as usize) as u128;
       let start = 0 as u128;
       let end = cs.len() as u128;
       let mut raw: u128 = 0;
@@ -247,7 +247,7 @@ impl Value {
          }
          ptr
       };
-      let ptr_bits_64 = ptr.expose_addr() as u64;
+      let ptr_bits_64 = (ptr as usize) as u64;
       let ptr_bits = ptr_bits_64 as u128;
       let start = 0 as u128;
       let end = vs.len() as u128;
@@ -272,7 +272,7 @@ impl Value {
       dprintln!("Value::set_end({})", end);
       assert!(self.tag() == Tag::Tuple, "set_end must be `Tuple");
       assert!(end <= self.end(), "set end expected: {} < {}", end, self.end());
-      let ptr_bits = (self.tptr().expose_addr() as u64) as u128;
+      let ptr_bits = (self.tptr() as usize) as u128;
       let start = self.start() as u128;
       let end = end as u128;
       let mut raw: u128 = 0;
@@ -499,7 +499,7 @@ impl Value {
       dprintln!("Value::slice({},{})",start,end);
       let tag = (self.0 >> 112) as u16;
       let nom = ((self.0 << 16) >> 112) as u16;
-      let ptr_bits = (self.ptr().expose_addr() as u64) as u128;
+      let ptr_bits = (self.ptr() as usize) as u128;
       let start = start as u128;
       let end = end as u128;
       let mut raw: u128 = 0;
