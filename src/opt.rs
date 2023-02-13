@@ -104,7 +104,6 @@ pub fn compile_fn<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, String>
    let hrets = function_return(&pf);
 
    let mut ctx = jmod.make_context();
-
    let mut sig_fn = jmod.make_signature();
    for pt in hpars.iter() {
       if *pt == types::I128 {
@@ -120,10 +119,6 @@ pub fn compile_fn<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, String>
    } else {
       sig_fn.returns.push(AbiParam::new(hrets));
    }
-
-   let fn0 = jmod
-      .declare_function(&fi, Linkage::Export, &sig_fn)
-      .unwrap();
    ctx.func.signature = sig_fn;
 
    let mut fnb = FunctionBuilder::new(&mut ctx.func, builder_context);
@@ -169,6 +164,8 @@ pub fn compile_fn<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, String>
    fnb.seal_block(blk);
    fnb.finalize();
 
+   let Some(FuncOrDataId::Func(fn0)) = jmod.get_name(&fi)
+   else { panic!("Could not find local function: {}", fi) };
    jmod.define_function(fn0, &mut ctx).unwrap();
    jmod.clear_context(&mut ctx);
 }
@@ -823,13 +820,23 @@ impl JProgram {
          let isig = function_parameters(pf);
          let mut sig_f = module.make_signature();
          for ptt in isig.into_iter() {
-            sig_f.params.push(AbiParam::new(ptt));
+            if ptt == types::I128 {
+               sig_f.params.push(AbiParam::new(types::I64));
+               sig_f.params.push(AbiParam::new(types::I64));
+            } else {
+               sig_f.params.push(AbiParam::new(ptt));
+            }
          }
          let rtt = function_return(pf);
-         sig_f.returns.push(AbiParam::new(rtt));
+         if rtt == types::I128 {
+            sig_f.returns.push(AbiParam::new(types::I64));
+            sig_f.returns.push(AbiParam::new(types::I64));
+         } else {
+            sig_f.returns.push(AbiParam::new(rtt));
+         }
          module.declare_function(
             pn,
-            Linkage::Export,
+            Linkage::Local,
             &sig_f
          ).unwrap();
       }
@@ -904,9 +911,9 @@ impl JProgram {
       }
    }
    pub fn eval(&self, args: &[value::Value]) -> value::Value {
-      let ptr_main = unsafe { std::mem::transmute::<_, fn(*const u128,u64) -> (u64,u64)>(self.main) };
+      let ptr_main = unsafe { std::mem::transmute::<_, fn(u64,u64) -> (u64,u64)>(self.main) };
       let args = args.iter().map(|v|v.0).collect::<Vec<u128>>();
-      let (rlo,rhi) = ptr_main(args.as_ptr(), args.len() as u64);
+      let (rlo,rhi) = ptr_main(args.as_ptr() as u64, args.len() as u64);
       let res = ((rhi as u128) << 64) | (rlo as u128);
       value::Value(res)
    }
