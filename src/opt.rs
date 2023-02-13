@@ -294,7 +294,16 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
          let ii = ctx.ins().call(ii,&[e_lo,e_hi,i]);
          let ii_lo = ctx.inst_results(ii)[0];
          let ii_hi = ctx.inst_results(ii)[1];
-         let ii = ctx.ins().iconcat(ii_lo, ii_hi);
+         //let ii = ctx.ins().iconcat(ii_lo, ii_hi);
+         //TODO flatmap
+         let xi = *finfs.get(".push:(Tuple,Value)->U64").unwrap();
+         ctx.ins().call(xi,&[map_new_lo,map_new_hi,ii_lo,ii_hi]);
+         let i = ctx.ins().iadd_imm(i, 1);
+         ctx.ins().jump(loop_controller, &[i]);
+         //seal in_loop
+
+
+         /*
          match (*lhs).borrow() {
             LHSPart::Any => {},
             LHSPart::Variable(vi) => {
@@ -342,16 +351,11 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
             }
          };
          let (x_val_lo,x_val_hi) = ctx.ins().isplit(x_val);
-         let xi = *finfs.get(".push:(Tuple,Value)->U64").unwrap();
-         ctx.ins().call(xi,&[map_new_lo,map_new_hi,x_val_lo,x_val_hi]);
-         let i = ctx.ins().iadd_imm(i, 1);
-         ctx.ins().jump(loop_controller, &[i]);
-         //seal in_loop
+         */
 
-         ctx.seal_block(blk);                      //seal iterable expression block
-         ctx.seal_block(loop_controller);
          ctx.seal_block(in_loop);
-
+         ctx.seal_block(loop_controller);
+         ctx.seal_block(blk);                      //seal iterable expression block
          ctx.switch_to_block(after_loop);
          let map_out = *finfs.get("trim_capacity:(Tuple)->Tuple").unwrap();
          let map_out = ctx.ins().call(map_out,&[map_new_lo,map_new_hi]);
