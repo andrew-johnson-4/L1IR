@@ -107,9 +107,19 @@ pub fn compile_fn<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, String>
 
    let mut sig_fn = jmod.make_signature();
    for pt in hpars.iter() {
-      sig_fn.params.push(AbiParam::new(*pt));
+      if *pt == types::I128 {
+         sig_fn.params.push(AbiParam::new(types::I64));
+         sig_fn.params.push(AbiParam::new(types::I64));
+      } else {
+         sig_fn.params.push(AbiParam::new(*pt));
+      }
    }
-   sig_fn.returns.push(AbiParam::new(hrets));
+   if hrets == types::I128 {
+      sig_fn.returns.push(AbiParam::new(types::I64));
+      sig_fn.returns.push(AbiParam::new(types::I64));
+   } else {
+      sig_fn.returns.push(AbiParam::new(hrets));
+   }
 
    let fn0 = jmod
       .declare_function(&fi, Linkage::Export, &sig_fn)
@@ -707,9 +717,19 @@ fn inject_stdlib_symbols(module: &mut JITModule, stdlib: &mut HashMap<String,FFI
    if let Some(_) = sv.symbol {
       let mut sig_s = module.make_signature();
       for at in sv.args.iter() {
-         sig_s.params.push(AbiParam::new(*at));
+         if *at == types::I128 {
+            sig_s.params.push(AbiParam::new(types::I64));
+            sig_s.params.push(AbiParam::new(types::I64));
+         } else {
+            sig_s.params.push(AbiParam::new(*at));
+         }
       }
-      sig_s.returns.push(AbiParam::new(sv.rtype));
+      if sv.rtype == types::I128 {
+         sig_s.returns.push(AbiParam::new(types::I64));
+         sig_s.returns.push(AbiParam::new(types::I64));
+      } else {
+         sig_s.returns.push(AbiParam::new(sv.rtype));
+      }
 
       let func_s = module
         .declare_function(sk, Linkage::Import, &sig_s)
@@ -785,7 +805,8 @@ impl JProgram {
       let mut sig_main = module.make_signature();
       sig_main.params.push(AbiParam::new(types::I64));
       sig_main.params.push(AbiParam::new(types::I64));
-      sig_main.returns.push(AbiParam::new(types::I128));
+      sig_main.returns.push(AbiParam::new(types::I64));
+      sig_main.returns.push(AbiParam::new(types::I64));
 
       let fn_main = module
         .declare_function("main", Linkage::Export, &sig_main)
@@ -799,6 +820,11 @@ impl JProgram {
       main.append_block_params_for_function_params(blk);
       main.switch_to_block(blk);
 
+      let jlo = main.ins().iconst(types::I64, 1);
+      let jhi = main.ins().iconst(types::I64, 2);
+      main.ins().return_(&[jlo,jhi]);
+
+      /*
       let mut pars = Vec::new();
       for pe in p.expressions.iter() {
          pe.vars(&mut pars);
@@ -821,7 +847,8 @@ impl JProgram {
       if p.expressions.len()==0 {
          let jv = Variable::from_u32(0 as u32);
          let jv = main.use_var(jv);
-         main.ins().return_(&[jv]);
+         let (jlo,jhi) = main.ins().isplit(jv);
+         main.ins().return_(&[jlo,jhi]);
       } else {
          for pi in 0..(p.expressions.len()-1) {
             let (je,_jt) = compile_expr(&mut type_context, &mut stdlib, &mut finfs, &mut module, &mut main, blk, p, &p.expressions[pi]);
@@ -831,8 +858,10 @@ impl JProgram {
          je.value = type_cast(&mut main, &jt.name, "Value", je.value);
          blk = je.block;
 
-         main.ins().return_(&[je.value]);
+         let (jlo,jhi) = main.ins().isplit(je.value);
+         main.ins().return_(&[jlo,jhi]);
       }
+      */
 
       main.seal_block(blk);
       main.finalize();
@@ -840,9 +869,11 @@ impl JProgram {
       module.define_function(fn_main, &mut ctx).unwrap();
       module.clear_context(&mut ctx);
 
+      /*
       for (fi,_f) in p.functions.iter() {
          compile_fn(&mut type_context, &mut stdlib, &global_finfs, &mut module, &mut builder_context, &p, fi.clone());
       }
+      */
 
       module.finalize_definitions().unwrap();
       JProgram {
@@ -850,10 +881,12 @@ impl JProgram {
       }
    }
    pub fn eval(&self, args: &[value::Value]) -> value::Value {
-      let ptr_main = unsafe { std::mem::transmute::<_, fn(*const u128,u64) -> u128>(self.main) };
+      let ptr_main = unsafe { std::mem::transmute::<_, fn(*const u128,u64) -> (u64,u64)>(self.main) };
       let args = args.iter().map(|v|v.0).collect::<Vec<u128>>();
-      let res = ptr_main(args.as_ptr(), args.len() as u64);
-      value::Value(res)
+      let (rlo,rhi) = ptr_main(args.as_ptr(), args.len() as u64);
+      println!("rlo={}, rhi={}", rlo, rhi);
+      //let res = ((res_hi as u128) << 64) | (res_lo as u128);
+      value::Value(0)
    }
 }
 
