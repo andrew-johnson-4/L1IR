@@ -294,16 +294,7 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
          let ii = ctx.ins().call(ii,&[e_lo,e_hi,i]);
          let ii_lo = ctx.inst_results(ii)[0];
          let ii_hi = ctx.inst_results(ii)[1];
-         //let ii = ctx.ins().iconcat(ii_lo, ii_hi);
-         //TODO flatmap
-         let xi = *finfs.get(".push:(Tuple,Value)->U64").unwrap();
-         ctx.ins().call(xi,&[map_new_lo,map_new_hi,ii_lo,ii_hi]);
-         let i = ctx.ins().iadd_imm(i, 1);
-         ctx.ins().jump(loop_controller, &[i]);
-         //seal in_loop
-
-
-         /*
+         let ii = ctx.ins().iconcat(ii_lo, ii_hi);
          match (*lhs).borrow() {
             LHSPart::Any => {},
             LHSPart::Variable(vi) => {
@@ -314,6 +305,15 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
             },
             _ => panic!("Invalid IR: for loop bindings must not be fallible")
          }
+         //TODO .flatmap yield x
+         let xi = *finfs.get(".push:(Tuple,Value)->U64").unwrap();
+         ctx.ins().call(xi,&[map_new_lo,map_new_hi,ii_lo,ii_hi]);
+         let i = ctx.ins().iadd_imm(i, 1);
+         ctx.ins().jump(loop_controller, &[i]);
+         //seal in_loop
+
+
+         /*
          let x_val = match x.borrow() {
             TIPart::Tuple(_ts) => unimplemented!(".flatmap Tuple"),
             TIPart::Variable(vi) => {
