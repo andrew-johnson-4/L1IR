@@ -164,6 +164,14 @@ impl std::fmt::Debug for Value {
 }
 
 impl Value {
+   pub fn from_lohi(lo: u64, hi: u64) -> Value {
+      Value( ((hi as u128) << 64) | (lo as u128) )
+   }
+   pub fn lohi(&self) -> (u64,u64) {
+      let lo = ((self.0 << 64) >> 64) as u64;
+      let hi = (self.0 >> 64) as u64;
+      (lo,hi)
+   }
    pub fn from_parts(tag: u16, name: u16, slots: u128) -> Value {
       dprintln!("from parts: ({},{},{})", tag, name, slots);
       let tag = (tag as u128) << 112;

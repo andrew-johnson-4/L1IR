@@ -5,10 +5,10 @@ use cranelift::prelude::*;
 use std::collections::HashMap;
 use cranelift_codegen::ir::FuncRef;
 
-pub fn s_u64(t: u128, i: u64) -> u128 {
-   let v = value::Value(t);
+pub fn s_u64(t_lo: u64, t_hi: u64, i: u64) -> (u64,u64) {
+   let v = value::Value::from_lohi(t_lo, t_hi);
    let vi = v.vslot(i as usize);
-   vi.0
+   vi.lohi()
 }
 
 pub fn f_u64<'f>(frefs: &HashMap<String,FuncRef>, ctx: &mut FunctionBuilder<'f>, val: &[Value]) -> Value {
@@ -16,7 +16,9 @@ pub fn f_u64<'f>(frefs: &HashMap<String,FuncRef>, ctx: &mut FunctionBuilder<'f>,
    let arg1 = val[1].clone();
    let fref = frefs.get("[]:(Tuple,U64)->Value").unwrap();
    let call = ctx.ins().call(*fref, &[arg0,arg1]);
-   ctx.inst_results(call)[0]
+   let lo = ctx.inst_results(call)[0];
+   let hi = ctx.inst_results(call)[1];
+   ctx.ins().iconcat(lo,hi)
 }
 
 pub fn import() -> Vec<FFI> {vec![
