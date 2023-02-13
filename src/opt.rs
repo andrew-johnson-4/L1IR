@@ -14,15 +14,6 @@ use cranelift_native;
 use num_traits::ToPrimitive;
 use std::collections::HashMap;
 
-static mut UNIQUE_ID: usize = 1000000;
-fn uid() -> usize {
-   unsafe {
-      let id = UNIQUE_ID;
-      UNIQUE_ID += 1;
-      id
-   }
-}
-
 pub struct JProgram {
    main: *const u8,
 }
@@ -104,16 +95,21 @@ pub fn compile_fn<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, String>
    let hrets = function_return(&pf);
 
    let mut ctx = jmod.make_context();
-
    let mut sig_fn = jmod.make_signature();
    for pt in hpars.iter() {
-      sig_fn.params.push(AbiParam::new(*pt));
+      if *pt == types::I128 {
+         sig_fn.params.push(AbiParam::new(types::I64));
+         sig_fn.params.push(AbiParam::new(types::I64));
+      } else {
+         sig_fn.params.push(AbiParam::new(*pt));
+      }
    }
-   sig_fn.returns.push(AbiParam::new(hrets));
-
-   let fn0 = jmod
-      .declare_function(&fi, Linkage::Export, &sig_fn)
-      .unwrap();
+   if hrets == types::I128 {
+      sig_fn.returns.push(AbiParam::new(types::I64));
+      sig_fn.returns.push(AbiParam::new(types::I64));
+   } else {
+      sig_fn.returns.push(AbiParam::new(hrets));
+   }
    ctx.func.signature = sig_fn;
 
    let mut fnb = FunctionBuilder::new(&mut ctx.func, builder_context);
@@ -133,8 +129,13 @@ pub fn compile_fn<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, String>
    }
 
    if pf.body.len()==0 {
-      let rval = fnb.ins().iconst(types::I64, i64::from(0));
-      fnb.ins().return_(&[rval]);
+      if hrets == types::I128 {
+         let zero = fnb.ins().iconst(types::I64, 0);
+         fnb.ins().return_(&[zero,zero]);
+      } else {
+         let zero = fnb.ins().iconst(types::I64, 0);
+         fnb.ins().return_(&[zero]);
+      }
    } else {
       for pi in 0..(pf.body.len()-1) {
          let (je,_jt) = compile_expr(type_context, stdlib, &mut finfs, jmod, &mut fnb, blk, p, &pf.body[pi]);
@@ -142,12 +143,20 @@ pub fn compile_fn<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, String>
       }
       let (je,_jt) = compile_expr(type_context, stdlib, &mut finfs, jmod, &mut fnb, blk, p, &pf.body[pf.body.len()-1]);
       blk = je.block;
-      fnb.ins().return_(&[je.value]);
+      if hrets == types::I128 {
+         let r = je.value;
+         let (rlo,rhi) = fnb.ins().isplit(r);
+         fnb.ins().return_(&[rlo,rhi]); 
+      } else {
+         fnb.ins().return_(&[je.value]);
+      }
    }
 
    fnb.seal_block(blk);
    fnb.finalize();
 
+   let Some(FuncOrDataId::Func(fn0)) = jmod.get_name(&fi)
+   else { panic!("Could not find local function: {}", fi) };
    jmod.define_function(fn0, &mut ctx).unwrap();
    jmod.clear_context(&mut ctx);
 }
@@ -244,114 +253,21 @@ pub fn compile_lhs<'f>(type_context: &mut HashMap<usize, String>, ctx: &mut Func
    ctx.seal_block(lblk);
 }
 
-pub fn try_inline_plurals<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, String>, stdlib: &mut HashMap<String,FFI>, finfs: &mut HashMap<String,FuncRef>, jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, mut blk: Block, p: &Program<S>,
-                                               pe: &Expression<S>, lrs: &Vec<(LHSPart,Expression<S>)>, _span: &S) -> Option<(JExpr,JType)> {
-   if let Expression::TupleIntroduction(tis,_tt,_span) = pe {
-      for ts in tis.iter() {
-      match ts {
-         TIPart::Variable(_) => {},    //ok to inline
-         TIPart::Expression(_) => {},  //ok to inline
-         _ => { return None; }, //can't inline plural
-      }}
-      for (l,_r) in lrs.iter() {
-      match l {
-         LHSPart::Tuple(_) => {},
-         LHSPart::Any => {},
-         _ => { return None; },
-      }}
-      let mut header = Vec::new();
-      for ts in tis.iter() {
-      match ts {
-         TIPart::Variable(vi) => {
-            let jv = Variable::from_u32(*vi as u32);
-            let jv = ctx.use_var(jv);
-            header.push(jv);
-         },
-         TIPart::Expression(ve) => {
-            let (je,_jt) = compile_expr(type_context, stdlib, finfs, jmod, ctx, blk, p, ve);
-            blk = je.block;
-            let id = uid();
-            let jv = Variable::from_u32(id as u32);
-            ctx.declare_var(jv, types::I64);
-            ctx.def_var(jv, je.value);
-            let jv = ctx.use_var(jv);
-            header.push(jv);
-         },
-         _ => { unreachable!() },
-      }}
-
-      let failblk = ctx.create_block(); //failure block
-      let succblk = ctx.create_block(); //success block
-      ctx.append_block_param(succblk, types::I64);
-
-      let mut lblocks = Vec::new();
-      let mut rblocks = Vec::new();
-      for _ in lrs.iter() {
-         lblocks.push(ctx.create_block());
-         rblocks.push(ctx.create_block());
-      }
-      lblocks.push(failblk);
-      let noval = ctx.ins().iconst(types::I64, 0);
-      ctx.ins().jump(lblocks[0], &[]); //jump into first lhs guard
-      ctx.seal_block(blk);             //seal pattern expression
-
-      for (li,(l,_r)) in lrs.iter().enumerate() {
-         match l {
-            LHSPart::Tuple(lts) => {
-               let mut current = lblocks[li];
-               for (lti,lt) in lts.iter().enumerate() {
-                  let next = if lti == (lts.len()-1) {
-                     rblocks[li]
-                  } else {
-                     ctx.create_block()
-                  };
-                  compile_lhs(type_context, ctx, current, next, lt, lblocks[li+1], header[lti], "Value");
-                  current = next;
-               }
-            },
-            LHSPart::Any => {
-               compile_lhs(type_context, ctx, lblocks[li], rblocks[li], l, lblocks[li+1], noval, "Value");
-            }
-            _ => unreachable!(),
-         }
-      }
-
-      for (ri,(_l,r)) in lrs.iter().enumerate() {
-         ctx.switch_to_block(rblocks[ri]);
-         let (je,_jt) = compile_expr(type_context, stdlib, finfs, jmod, ctx, rblocks[ri], p, r);
-         ctx.ins().jump(succblk, &[je.value]);
-         ctx.seal_block(je.block);
-      }
-
-      ctx.switch_to_block(failblk); //define failure block
-      ctx.ins().trap(TrapCode::UnreachableCodeReached);
-      ctx.seal_block(failblk);
-
-      ctx.switch_to_block(succblk); //return cfg to success block
-      Some((JExpr {
-         block: succblk,
-         value: ctx.block_params(succblk)[0],
-      }, JType {
-         name: "Value".to_string(),
-         jtype: types::I64,
-      }))
-   } else { None }
-}
-
 pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, String>, stdlib: &mut HashMap<String,FFI>, finfs: &mut HashMap<String,FuncRef>, jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, mut blk: Block, p: &Program<S>, e: &Expression<S>) -> (JExpr,JType) {
    match e {
       Expression::Map(lhs,iterable,x,_tt,_span) => {
          let (je,_jt) = compile_expr(type_context, stdlib, finfs, jmod, ctx, blk, p, iterable);
          blk = je.block;
-         let e_val = je.value;
+         let (e_lo,e_hi) = ctx.ins().isplit(je.value);
 
          let map_len = *finfs.get(".length:(Tuple)->U64").unwrap();
-         let map_len = ctx.ins().call(map_len,&[e_val]);
+         let map_len = ctx.ins().call(map_len,&[e_lo,e_hi]);
          let map_len = ctx.inst_results(map_len)[0];
 
          let map_new = *finfs.get("with_capacity:(U64)->Tuple").unwrap();
          let map_new = ctx.ins().call(map_new,&[map_len]);
-         let map_new = ctx.inst_results(map_new)[0];
+         let map_new_lo = ctx.inst_results(map_new)[0];
+         let map_new_hi = ctx.inst_results(map_new)[1];
 
          let loop_controller = ctx.create_block();
          ctx.append_block_param(loop_controller, types::I64);
@@ -375,11 +291,14 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
          ctx.switch_to_block(in_loop);
          let i = ctx.block_params(in_loop)[0];
          let ii = *finfs.get("[]:(Tuple,U64)->Value").unwrap();
-         let ii = ctx.ins().call(ii,&[e_val,i]);
-         let ii = ctx.inst_results(ii)[0];
+         let ii = ctx.ins().call(ii,&[e_lo,e_hi,i]);
+         let ii_lo = ctx.inst_results(ii)[0];
+         let ii_hi = ctx.inst_results(ii)[1];
+         let ii = ctx.ins().iconcat(ii_lo, ii_hi);
          match (*lhs).borrow() {
             LHSPart::Any => {},
             LHSPart::Variable(vi) => {
+               println!("declare variable: {}", vi);
                let jv = Variable::from_u32(*vi as u32);
                ctx.declare_var(jv, types::I128);
                type_context.insert(*vi, "Value".to_string());
@@ -390,6 +309,7 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
          let x_val = match x.borrow() {
             TIPart::Tuple(_ts) => unimplemented!(".flatmap Tuple"),
             TIPart::Variable(vi) => {
+               println!("use variable: {}", vi);
                let jv = Variable::from_u32(*vi as u32);
                ctx.use_var(jv)
             }
@@ -423,20 +343,23 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
                lie.value
             }
          };
+         let (x_val_lo,x_val_hi) = ctx.ins().isplit(x_val);
+
          let xi = *finfs.get(".push:(Tuple,Value)->U64").unwrap();
-         ctx.ins().call(xi,&[map_new,x_val]);
+         ctx.ins().call(xi,&[map_new_lo,map_new_hi,x_val_lo,x_val_hi]);
          let i = ctx.ins().iadd_imm(i, 1);
          ctx.ins().jump(loop_controller, &[i]);
          //seal in_loop
 
-         ctx.seal_block(blk);                      //seal iterable expression block
-         ctx.seal_block(loop_controller);
          ctx.seal_block(in_loop);
-
+         ctx.seal_block(loop_controller);
+         ctx.seal_block(blk);                      //seal iterable expression block
          ctx.switch_to_block(after_loop);
          let map_out = *finfs.get("trim_capacity:(Tuple)->Tuple").unwrap();
-         let map_out = ctx.ins().call(map_out,&[map_new]);
-         let map_out = ctx.inst_results(map_out)[0];
+         let map_out = ctx.ins().call(map_out,&[map_new_lo,map_new_hi]);
+         let map_out_lo = ctx.inst_results(map_out)[0];
+         let map_out_hi = ctx.inst_results(map_out)[1];
+         let map_out = ctx.ins().iconcat(map_out_lo,map_out_hi);
 
          (JExpr {
             block: after_loop,
@@ -518,6 +441,21 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
                name: "U64".to_string(),
                jtype: types::I64,
             })
+         } else if tt.nom() == "Value" {
+            //just checking
+            let v = value::Value::from_parts(value::Tag::U64 as u16, 0, 123).0;
+            let high = (v >> 64) as i64;
+            let low = ((v << 64) >> 64) as i64;
+            let high = ctx.ins().iconst(types::I64, high);
+            let low = ctx.ins().iconst(types::I64, low);
+            let val = ctx.ins().iconcat(low, high);
+            (JExpr {
+               block: blk,
+               value: val,
+            }, JType {
+               name: "Value".to_string(),
+               jtype: types::I128,
+            })
          } else {
             unimplemented!("Unknown literal introduction: {:?}", tt)
          }
@@ -528,14 +466,18 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
             let map_len = ctx.ins().iconst(types::I64, tes.len() as i64);
             let map_new = *finfs.get("with_capacity:(U64)->Tuple").unwrap();
             let map_new = ctx.ins().call(map_new,&[map_len]);
-            let map_new = ctx.inst_results(map_new)[0];
+            let map_lo = ctx.inst_results(map_new)[0];
+            let map_hi = ctx.inst_results(map_new)[1];
 
             for te in tes.iter() {
                let (je,_jt) = compile_expr(type_context, stdlib, finfs, jmod, ctx, blk, p, te.borrow());
                blk = je.block;
+               let (je_lo,je_hi) = ctx.ins().isplit(je.value);
                let xi = *finfs.get(".push:(Tuple,Value)->U64").unwrap();
-               ctx.ins().call(xi,&[map_new,je.value]);
+               
+               ctx.ins().call(xi,&[map_lo,map_hi,je_lo,je_hi]);
             }
+            let map_new = ctx.ins().iconcat(map_lo,map_hi);
 
             return (JExpr {
                block: blk,
@@ -578,9 +520,6 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
             jtype: type_by_name(tt),
          };
 
-         if let Some((je,jt)) = try_inline_plurals(type_context, stdlib, finfs, jmod, ctx, blk, p, pe.as_ref(), lrs.as_ref(), span) {
-            return (je,jt);
-         }
          let (je,jt) = compile_expr(type_context, stdlib, finfs, jmod, ctx, blk, p, pe);
          blk = je.block;
 
@@ -657,15 +596,30 @@ pub fn apply_fn<'f, S: Clone + Debug>(stdlib: &mut HashMap<String,FFI>, finfs: &
          finfs.insert(fi, fnref);
          fnref
       };
-      let args = args.iter().map(|(e,_t)| e.value).collect::<Vec<Value>>();
+      let mut cargs = Vec::new();
+      for (ce,ct) in args.iter() {
+         if ct.jtype == types::I128 {
+            let (clo,chi) = ctx.ins().isplit(ce.value);
+            cargs.push(clo);
+            cargs.push(chi);
+         } else {
+            cargs.push(ce.value);
+         }
+      }
       let call = ctx.ins().call(
          fnref,
-         &args
+         &cargs
       );
-      let cval = ctx.inst_results(call)[0];
       let ftype = pf.body[pf.body.len()-1].typ();
       let rname = ftype.name.clone().unwrap_or("Value".to_string());
       let rtype = type_by_name(&ftype);
+      let cval = if rtype == types::I128 {
+         let clo = ctx.inst_results(call)[0];
+         let chi = ctx.inst_results(call)[1];
+         ctx.ins().iconcat(clo,chi)
+      } else {
+         ctx.inst_results(call)[0]
+      };
       return (JExpr {
          block: blk,
          value: cval,
@@ -683,9 +637,19 @@ fn inject_stdlib_symbols(module: &mut JITModule, stdlib: &mut HashMap<String,FFI
    if let Some(_) = sv.symbol {
       let mut sig_s = module.make_signature();
       for at in sv.args.iter() {
-         sig_s.params.push(AbiParam::new(*at));
+         if *at == types::I128 {
+            sig_s.params.push(AbiParam::new(types::I64));
+            sig_s.params.push(AbiParam::new(types::I64));
+         } else {
+            sig_s.params.push(AbiParam::new(*at));
+         }
       }
-      sig_s.returns.push(AbiParam::new(sv.rtype));
+      if sv.rtype == types::I128 {
+         sig_s.returns.push(AbiParam::new(types::I64));
+         sig_s.returns.push(AbiParam::new(types::I64));
+      } else {
+         sig_s.returns.push(AbiParam::new(sv.rtype));
+      }
 
       let func_s = module
         .declare_function(sk, Linkage::Import, &sig_s)
@@ -707,9 +671,7 @@ fn inject_stdlib_locals<'f>(module: &mut JITModule, ctx: &mut FunctionBuilder<'f
 impl JProgram {
    //functions will not be compiled until referenced
    pub fn compile<S: Clone + Debug>(p: &Program<S>) -> JProgram {
-      if cfg!(debug_assertions) {
-         p.dump_l1ir()
-      }
+      p.dump_l1ir();
 
       let mut type_context: HashMap<usize, String> = HashMap::new();
       let mut stdlib: HashMap<String, FFI> = {
@@ -723,8 +685,8 @@ impl JProgram {
       let mut flag_builder = settings::builder();
       flag_builder.set("use_colocated_libcalls", "false").unwrap();
       flag_builder.set("is_pic", "true").unwrap();
-      flag_builder.set("enable_llvm_abi_extensions", "true").unwrap();
-      flag_builder.set("opt_level", "speed").unwrap();
+      //flag_builder.set("enable_llvm_abi_extensions", "true").unwrap();
+      //flag_builder.set("opt_level", "speed").unwrap();
       let isa_builder = cranelift_native::builder().unwrap_or_else(|msg| {
           panic!("host machine is not supported: {}", msg);
       });
@@ -746,13 +708,23 @@ impl JProgram {
          let isig = function_parameters(pf);
          let mut sig_f = module.make_signature();
          for ptt in isig.into_iter() {
-            sig_f.params.push(AbiParam::new(ptt));
+            if ptt == types::I128 {
+               sig_f.params.push(AbiParam::new(types::I64));
+               sig_f.params.push(AbiParam::new(types::I64));
+            } else {
+               sig_f.params.push(AbiParam::new(ptt));
+            }
          }
          let rtt = function_return(pf);
-         sig_f.returns.push(AbiParam::new(rtt));
+         if rtt == types::I128 {
+            sig_f.returns.push(AbiParam::new(types::I64));
+            sig_f.returns.push(AbiParam::new(types::I64));
+         } else {
+            sig_f.returns.push(AbiParam::new(rtt));
+         }
          module.declare_function(
             pn,
-            Linkage::Export,
+            Linkage::Local,
             &sig_f
          ).unwrap();
       }
@@ -761,7 +733,8 @@ impl JProgram {
       let mut sig_main = module.make_signature();
       sig_main.params.push(AbiParam::new(types::I64));
       sig_main.params.push(AbiParam::new(types::I64));
-      sig_main.returns.push(AbiParam::new(types::I128));
+      sig_main.returns.push(AbiParam::new(types::I64));
+      sig_main.returns.push(AbiParam::new(types::I64));
 
       let fn_main = module
         .declare_function("main", Linkage::Export, &sig_main)
@@ -795,9 +768,8 @@ impl JProgram {
       }
 
       if p.expressions.len()==0 {
-         let jv = Variable::from_u32(0 as u32);
-         let jv = main.use_var(jv);
-         main.ins().return_(&[jv]);
+         let zero = main.ins().iconst(types::I64, 0);
+         main.ins().return_(&[zero,zero]);
       } else {
          for pi in 0..(p.expressions.len()-1) {
             let (je,_jt) = compile_expr(&mut type_context, &mut stdlib, &mut finfs, &mut module, &mut main, blk, p, &p.expressions[pi]);
@@ -807,7 +779,8 @@ impl JProgram {
          je.value = type_cast(&mut main, &jt.name, "Value", je.value);
          blk = je.block;
 
-         main.ins().return_(&[je.value]);
+         let (jlo,jhi) = main.ins().isplit(je.value);
+         main.ins().return_(&[jlo,jhi]);
       }
 
       main.seal_block(blk);
@@ -826,9 +799,10 @@ impl JProgram {
       }
    }
    pub fn eval(&self, args: &[value::Value]) -> value::Value {
-      let ptr_main = unsafe { std::mem::transmute::<_, fn(*const u128,u64) -> u128>(self.main) };
+      let ptr_main = unsafe { std::mem::transmute::<_, fn(u64,u64) -> (u64,u64)>(self.main) };
       let args = args.iter().map(|v|v.0).collect::<Vec<u128>>();
-      let res = ptr_main(args.as_ptr(), args.len() as u64);
+      let (rlo,rhi) = ptr_main(args.as_ptr() as u64, args.len() as u64);
+      let res = ((rhi as u128) << 64) | (rlo as u128);
       value::Value(res)
    }
 }
@@ -837,7 +811,16 @@ pub fn check_hardcoded_call<'f>(stdlib: &mut HashMap<String,FFI>, finfs: &mut Ha
    if let Some(ffi) = stdlib.get(&fi) {
       let sig = args.iter().map(|(_je,jt)| jt.jtype).collect::<Vec<types::Type>>();
       if sig != ffi.args { panic!("Wrong argument types to function: {}", fi) }
-      let val = args.iter().map(|(je,_jt)| je.value).collect::<Vec<Value>>();
+      let mut val = Vec::new();
+      for (je,jt) in args.iter() {
+         if jt.jtype == types::I128 {
+            let (jlo,jhi) = ctx.ins().isplit(je.value);
+            val.push(jlo);
+            val.push(jhi);
+         } else {
+            val.push(je.value);
+         }
+      }
       let rval = (ffi.cons)(finfs, ctx, &val);
       return Some((
          JExpr { block: blk, value: rval },

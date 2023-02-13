@@ -5,15 +5,17 @@ use cranelift::prelude::*;
 use std::collections::HashMap;
 use cranelift_codegen::ir::FuncRef;
 
-pub fn s_u64(v: u128) -> u64 {
-   println!("{:?}", value::Value(v));
+pub fn s_u64(v_lo: u64, v_hi: u64) -> u64 {
+   let v = value::Value::from_lohi(v_lo, v_hi);
+   println!("{:?}", v);
    0
 }
 
 fn f_u64<'f>(frefs: &HashMap<String,FuncRef>, ctx: &mut FunctionBuilder<'f>, val: &[Value]) -> Value {
    let arg0 = val[0].clone();
+   let arg1 = val[1].clone();
    let fref = frefs.get("println:(Value)->U64").unwrap();
-   let call = ctx.ins().call(*fref, &[arg0]);
+   let call = ctx.ins().call(*fref, &[arg0,arg1]);
    ctx.inst_results(call)[0]
 }
 

@@ -28,10 +28,9 @@
 
 use num_derive::FromPrimitive;    
 use num_traits::FromPrimitive;
-use std::sync::Mutex;
 use std::alloc::{alloc_zeroed, Layout};
 use std::iter::FromIterator;
-use crate::ast;
+use std::io::Write;
 
 #[derive(FromPrimitive,Copy,Clone,Debug,PartialEq,Eq)]
 #[repr(u16)]
@@ -165,42 +164,58 @@ impl std::fmt::Debug for Value {
 }
 
 impl Value {
-   pub fn ast(&self) -> ast::Value {
-      unimplemented!("Value::ast")
+   pub fn from_lohi(lo: u64, hi: u64) -> Value {
+      Value( ((hi as u128) << 64) | (lo as u128) )
+   }
+   pub fn lohi(&self) -> (u64,u64) {
+      let lo = ((self.0 << 64) >> 64) as u64;
+      let hi = (self.0 >> 64) as u64;
+      (lo,hi)
    }
    pub fn from_parts(tag: u16, name: u16, slots: u128) -> Value {
+      dprintln!("from parts: ({},{},{})", tag, name, slots);
       let tag = (tag as u128) << 112;
       let name = (name as u128) << 96;
       Value(tag | name | slots)
    }
+   pub fn to_parts(&self) -> (u16,u16,u128) {
+      dprintln!("to parts: ({})", self.0);
+      let tag = self.0 >> 112;
+      let name = (self.0 << 16) >> 112;
+      let slots = (self.0 << 32) >> 32;
+      (tag as u16, name as u16, slots)
+   }
    pub fn zero() -> Value {
+      dprintln!("Value::zero");
       Value(0)
    }
-   pub fn unit(nom: &str) -> Value {
+   pub fn unit(_nom: &str) -> Value {
+      dprintln!("Value::unit");
       Value::from_parts(Tag::Unit as u16, 0, 0)
    }
    pub fn range(from: u64, to: u64, step: u64) -> Value {
+      dprintln!("Value::range({},{},{})", from, to, step);
       let mut vs = Vec::new();
       for i in (from..to).step_by(step as usize) {
          vs.push(Value::u64(i,"U64"));
       }
       Value::tuple(&vs,"Tuple")
    }
-   pub fn string(lit: &str, nom: &str) -> Value {
+   pub fn string(lit: &str, _nom: &str) -> Value {
+      dprintln!("Value::string({})", lit);
       let cs = lit.chars().collect::<Vec<char>>();
-      let layout = Layout::from_size_align((cs.len()+1) * 32, 32).unwrap();
+      let layout = std::alloc::Layout::array::<u32>(cs.len()).unwrap();
       let ptr = unsafe {
          let ptr = alloc_zeroed(layout) as *mut u32;
          if ptr.is_null() {
             panic!("Failed to allocate new memory for String");
          }
-         *ptr.offset(0) = 1;
          for ci in 0..cs.len() {
-            *ptr.offset((1+ci) as isize) = cs[ci] as u32;
+            *ptr.offset(ci as isize) = cs[ci] as u32;
          }
          ptr
       };
-      let ptr_bits = (ptr.expose_addr() as u64) as u128;
+      let ptr_bits = (ptr as usize) as u128;
       let start = 0 as u128;
       let end = cs.len() as u128;
       let mut raw: u128 = 0;
@@ -210,43 +225,52 @@ impl Value {
       Value::from_parts(Tag::String as u16, 0, raw)
    }
    pub fn tuple_with_capacity(cap: u64) -> Value {
+      dprintln!("Value::tuple_with_capacity({})", cap);
       let mut vs = Vec::new();
       for _ in 0..cap {
          vs.push(Value::zero());
       }
       Value::tuple(&vs,"Tuple")
    }
-   pub fn tuple(vs: &[Value], nom: &str) -> Value {
-      let layout = Layout::from_size_align((vs.len()+1) * 128, 128).unwrap();
+   pub fn tuple(vs: &[Value], _nom: &str) -> Value {
+      dprintln!("Value::tuple([{}])", vs.len());
+      let layout = std::alloc::Layout::array::<u128>(vs.len()).unwrap();
       let ptr = unsafe {
          let ptr = alloc_zeroed(layout) as *mut u128;
          if ptr.is_null() {
             panic!("Failed to allocate new memory for Tuple");
          }
-         *ptr.offset(0) = 1;
          for vi in 0..vs.len() {
-            *ptr.offset((1+vi) as isize) = vs[vi].0;
+            *ptr.offset(vi as isize) = vs[vi].0;
          }
          ptr
       };
-      let ptr_bits = (ptr.expose_addr() as u64) as u128;
+      let ptr_bits_64 = (ptr as usize) as u64;
+      let ptr_bits = (ptr as usize) as u128;
       let start = 0 as u128;
       let end = vs.len() as u128;
       let mut raw: u128 = 0;
       raw |= start; raw <<= 16;
       raw |= end;   raw <<= 64;
       raw |= ptr_bits;
-      Value::from_parts(Tag::Tuple as u16, 0, raw)
+      dprintln!("ptr_bits {}:u64 {}:u128 {}:start {}:end {}:raw", ptr_bits_64, ptr_bits, start, end, raw);
+      let v = Value::from_parts(Tag::Tuple as u16, 0, raw);
+      dprintln!("actual {}:ptr {}:start {}:end", v.tptr() as u128, v.start(), v.end());
+      v
    }
    pub fn start(&self) -> usize {
+      assert!(self.tag() == Tag::Tuple ||
+              self.tag() == Tag::String, ".start must be `Tuple or `String");
       let mut raw = self.0;
       raw <<= 32; raw >>= 32;
       raw >>= 80;
       raw as usize
    }
    pub fn set_end(&mut self, end: usize) {
+      dprintln!("Value::set_end({})", end);
+      assert!(self.tag() == Tag::Tuple, "set_end must be `Tuple");
       assert!(end <= self.end(), "set end expected: {} < {}", end, self.end());
-      let ptr_bits = (self.ptr().expose_addr() as u64) as u128;
+      let ptr_bits = (self.tptr() as usize) as u128;
       let start = self.start() as u128;
       let end = end as u128;
       let mut raw: u128 = 0;
@@ -256,28 +280,33 @@ impl Value {
       self.0 = Value::from_parts(Tag::Tuple as u16, 0, raw).0;
    }
    pub fn end(&self) -> usize {
+      assert!(self.tag() == Tag::Tuple ||
+              self.tag() == Tag::String, ".end must be `Tuple or `String");
       let mut raw = self.0;
       raw <<= 48; raw >>= 48;
       raw >>= 64;
       raw as usize
    }
-   pub fn ptr(&self) -> *mut u32 {
+   pub fn cptr(&self) -> *mut u32 {
+      assert!(self.tag() == Tag::String, "String::ptr must be `String");
       let mut raw = self.0;
       raw <<= 64; raw >>= 64;
       raw as *mut u32
    }
    pub fn tptr(&self) -> *mut u128 {
+      assert!(self.tag() == Tag::Tuple, "Tuple::ptr must be `Tuple");
       let mut raw = self.0;
       raw <<= 64; raw >>= 64;
       raw as *mut u128
    }
-   pub fn i8(slot: i8, nom: &str) -> Value {
+   pub fn i8(slot: i8, _nom: &str) -> Value {
       Value::from_parts(Tag::I8 as u16, 0, (slot as u8) as u128)
    }
-   pub fn u8(slot: u8, nom: &str) -> Value {
+   pub fn u8(slot: u8, _nom: &str) -> Value {
+      dprintln!("Value::u8");
       Value::from_parts(Tag::U8 as u16, 0, (slot as u8) as u128)
    }
-   pub fn i8s(slots: &[i8], nom: &str) -> Value {
+   pub fn i8s(slots: &[i8], _nom: &str) -> Value {
       let mut v: u128 = 0;
       unsafe {
          if slots.len()>=12 { v += std::mem::transmute::<i8,u8>(slots[11]) as u128; } v <<= 8;
@@ -310,7 +339,7 @@ impl Value {
          _ => unreachable!(),
       }
    }
-   pub fn u8s(slots: &[u8], nom: &str) -> Value {
+   pub fn u8s(slots: &[u8], _nom: &str) -> Value {
       let mut v: u128 = 0;
       if slots.len()>=12 { v += slots[11] as u128; } v <<= 8;
       if slots.len()>=11 { v += slots[10] as u128; } v <<= 8;
@@ -341,13 +370,13 @@ impl Value {
          _ => unreachable!(),
       }
    }
-   pub fn i16(slot: i16, nom: &str) -> Value {
+   pub fn i16(slot: i16, _nom: &str) -> Value {
       Value::from_parts(Tag::I16 as u16, 0, (slot as u16) as u128)
    }
-   pub fn u16(slot: u16, nom: &str) -> Value {
+   pub fn u16(slot: u16, _nom: &str) -> Value {
       Value::from_parts(Tag::U16 as u16, 0, (slot as u16) as u128)
    }
-   pub fn i16s(slots: &[i16], nom: &str) -> Value {
+   pub fn i16s(slots: &[i16], _nom: &str) -> Value {
       let mut v: u128 = 0;
       unsafe {
          if slots.len()>=6  { v += std::mem::transmute::<i16,u16>(slots[5])  as u128; } v <<= 16;
@@ -368,7 +397,7 @@ impl Value {
          _ => unreachable!(),
       }
    }
-   pub fn u16s(slots: &[u16], nom: &str) -> Value {
+   pub fn u16s(slots: &[u16], _nom: &str) -> Value {
       let mut v: u128 = 0;
       if slots.len()>=6  { v += slots[5]  as u128; } v <<= 16;
       if slots.len()>=5  { v += slots[4]  as u128; } v <<= 16;
@@ -387,13 +416,13 @@ impl Value {
          _ => unreachable!(),
       }
    }
-   pub fn i32(slot: i32, nom: &str) -> Value {
+   pub fn i32(slot: i32, _nom: &str) -> Value {
       Value::from_parts(Tag::I32 as u16, 0, (slot as u32) as u128)
    }
-   pub fn u32(slot: u32, nom: &str) -> Value {
+   pub fn u32(slot: u32, _nom: &str) -> Value {
       Value::from_parts(Tag::U32 as u16, 0, (slot as u32) as u128)
    }
-   pub fn i32s(slots: &[i32], nom: &str) -> Value {
+   pub fn i32s(slots: &[i32], _nom: &str) -> Value {
       let mut v: u128 = 0;
       unsafe {
          if slots.len()>=3  { v += std::mem::transmute::<i32,u32>(slots[2])  as u128; } v <<= 32;
@@ -408,7 +437,7 @@ impl Value {
          _ => unreachable!(),
       }
    }
-   pub fn u32s(slots: &[u32], nom: &str) -> Value {
+   pub fn u32s(slots: &[u32], _nom: &str) -> Value {
       let mut v: u128 = 0;
       if slots.len()>=3  { v += slots[2]  as u128; } v <<= 32;
       if slots.len()>=2  { v += slots[1]  as u128; } v <<= 32;
@@ -421,11 +450,11 @@ impl Value {
          _ => unreachable!(),
       }
    }
-   pub fn f32(slot: f32, nom: &str) -> Value {
+   pub fn f32(slot: f32, _nom: &str) -> Value {
       let slot = unsafe { std::mem::transmute::<f32,u32>(slot) };
       Value::from_parts(Tag::F32 as u16, 0, slot as u128)
    }
-   pub fn f32s(slots: &[f32], nom: &str) -> Value {
+   pub fn f32s(slots: &[f32], _nom: &str) -> Value {
       let mut v: u128 = 0;
       unsafe {
          if slots.len()>=3  { v += std::mem::transmute::<f32,u32>(slots[2])  as u128; } v <<= 32;
@@ -440,13 +469,15 @@ impl Value {
          _ => unreachable!(),
       }
    }
-   pub fn i64(slot: i64, nom: &str) -> Value {
+   pub fn i64(slot: i64, _nom: &str) -> Value {
+      dprintln!("Value::i64({})", slot);
       Value::from_parts(Tag::I64 as u16, 0, (slot as u64) as u128)
    }
-   pub fn u64(slot: u64, nom: &str) -> Value {
+   pub fn u64(slot: u64, _nom: &str) -> Value {
+      dprintln!("Value::u64({})", slot);
       Value::from_parts(Tag::U64 as u16, 0, (slot as u64) as u128)
    }
-   pub fn f64(slot: f64, nom: &str) -> Value {
+   pub fn f64(slot: f64, _nom: &str) -> Value {
       let slot = unsafe { std::mem::transmute::<f64,u64>(slot) };
       Value::from_parts(Tag::F64 as u16, 0, slot as u128)
    }
@@ -455,15 +486,18 @@ impl Value {
       FromPrimitive::from_i32(t.into()).expect(&format!("Invalid Tag in Value: {}", t))
    }
    pub fn tag_as_str(&self) -> String {
+      dprintln!("Value::tag_as_str");
       format!("{:?}", self.tag())
    }
    pub fn name(&self) -> String {
+      dprintln!("Value::name");
       "_".to_string()
    }
    pub fn slice(&self, start: usize, end: usize) -> Value {
+      dprintln!("Value::slice({},{})",start,end);
       let tag = (self.0 >> 112) as u16;
       let nom = ((self.0 << 16) >> 112) as u16;
-      let ptr_bits = (self.ptr().expose_addr() as u64) as u128;
+      let ptr_bits = (self.cptr() as usize) as u128;
       let start = start as u128;
       let end = end as u128;
       let mut raw: u128 = 0;
@@ -475,15 +509,16 @@ impl Value {
    pub fn literal(&self) -> String {
       let start = self.start();
       let end = self.end();
-      let ptr = self.ptr();
+      let cptr = self.cptr();
       let mut val = Vec::new();
       for po in start..end {
       unsafe {
-         val.push( char::from_u32_unchecked(*ptr.offset((po+1) as isize)) );
+         val.push( char::from_u32_unchecked(*cptr.offset(po as isize)) );
       }}
       String::from_iter(val)
    }
    pub fn vslot(&self, slot: usize) -> Value {
+      assert!(self.tag() == Tag::Tuple, "vslot must be `Tuple");
       let tag = self.tag();
       match tag {
          Tag::Tuple => {
@@ -491,18 +526,20 @@ impl Value {
             assert!(slot < self.end(), ".vslot({}) out of bounds", slot);
             let ptr = self.tptr();
             unsafe {
-               Value( *ptr.offset((slot+1) as isize) )
+               Value( *ptr.offset(slot as isize) )
             }
          },
          _ => { panic!("Could not cast {:?} as Tuple",tag) },         
       }
    }
    pub fn push(&self, x: Value) {
+      assert!(self.tag() == Tag::Tuple, "push must be `Tuple");
+      dprintln!("Value::push");
       for i in self.start()..self.end() {
       if self.vslot(i).0 == 0 {
          let ptr = self.tptr();
          unsafe {
-            *ptr.offset((1+i) as isize) = x.0;
+            *ptr.offset(i as isize) = x.0;
          }
          break;
       }}

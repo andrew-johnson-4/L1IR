@@ -2,6 +2,7 @@ use num_bigint::{BigUint,ToBigUint};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::fmt::Debug;
+use std::io::Write;
 
 pub struct Error<S:Debug + Clone> {
    pub error_type: String,
@@ -258,7 +259,7 @@ pub struct FunctionDefinition<S:Debug + Clone> {
 impl<S:Debug + Clone> FunctionDefinition<S> {
    pub fn dump_l1ir(&self, indent: usize) {
       let padding = std::iter::repeat("  ").take(indent).collect::<String>();
-      println!("{}let {}", padding, self.name);
+      dprintln!("{}let {}", padding, self.name);
    }
    pub fn define(name: &str, args: Vec<(usize,Type)>, body: Vec<Expression<S>>) -> FunctionDefinition<S> {
       FunctionDefinition {
@@ -284,7 +285,7 @@ pub struct Program<S:Debug + Clone> {
 }
 impl<S:Debug + Clone> Program<S> {
    pub fn dump_l1ir(&self) {
-      println!("L1IR:");
+      dprintln!("L1IR:");
       for (_,f) in self.functions.iter() {
          f.dump_l1ir(1);
       }
@@ -311,6 +312,21 @@ pub enum LIPart<S:Debug + Clone> {
    Expression(Expression<S>),
 }
 impl<S:Debug + Clone> LIPart<S> {
+   pub fn dump_l1ir(&self, indent: usize) {
+      let padding = std::iter::repeat("  ").take(indent).collect::<String>();
+      match self {
+         LIPart::Literal(l) => {
+            dprintln!("{}LI Literal '{}'", padding, l);
+         },
+         LIPart::InlineVariable(vi) => {
+            dprintln!("{}LI Inline v#{}", padding, vi);
+         },
+         LIPart::Expression(e) => {
+            dprintln!("{}LI Expr:", padding);
+            e.dump_l1ir(indent+1);
+         },
+      }
+   }
    pub fn vars(&self, vars: &mut Vec<usize>) {
       match self {
          LIPart::Literal(_lcs) => {},
@@ -345,6 +361,27 @@ pub enum TIPart<S: Debug + Clone> {
    Expression(Expression<S>),
 }
 impl<S: Debug + Clone> TIPart<S> {
+   pub fn dump_l1ir(&self, indent: usize) {
+      let padding = std::iter::repeat("  ").take(indent).collect::<String>();
+      match self {
+         TIPart::Tuple(tes) => {
+            dprintln!("{}TIPart Tuple:", padding);
+            for e in tes.iter() {
+               e.dump_l1ir(indent+1);
+            }
+         },
+         TIPart::Variable(vi) => {
+            dprintln!("{}TIPart v#{}", padding, vi);
+         },
+         TIPart::InlineVariable(vi) => {
+            dprintln!("{}TIPart inline v#{}", padding, vi);
+         },
+         TIPart::Expression(e) => {
+            dprintln!("{}TIPart expression", padding);
+            e.dump_l1ir(indent+1)
+         },
+      }
+   }
    pub fn vars(&self, vars: &mut Vec<usize>) {
       match self {
          TIPart::Tuple(_ts) => {},
@@ -410,6 +447,22 @@ pub enum LHSPart {
    Any,
 }
 impl LHSPart {
+   pub fn dump_l1ir(&self, indent: usize) {
+      let padding = std::iter::repeat("  ").take(indent).collect::<String>();
+      match self {
+         LHSPart::Tuple(_) => unimplemented!("dump_l1ir LHSPart::Tuple"),
+         LHSPart::UnpackLiteral(_,_,_) => unimplemented!("dump_l1ir LHSPart::Tuple"),
+         LHSPart::Literal(l) => {
+            dprintln!("{}LHS '{}'", padding, l);
+         },
+         LHSPart::Variable(vi) => {
+            dprintln!("{}LHS v#{}", padding, vi);
+         },
+         LHSPart::Any => {
+            dprintln!("{}LHS _", padding);
+         },
+      }
+   }
    pub fn vars(&self, vars: &mut Vec<usize>) {
       match self {
          LHSPart::Tuple(ts) => {
@@ -477,7 +530,54 @@ pub enum Expression<S:Debug + Clone> { //Expressions don't need to "clone"?
 impl<S:Debug + Clone> Expression<S> {
    pub fn dump_l1ir(&self, indent: usize) {
       let padding = std::iter::repeat("  ").take(indent).collect::<String>();
-      println!("{}expr:", padding);
+      match self {
+         Expression::VariableReference(vi,tt,_) => {
+            dprintln!("{}Variable {}: {:?}", padding, vi, tt);
+         },
+         Expression::FunctionReference(fi,tt,_) => {
+            dprintln!("{}Function {}: {:?}", padding, fi, tt);
+         },
+         Expression::Failure(_,_) => {
+            dprintln!("{}Failure", padding);
+         },
+         Expression::FunctionApplication(fi,args,tt,_) => {
+            dprintln!("{}Apply {}: {:?}", padding, fi, tt);
+            for a in args.iter() {
+               a.dump_l1ir(indent+1);
+            }
+         },
+         Expression::Map(lhs,iterable,map_yield,tt,_) => {
+            dprintln!("{}Map: {:?}", padding, tt);
+            lhs.dump_l1ir(indent+1);
+            iterable.dump_l1ir(indent+1);
+            map_yield.dump_l1ir(indent+1);
+         },
+         Expression::LiteralIntroduction(lis,tt,_) => {
+            dprintln!("{}Literal: {:?}", padding, tt);
+            for li in lis.iter() {
+               li.dump_l1ir(indent+1);
+            }
+         },
+         Expression::TupleIntroduction(tis,tt,_) => {
+            dprintln!("{}Tuple: {:?}", padding, tt);
+            for ti in tis.iter() {
+               ti.dump_l1ir(indent+1);
+            }
+         },
+         Expression::PatternMatch(me,mlrs,tt,_) => {
+            dprintln!("{}Match: {:?}", padding, tt);
+            me.dump_l1ir(indent+1);
+            let inner_padding = std::iter::repeat("  ").take(indent+1).collect::<String>();
+            for (lhs,rhs) in mlrs.iter() {
+               dprintln!("{}Case:", inner_padding);
+               lhs.dump_l1ir(indent+2);
+               rhs.dump_l1ir(indent+2);
+            }
+         },
+         Expression::ValueIntroduction(v,tt,_) => {
+            dprintln!("{}Value, {:?}: {:?}", padding, v, tt);
+         },
+      }
    }
    pub fn typed(self, nom: &str) -> Expression<S> {
       let nom = Type::nominal(nom);

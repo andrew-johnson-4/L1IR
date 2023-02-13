@@ -1,4 +1,14 @@
-#![feature(strict_provenance)]
+#[macro_export]
+macro_rules! dprintln {
+   ( $( $x:expr ),* ) => {
+      if cfg!(debug_assertions) {
+         println!($(
+            $x,
+         )*);
+         std::io::stdout().flush().expect("some error message");
+      }
+   };
+}
 
 //AST Definition
 pub mod ast;
