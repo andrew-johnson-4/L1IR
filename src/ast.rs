@@ -2,6 +2,7 @@ use num_bigint::{BigUint,ToBigUint};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::fmt::Debug;
+use std::io::Write;
 
 pub struct Error<S:Debug + Clone> {
    pub error_type: String,
@@ -258,7 +259,7 @@ pub struct FunctionDefinition<S:Debug + Clone> {
 impl<S:Debug + Clone> FunctionDefinition<S> {
    pub fn dump_l1ir(&self, indent: usize) {
       let padding = std::iter::repeat("  ").take(indent).collect::<String>();
-      println!("{}let {}", padding, self.name);
+      dprintln!("{}let {}", padding, self.name);
    }
    pub fn define(name: &str, args: Vec<(usize,Type)>, body: Vec<Expression<S>>) -> FunctionDefinition<S> {
       FunctionDefinition {
@@ -284,7 +285,7 @@ pub struct Program<S:Debug + Clone> {
 }
 impl<S:Debug + Clone> Program<S> {
    pub fn dump_l1ir(&self) {
-      println!("L1IR:");
+      dprintln!("L1IR:");
       for (_,f) in self.functions.iter() {
          f.dump_l1ir(1);
       }
@@ -315,13 +316,13 @@ impl<S:Debug + Clone> LIPart<S> {
       let padding = std::iter::repeat("  ").take(indent).collect::<String>();
       match self {
          LIPart::Literal(l) => {
-            println!("{}LI Literal '{}'", padding, l);
+            dprintln!("{}LI Literal '{}'", padding, l);
          },
          LIPart::InlineVariable(vi) => {
-            println!("{}LI Inline v#{}", padding, vi);
+            dprintln!("{}LI Inline v#{}", padding, vi);
          },
          LIPart::Expression(e) => {
-            println!("{}LI Expr:", padding);
+            dprintln!("{}LI Expr:", padding);
             e.dump_l1ir(indent+1);
          },
       }
@@ -364,19 +365,19 @@ impl<S: Debug + Clone> TIPart<S> {
       let padding = std::iter::repeat("  ").take(indent).collect::<String>();
       match self {
          TIPart::Tuple(tes) => {
-            println!("{}TIPart Tuple:", padding);
+            dprintln!("{}TIPart Tuple:", padding);
             for e in tes.iter() {
                e.dump_l1ir(indent+1);
             }
          },
          TIPart::Variable(vi) => {
-            println!("{}TIPart v#{}", padding, vi);
+            dprintln!("{}TIPart v#{}", padding, vi);
          },
          TIPart::InlineVariable(vi) => {
-            println!("{}TIPart inline v#{}", padding, vi);
+            dprintln!("{}TIPart inline v#{}", padding, vi);
          },
          TIPart::Expression(e) => {
-            println!("{}TIPart expression", padding);
+            dprintln!("{}TIPart expression", padding);
             e.dump_l1ir(indent+1)
          },
       }
@@ -452,13 +453,13 @@ impl LHSPart {
          LHSPart::Tuple(_) => unimplemented!("dump_l1ir LHSPart::Tuple"),
          LHSPart::UnpackLiteral(_,_,_) => unimplemented!("dump_l1ir LHSPart::Tuple"),
          LHSPart::Literal(l) => {
-            println!("{}LHS '{}'", padding, l);
+            dprintln!("{}LHS '{}'", padding, l);
          },
          LHSPart::Variable(vi) => {
-            println!("{}LHS v#{}", padding, vi);
+            dprintln!("{}LHS v#{}", padding, vi);
          },
          LHSPart::Any => {
-            println!("{}LHS _", padding);
+            dprintln!("{}LHS _", padding);
          },
       }
    }
@@ -531,50 +532,50 @@ impl<S:Debug + Clone> Expression<S> {
       let padding = std::iter::repeat("  ").take(indent).collect::<String>();
       match self {
          Expression::VariableReference(vi,tt,_) => {
-            println!("{}Variable {}: {:?}", padding, vi, tt);
+            dprintln!("{}Variable {}: {:?}", padding, vi, tt);
          },
          Expression::FunctionReference(fi,tt,_) => {
-            println!("{}Function {}: {:?}", padding, fi, tt);
+            dprintln!("{}Function {}: {:?}", padding, fi, tt);
          },
          Expression::Failure(_,_) => {
-            println!("{}Failure", padding);
+            dprintln!("{}Failure", padding);
          },
          Expression::FunctionApplication(fi,args,tt,_) => {
-            println!("{}Apply {}: {:?}", padding, fi, tt);
+            dprintln!("{}Apply {}: {:?}", padding, fi, tt);
             for a in args.iter() {
                a.dump_l1ir(indent+1);
             }
          },
          Expression::Map(lhs,iterable,map_yield,tt,_) => {
-            println!("{}Map: {:?}", padding, tt);
+            dprintln!("{}Map: {:?}", padding, tt);
             lhs.dump_l1ir(indent+1);
             iterable.dump_l1ir(indent+1);
             map_yield.dump_l1ir(indent+1);
          },
          Expression::LiteralIntroduction(lis,tt,_) => {
-            println!("{}Literal: {:?}", padding, tt);
+            dprintln!("{}Literal: {:?}", padding, tt);
             for li in lis.iter() {
                li.dump_l1ir(indent+1);
             }
          },
          Expression::TupleIntroduction(tis,tt,_) => {
-            println!("{}Tuple: {:?}", padding, tt);
+            dprintln!("{}Tuple: {:?}", padding, tt);
             for ti in tis.iter() {
                ti.dump_l1ir(indent+1);
             }
          },
          Expression::PatternMatch(me,mlrs,tt,_) => {
-            println!("{}Match: {:?}", padding, tt);
+            dprintln!("{}Match: {:?}", padding, tt);
             me.dump_l1ir(indent+1);
             let inner_padding = std::iter::repeat("  ").take(indent+1).collect::<String>();
             for (lhs,rhs) in mlrs.iter() {
-               println!("{}Case:", inner_padding);
+               dprintln!("{}Case:", inner_padding);
                lhs.dump_l1ir(indent+2);
                rhs.dump_l1ir(indent+2);
             }
          },
          Expression::ValueIntroduction(v,tt,_) => {
-            println!("{}Value, {:?}: {:?}", padding, v, tt);
+            dprintln!("{}Value, {:?}: {:?}", padding, v, tt);
          },
       }
    }

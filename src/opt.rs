@@ -14,15 +14,6 @@ use cranelift_native;
 use num_traits::ToPrimitive;
 use std::collections::HashMap;
 
-static mut UNIQUE_ID: usize = 1000000;
-fn uid() -> usize {
-   unsafe {
-      let id = UNIQUE_ID;
-      UNIQUE_ID += 1;
-      id
-   }
-}
-
 pub struct JProgram {
    main: *const u8,
 }
@@ -262,100 +253,6 @@ pub fn compile_lhs<'f>(type_context: &mut HashMap<usize, String>, ctx: &mut Func
    ctx.seal_block(lblk);
 }
 
-pub fn try_inline_plurals<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, String>, stdlib: &mut HashMap<String,FFI>, finfs: &mut HashMap<String,FuncRef>, jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, mut blk: Block, p: &Program<S>,
-                                               pe: &Expression<S>, lrs: &Vec<(LHSPart,Expression<S>)>, _span: &S) -> Option<(JExpr,JType)> {
-   if let Expression::TupleIntroduction(tis,_tt,_span) = pe {
-      for ts in tis.iter() {
-      match ts {
-         TIPart::Variable(_) => {},    //ok to inline
-         TIPart::Expression(_) => {},  //ok to inline
-         _ => { return None; }, //can't inline plural
-      }}
-      for (l,_r) in lrs.iter() {
-      match l {
-         LHSPart::Tuple(_) => {},
-         LHSPart::Any => {},
-         _ => { return None; },
-      }}
-      let mut header = Vec::new();
-      for ts in tis.iter() {
-      match ts {
-         TIPart::Variable(vi) => {
-            let jv = Variable::from_u32(*vi as u32);
-            let jv = ctx.use_var(jv);
-            header.push(jv);
-         },
-         TIPart::Expression(ve) => {
-            let (je,_jt) = compile_expr(type_context, stdlib, finfs, jmod, ctx, blk, p, ve);
-            blk = je.block;
-            let id = uid();
-            let jv = Variable::from_u32(id as u32);
-            ctx.declare_var(jv, types::I64);
-            ctx.def_var(jv, je.value);
-            let jv = ctx.use_var(jv);
-            header.push(jv);
-         },
-         _ => { unreachable!() },
-      }}
-
-      let failblk = ctx.create_block(); //failure block
-      let succblk = ctx.create_block(); //success block
-      ctx.append_block_param(succblk, types::I64);
-
-      let mut lblocks = Vec::new();
-      let mut rblocks = Vec::new();
-      for _ in lrs.iter() {
-         lblocks.push(ctx.create_block());
-         rblocks.push(ctx.create_block());
-      }
-      lblocks.push(failblk);
-      let noval = ctx.ins().iconst(types::I64, 0);
-      ctx.ins().jump(lblocks[0], &[]); //jump into first lhs guard
-      ctx.seal_block(blk);             //seal pattern expression
-
-      for (li,(l,_r)) in lrs.iter().enumerate() {
-         match l {
-            LHSPart::Tuple(lts) => {
-               let mut current = lblocks[li];
-               for (lti,lt) in lts.iter().enumerate() {
-                  let next = if lti == (lts.len()-1) {
-                     rblocks[li]
-                  } else {
-                     ctx.create_block()
-                  };
-                  compile_lhs(type_context, ctx, current, next, lt, lblocks[li+1], header[lti], "Value");
-                  current = next;
-               }
-            },
-            LHSPart::Any => {
-               compile_lhs(type_context, ctx, lblocks[li], rblocks[li], l, lblocks[li+1], noval, "Value");
-            }
-            _ => unreachable!(),
-         }
-      }
-
-      for (ri,(_l,r)) in lrs.iter().enumerate() {
-         ctx.switch_to_block(rblocks[ri]);
-         let (je,_jt) = compile_expr(type_context, stdlib, finfs, jmod, ctx, rblocks[ri], p, r);
-         ctx.ins().jump(succblk, &[je.value]);
-         ctx.seal_block(je.block);
-      }
-
-      ctx.switch_to_block(failblk); //define failure block
-      ctx.ins().trap(TrapCode::UnreachableCodeReached);
-      ctx.seal_block(failblk);
-
-      ctx.switch_to_block(succblk); //return cfg to success block
-      Some((JExpr {
-         block: succblk,
-         value: ctx.block_params(succblk)[0],
-      }, JType {
-         name: "Value".to_string(),
-         jtype: types::I64,
-      }))
-   } else { None }
-}
-
 pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, String>, stdlib: &mut HashMap<String,FFI>, finfs: &mut HashMap<String,FuncRef>, jmod: &mut JITModule, ctx: &mut FunctionBuilder<'f>, mut blk: Block, p: &Program<S>, e: &Expression<S>) -> (JExpr,JType) {
    match e {
       Expression::Map(lhs,iterable,x,_tt,_span) => {
@@ -367,16 +264,10 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
          let map_len = ctx.ins().call(map_len,&[e_lo,e_hi]);
          let map_len = ctx.inst_results(map_len)[0];
 
-         let pr = *finfs.get("println:(Value)->U64").unwrap();
-         ctx.ins().call(pr,&[e_lo,e_hi]);
-
          let map_new = *finfs.get("with_capacity:(U64)->Tuple").unwrap();
          let map_new = ctx.ins().call(map_new,&[map_len]);
          let map_new_lo = ctx.inst_results(map_new)[0];
          let map_new_hi = ctx.inst_results(map_new)[1];
-
-         let pr = *finfs.get("println:(Value)->U64").unwrap();
-         ctx.ins().call(pr,&[e_lo,e_hi]);
 
          let loop_controller = ctx.create_block();
          ctx.append_block_param(loop_controller, types::I64);
@@ -627,9 +518,6 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
             jtype: type_by_name(tt),
          };
 
-         if let Some((je,jt)) = try_inline_plurals(type_context, stdlib, finfs, jmod, ctx, blk, p, pe.as_ref(), lrs.as_ref(), span) {
-            return (je,jt);
-         }
          let (je,jt) = compile_expr(type_context, stdlib, finfs, jmod, ctx, blk, p, pe);
          blk = je.block;
 
@@ -781,9 +669,7 @@ fn inject_stdlib_locals<'f>(module: &mut JITModule, ctx: &mut FunctionBuilder<'f
 impl JProgram {
    //functions will not be compiled until referenced
    pub fn compile<S: Clone + Debug>(p: &Program<S>) -> JProgram {
-      if cfg!(debug_assertions) {
-         p.dump_l1ir()
-      }
+      p.dump_l1ir();
 
       let mut type_context: HashMap<usize, String> = HashMap::new();
       let mut stdlib: HashMap<String, FFI> = {
