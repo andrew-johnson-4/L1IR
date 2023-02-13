@@ -310,14 +310,11 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
             TIPart::Tuple(_ts) => unimplemented!(".flatmap Tuple"),
             TIPart::Variable(vi) => {
                println!("use variable: {}", vi);
-               ii
-               //let jv = Variable::from_u32(*vi as u32);
-               //ctx.use_var(jv)
+               let jv = Variable::from_u32(*vi as u32);
+               ctx.use_var(jv)
             }
             TIPart::InlineVariable(_vi) => unimplemented!(".flatmap InlineVariable"),
             TIPart::Expression(xe) => {
-               unimplemented!("Map TIPart Expression");
-               /*
                let mut xe = xe;
                if let Expression::PatternMatch(guard_cond,plrs,_ptt,_span) = xe.borrow() {
                if plrs.len()==1 {
@@ -344,7 +341,6 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
                let (lie,_lit) = compile_expr(type_context, stdlib, finfs, jmod, ctx, in_loop, p, xe.borrow());
                in_loop = lie.block;
                lie.value
-               */
             }
          };
          let (x_val_lo,x_val_hi) = ctx.ins().isplit(x_val);

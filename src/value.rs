@@ -204,15 +204,14 @@ impl Value {
    pub fn string(lit: &str, _nom: &str) -> Value {
       dprintln!("Value::string({})", lit);
       let cs = lit.chars().collect::<Vec<char>>();
-      let layout = Layout::from_size_align((cs.len()+1) * 32, 32).unwrap();
+      let layout = std::alloc::Layout::array::<u32>(cs.len()).unwrap();
       let ptr = unsafe {
          let ptr = alloc_zeroed(layout) as *mut u32;
          if ptr.is_null() {
             panic!("Failed to allocate new memory for String");
          }
-         *ptr.offset(0) = 1;
          for ci in 0..cs.len() {
-            *ptr.offset((1+ci) as isize) = cs[ci] as u32;
+            *ptr.offset(ci as isize) = cs[ci] as u32;
          }
          ptr
       };
@@ -235,20 +234,19 @@ impl Value {
    }
    pub fn tuple(vs: &[Value], _nom: &str) -> Value {
       dprintln!("Value::tuple([{}])", vs.len());
-      let layout = Layout::from_size_align((vs.len()+1) * 128, 128).unwrap();
+      let layout = std::alloc::Layout::array::<u128>(vs.len()).unwrap();
       let ptr = unsafe {
          let ptr = alloc_zeroed(layout) as *mut u128;
          if ptr.is_null() {
             panic!("Failed to allocate new memory for Tuple");
          }
-         *ptr.offset(0) = 1;
          for vi in 0..vs.len() {
-            *ptr.offset((1+vi) as isize) = vs[vi].0;
+            *ptr.offset(vi as isize) = vs[vi].0;
          }
          ptr
       };
       let ptr_bits_64 = (ptr as usize) as u64;
-      let ptr_bits = ptr_bits_64 as u128;
+      let ptr_bits = (ptr as usize) as u128;
       let start = 0 as u128;
       let end = vs.len() as u128;
       let mut raw: u128 = 0;
@@ -289,7 +287,7 @@ impl Value {
       raw >>= 64;
       raw as usize
    }
-   pub fn ptr(&self) -> *mut u32 {
+   pub fn cptr(&self) -> *mut u32 {
       assert!(self.tag() == Tag::String, "String::ptr must be `String");
       let mut raw = self.0;
       raw <<= 64; raw >>= 64;
@@ -499,7 +497,7 @@ impl Value {
       dprintln!("Value::slice({},{})",start,end);
       let tag = (self.0 >> 112) as u16;
       let nom = ((self.0 << 16) >> 112) as u16;
-      let ptr_bits = (self.ptr() as usize) as u128;
+      let ptr_bits = (self.cptr() as usize) as u128;
       let start = start as u128;
       let end = end as u128;
       let mut raw: u128 = 0;
@@ -509,14 +507,13 @@ impl Value {
       Value::from_parts(tag, nom, raw)
    }
    pub fn literal(&self) -> String {
-      dprintln!("Value::literal");
       let start = self.start();
       let end = self.end();
-      let ptr = self.ptr();
+      let cptr = self.cptr();
       let mut val = Vec::new();
       for po in start..end {
       unsafe {
-         val.push( char::from_u32_unchecked(*ptr.offset((po+1) as isize)) );
+         val.push( char::from_u32_unchecked(*cptr.offset(po as isize)) );
       }}
       String::from_iter(val)
    }
@@ -529,7 +526,7 @@ impl Value {
             assert!(slot < self.end(), ".vslot({}) out of bounds", slot);
             let ptr = self.tptr();
             unsafe {
-               Value( *ptr.offset((slot+1) as isize) )
+               Value( *ptr.offset(slot as isize) )
             }
          },
          _ => { panic!("Could not cast {:?} as Tuple",tag) },         
@@ -542,7 +539,7 @@ impl Value {
       if self.vslot(i).0 == 0 {
          let ptr = self.tptr();
          unsafe {
-            *ptr.offset((1+i) as isize) = x.0;
+            *ptr.offset(i as isize) = x.0;
          }
          break;
       }}
