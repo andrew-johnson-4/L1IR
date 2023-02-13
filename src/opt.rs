@@ -143,8 +143,13 @@ pub fn compile_fn<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, String>
    }
 
    if pf.body.len()==0 {
-      let rval = fnb.ins().iconst(types::I64, i64::from(0));
-      fnb.ins().return_(&[rval]);
+      if hrets == types::I128 {
+         let zero = fnb.ins().iconst(types::I64, 0);
+         fnb.ins().return_(&[zero,zero]);
+      } else {
+         let zero = fnb.ins().iconst(types::I64, 0);
+         fnb.ins().return_(&[zero]);
+      }
    } else {
       for pi in 0..(pf.body.len()-1) {
          let (je,_jt) = compile_expr(type_context, stdlib, &mut finfs, jmod, &mut fnb, blk, p, &pf.body[pi]);
@@ -152,7 +157,13 @@ pub fn compile_fn<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, String>
       }
       let (je,_jt) = compile_expr(type_context, stdlib, &mut finfs, jmod, &mut fnb, blk, p, &pf.body[pf.body.len()-1]);
       blk = je.block;
-      fnb.ins().return_(&[je.value]);
+      if hrets == types::I128 {
+         let r = je.value;
+         let (rlo,rhi) = fnb.ins().isplit(r);
+         fnb.ins().return_(&[rlo,rhi]); 
+      } else {
+         fnb.ins().return_(&[je.value]);
+      }
    }
 
    fnb.seal_block(blk);
@@ -820,11 +831,6 @@ impl JProgram {
       main.append_block_params_for_function_params(blk);
       main.switch_to_block(blk);
 
-      let jlo = main.ins().iconst(types::I64, 1);
-      let jhi = main.ins().iconst(types::I64, 2);
-      main.ins().return_(&[jlo,jhi]);
-
-      /*
       let mut pars = Vec::new();
       for pe in p.expressions.iter() {
          pe.vars(&mut pars);
@@ -845,10 +851,8 @@ impl JProgram {
       }
 
       if p.expressions.len()==0 {
-         let jv = Variable::from_u32(0 as u32);
-         let jv = main.use_var(jv);
-         let (jlo,jhi) = main.ins().isplit(jv);
-         main.ins().return_(&[jlo,jhi]);
+         let zero = main.ins().iconst(types::I64, 0);
+         main.ins().return_(&[zero,zero]);
       } else {
          for pi in 0..(p.expressions.len()-1) {
             let (je,_jt) = compile_expr(&mut type_context, &mut stdlib, &mut finfs, &mut module, &mut main, blk, p, &p.expressions[pi]);
@@ -861,7 +865,6 @@ impl JProgram {
          let (jlo,jhi) = main.ins().isplit(je.value);
          main.ins().return_(&[jlo,jhi]);
       }
-      */
 
       main.seal_block(blk);
       main.finalize();
@@ -869,11 +872,9 @@ impl JProgram {
       module.define_function(fn_main, &mut ctx).unwrap();
       module.clear_context(&mut ctx);
 
-      /*
       for (fi,_f) in p.functions.iter() {
          compile_fn(&mut type_context, &mut stdlib, &global_finfs, &mut module, &mut builder_context, &p, fi.clone());
       }
-      */
 
       module.finalize_definitions().unwrap();
       JProgram {
@@ -884,9 +885,8 @@ impl JProgram {
       let ptr_main = unsafe { std::mem::transmute::<_, fn(*const u128,u64) -> (u64,u64)>(self.main) };
       let args = args.iter().map(|v|v.0).collect::<Vec<u128>>();
       let (rlo,rhi) = ptr_main(args.as_ptr(), args.len() as u64);
-      println!("rlo={}, rhi={}", rlo, rhi);
-      //let res = ((res_hi as u128) << 64) | (res_lo as u128);
-      value::Value(0)
+      let res = ((rhi as u128) << 64) | (rlo as u128);
+      value::Value(res)
    }
 }
 

@@ -1,4 +1,7 @@
 test_all:
+	cargo test --features cranelift -- --nocapture
+
+test_one:
 	cargo test bug_nested_flatmap --features cranelift -- --nocapture
 
 bench:
