@@ -514,7 +514,7 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
          }
          apply_fn(stdlib, finfs, jmod, ctx, blk, p, fi.clone(), arg_types)
       },
-      Expression::PatternMatch(pe,lrs,tt,span) => {
+      Expression::PatternMatch(pe,lrs,tt,_span) => {
          let mut rjt = JType {
             name: tt.name.clone().unwrap_or("Value".to_string()),
             jtype: type_by_name(tt),

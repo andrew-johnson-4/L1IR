@@ -1,6 +1,6 @@
 [package]
 name = "l1_ir"
-version = "0.0.43"
+version = "0.0.44"
 authors = ["Andrew <andrew@subarctic.org>"]
 license = "MIT"
 description = "L1 Intermediate Representation"
@@ -13,37 +13,9 @@ keywords = ["compiler","interpreter","AST","IR","JIT"]
 num-traits = { version = "0.2" }
 num-derive = { version = "0.2" }
 num-bigint = { version = "0.4" }
-cranelift = { version = "0.92", optional = true }
-cranelift-module = { version = "0.92", optional = true }
-cranelift-jit = { version = "0.92", optional = true }
-cranelift-codegen = { version = "0.92", optional = true }
-cranelift-native = { version = "0.92", optional = true }
+cranelift = { version = "0.92" }
+cranelift-module = { version = "0.92" }
+cranelift-jit = { version = "0.92" }
+cranelift-codegen = { version = "0.92" }
+cranelift-native = { version = "0.92" }
 regex = { version = "1" }
-
-[features]
-cranelift = ["dep:cranelift", "dep:cranelift-module", "dep:cranelift-jit", "dep:cranelift-codegen", "dep:cranelift-native"]
-
-[[bin]]
-name = "bench"
-path = "benches/rust/main.rs"
-required-features = ["cranelift"]
-
-[[test]]
-name = "b_opt1"
-path = "tests/b_opt1.rs"
-required-features = ["cranelift"]
-
-[[test]]
-name = "b_opt2"
-path = "tests/b_opt2.rs"
-required-features = ["cranelift"]
-
-[[test]]
-name = "b_jit1"
-path = "tests/b_jit1.rs"
-required-features = ["cranelift"]
-
-[[test]]
-name = "b_jit2"
-path = "tests/b_jit2.rs"
-required-features = ["cranelift"]

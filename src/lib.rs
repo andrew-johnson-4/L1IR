@@ -5,7 +5,7 @@ macro_rules! dprintln {
          println!($(
             $x,
          )*);
-         std::io::stdout().flush().expect("some error message");
+         std::io::stdout().flush().expect("dprintln .flush failed");
       }
    };
 }
@@ -20,7 +20,6 @@ pub mod eval;
 pub mod value;
 
 //Optimizing Compiler, JIT and Otherwise
-#[cfg(feature = "cranelift")]
 pub mod opt;
 
 //Hardcoded Equivalence Relations

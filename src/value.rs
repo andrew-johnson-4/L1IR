@@ -28,7 +28,7 @@
 
 use num_derive::FromPrimitive;    
 use num_traits::FromPrimitive;
-use std::alloc::{alloc_zeroed, Layout};
+use std::alloc::{alloc_zeroed};
 use std::iter::FromIterator;
 use std::io::Write;
 
