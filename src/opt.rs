@@ -456,6 +456,40 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
                name: "Value".to_string(),
                jtype: types::I128,
             })
+         } else if tt.nom() == "String" {
+            let mut s_value = Vec::new();
+            for li in lis.iter() {
+            match li {
+               LIPart::Literal(cs) => {
+                  for c in cs[1..cs.len()-1].chars() {
+                     s_value.push(c);
+                  }
+               },
+               LIPart::Expression(_e) => {
+                  unimplemented!("Introduce String Literal Expression")
+               },
+               LIPart::InlineVariable(_vi) => {
+                  unimplemented!("Introduce String Literal Inline Variable")
+               },
+            }}
+            let s_len = ctx.ins().iconst(types::I64, s_value.len() as i64);
+            let s_new = *finfs.get("with_capacity:(U64)->String").unwrap();
+            let s_new = ctx.ins().call(s_new,&[s_len]);
+            let s_lo = ctx.inst_results(s_new)[0];
+            let s_hi = ctx.inst_results(s_new)[1];
+            for c in s_value.iter() {
+               let s_c = ctx.ins().iconst(types::I32, *c as i64);
+               let si = *finfs.get(".push:(String,U32)->U64").unwrap();
+               ctx.ins().call(si,&[s_lo,s_hi,s_c]);
+            }
+            let s_new = ctx.ins().iconcat(s_lo, s_hi);
+            (JExpr {
+               block: blk,
+               value: s_new,
+            }, JType {
+               name: "String".to_string(),
+               jtype: types::I128,
+            })
          } else {
             unimplemented!("Unknown literal introduction: {:?}", tt)
          }

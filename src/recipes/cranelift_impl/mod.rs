@@ -21,6 +21,9 @@ pub mod range1;
 pub mod range2;
 pub mod range3;
 
+pub mod string_new;
+pub mod string_push;
+
 pub mod tuple_length;
 pub mod tuple_trim;
 pub mod tuple_new;

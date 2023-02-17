@@ -217,6 +217,24 @@ impl Value {
       raw |= ptr_bits;
       Value::from_parts(Tag::String as u16, 0, raw)
    }
+   pub fn string_with_capacity(cap: u64) -> Value {
+      let layout = std::alloc::Layout::array::<u32>(cap as usize).unwrap();
+      let ptr = unsafe {
+         let ptr = alloc_zeroed(layout) as *mut u32;
+         if ptr.is_null() {
+            panic!("Failed to allocate new memory for String");
+         }
+         ptr
+      };
+      let ptr_bits = (ptr as usize) as u128;
+      let start = 0 as u128;
+      let end = cap as u128;
+      let mut raw: u128 = 0;
+      raw |= start; raw <<= 16;
+      raw |= end;   raw <<= 64;
+      raw |= ptr_bits;
+      Value::from_parts(Tag::String as u16, 0, raw)
+   }
    pub fn tuple_with_capacity(cap: u64) -> Value {
       let mut vs = Vec::new();
       for _ in 0..cap {
@@ -512,6 +530,16 @@ impl Value {
          },
          _ => { panic!("Could not cast {:?} as Tuple",tag) },         
       }
+   }
+   pub fn pushc(&self, x: u32) {
+      assert!(self.tag() == Tag::String, "pushc must be `String");
+      let ptr = self.cptr();
+      unsafe {
+      for i in self.start()..self.end() {
+      if *ptr.offset(i as isize) == 0 {
+         *ptr.offset(i as isize) = x;
+         break;
+      }}}
    }
    pub fn push(&self, x: Value) {
       assert!(self.tag() == Tag::Tuple, "push must be `Tuple");
