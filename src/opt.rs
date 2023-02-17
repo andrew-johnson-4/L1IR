@@ -118,14 +118,24 @@ pub fn compile_fn<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, String>
    fnb.append_block_params_for_function_params(blk);
    fnb.switch_to_block(blk);
 
-   for (pi,(vi,vt)) in pf.args.iter().enumerate() {
+   let mut pi = 0;
+   for (vi,vt) in pf.args.iter() {
       let ptyp = type_by_name(vt);
       let pvar = Variable::from_u32(*vi as u32);
       fnb.declare_var(pvar, ptyp);
       type_context.insert(*vi, vt.name.clone().unwrap_or("Value".to_string()));
 
-      let pval = fnb.block_params(blk)[pi];
-      fnb.def_var(pvar, pval);
+      if ptyp == types::I128 {
+         let pval_lo = fnb.block_params(blk)[pi];
+         let pval_hi = fnb.block_params(blk)[pi+1];
+         let pval = fnb.ins().iconcat(pval_lo, pval_hi);
+         fnb.def_var(pvar, pval);
+         pi += 2;
+      } else {
+         let pval = fnb.block_params(blk)[pi];
+         fnb.def_var(pvar, pval);
+         pi += 1;
+      }
    }
 
    if pf.body.len()==0 {

@@ -260,6 +260,12 @@ impl<S:Debug + Clone> FunctionDefinition<S> {
    pub fn dump_l1ir(&self, indent: usize) {
       let padding = std::iter::repeat("  ").take(indent).collect::<String>();
       dprintln!("{}let {}", padding, self.name);
+      for (ai,at) in self.args.iter() {
+         dprintln!("{}  v#{}: {:?}", padding, ai, at);
+      }
+      for e in self.body.iter() {
+         e.dump_l1ir(indent+1)
+      }
    }
    pub fn define(name: &str, args: Vec<(usize,Type)>, body: Vec<Expression<S>>) -> FunctionDefinition<S> {
       FunctionDefinition {
@@ -567,9 +573,8 @@ impl<S:Debug + Clone> Expression<S> {
          Expression::PatternMatch(me,mlrs,tt,_) => {
             dprintln!("{}Match: {:?}", padding, tt);
             me.dump_l1ir(indent+1);
-            let inner_padding = std::iter::repeat("  ").take(indent+1).collect::<String>();
             for (lhs,rhs) in mlrs.iter() {
-               dprintln!("{}Case:", inner_padding);
+               dprintln!("{}  Case:", padding);
                lhs.dump_l1ir(indent+2);
                rhs.dump_l1ir(indent+2);
             }

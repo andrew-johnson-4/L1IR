@@ -24,6 +24,7 @@ pub mod range3;
 pub mod string_new;
 pub mod string_push;
 pub mod string_join1;
+pub mod string_join2;
 
 pub mod tuple_length;
 pub mod tuple_trim;
