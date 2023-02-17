@@ -31,3 +31,5 @@ pub mod tuple_new;
 pub mod tuple_index;
 pub mod tuple_push;
 pub mod tuple_flatten;
+
+pub mod cast_u64_as_string;

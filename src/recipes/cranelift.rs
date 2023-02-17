@@ -47,5 +47,8 @@ pub fn import<'f>() -> Vec<FFI> {
    imported.extend(crate::recipes::cranelift_impl::tuple_index::import());
    imported.extend(crate::recipes::cranelift_impl::tuple_push::import());
    imported.extend(crate::recipes::cranelift_impl::tuple_flatten::import());
+
+   imported.extend(crate::recipes::cranelift_impl::cast_u64_as_string::import());
+
    imported
 }
