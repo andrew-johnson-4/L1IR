@@ -518,17 +518,20 @@ impl Value {
    }
    pub fn vslot(&self, slot: usize) -> Value {
       assert!(self.tag() == Tag::Tuple, "vslot must be `Tuple");
-      let tag = self.tag();
-      match tag {
-         Tag::Tuple => {
-            assert!(slot >= self.start(), ".vslot({}) out of bounds", slot);
-            assert!(slot < self.end(), ".vslot({}) out of bounds", slot);
-            let ptr = self.tptr();
-            unsafe {
-               Value( *ptr.offset(slot as isize) )
-            }
-         },
-         _ => { panic!("Could not cast {:?} as Tuple",tag) },         
+      assert!(slot >= self.start(), ".vslot({}) out of bounds", slot);
+      assert!(slot < self.end(), ".vslot({}) out of bounds", slot);
+      let ptr = self.tptr();
+      unsafe {
+         Value( *ptr.offset(slot as isize) )
+      }
+   }
+   pub fn cslot(&self, slot: usize) -> u32 {
+      assert!(self.tag() == Tag::String, "cslot must be `String");
+      assert!(slot >= self.start(), ".cslot({}) out of bounds", slot);
+      assert!(slot < self.end(), ".cslot({}) out of bounds", slot);
+      let ptr = self.cptr();
+      unsafe {
+         *ptr.offset(slot as isize)
       }
    }
    pub fn pushc(&self, x: u32) {
