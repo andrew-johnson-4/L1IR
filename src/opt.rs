@@ -42,6 +42,7 @@ pub fn type_by_name(tn: &ast::Type) -> types::Type {
    match tn.as_str() {
       "U8" => types::I8,
       "U64" => types::I64,
+      "I64" => types::I64,
       "String" => types::I128,
       "Tuple" => types::I128,
       "Value" => types::I128,
@@ -53,6 +54,7 @@ pub fn jtype_by_name(tn: &ast::Type) -> JType {
    match tn.as_str() {
       "U8" => JType { name: tn.clone(), jtype: types::I8 },
       "U64" => JType { name: tn.clone(), jtype: types::I64 },
+      "I64" => JType { name: tn.clone(), jtype: types::I64 },
       "String" => JType { name: tn.clone(), jtype: types::I128 },
       "Tuple" => JType { name: tn.clone(), jtype: types::I128 },
       "Value" => JType { name: tn.clone(), jtype: types::I128 },
@@ -71,6 +73,19 @@ pub fn type_cast<'f>(ctx: &mut FunctionBuilder<'f>, ot: &str, nt: &str, v: Value
    }
    else if ot=="U64" && nt=="Value" {
       let high64 = ((Tag::U64 as u16) as u64) * (2_u64.pow(48));
+      let high64 = unsafe { std::mem::transmute::<u64,i64>(high64) };
+      let high64 = ctx.ins().iconst(types::I64, high64);
+      ctx.ins().iconcat(v, high64)
+   }
+   else if ot=="Value" && nt=="I64" {
+      let (low64,high64) = ctx.ins().isplit(v);
+      let high16 = ctx.ins().ushr_imm(high64, 48);
+      let aeq = ctx.ins().icmp_imm(IntCC::Equal, high16, (Tag::I64 as u16) as i64);
+      ctx.ins().trapz(aeq, TrapCode::BadConversionToInteger);
+      low64
+   }
+   else if ot=="I64" && nt=="Value" {
+      let high64 = ((Tag::I64 as u16) as u64) * (2_u64.pow(48));
       let high64 = unsafe { std::mem::transmute::<u64,i64>(high64) };
       let high64 = ctx.ins().iconst(types::I64, high64);
       ctx.ins().iconcat(v, high64)
@@ -449,6 +464,32 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
                value: val,
             }, JType {
                name: "U64".to_string(),
+               jtype: types::I64,
+            })
+         } else if tt.nom() == "I64" {
+            let mut val = ctx.ins().iconst(types::I64, 0);
+            for li in lis.iter() {
+            match li {
+               LIPart::Expression(e) => {
+                  let (je,_jt) = compile_expr(type_context, stdlib, finfs, jmod, ctx, blk, p, e);
+                  blk = je.block;
+                  val = ctx.ins().iadd(val, je.value);
+               },
+               LIPart::Literal(cs) => {
+                  let v = cs.parse::<i64>().expect("I64");
+                  val = ctx.ins().iadd_imm(val, v);
+               },
+               LIPart::InlineVariable(vi) => {
+                  let jv = Variable::from_u32(*vi as u32);
+                  let jv = ctx.use_var(jv);
+                  val = ctx.ins().iadd(val, jv);
+               },
+            }}
+            (JExpr {
+               block: blk,
+               value: val,
+            }, JType {
+               name: "I64".to_string(),
                jtype: types::I64,
             })
          } else if tt.nom() == "String" {

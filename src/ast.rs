@@ -430,6 +430,17 @@ pub enum LHSLiteralPart {
    Variable(usize),
 }
 impl LHSLiteralPart {
+   pub fn dump_l1ir(&self, indent: usize) {
+      let padding = std::iter::repeat("  ").take(indent).collect::<String>();
+      match self {
+         LHSLiteralPart::Literal(lv) => {
+            dprintln!("{}literal '{}'", padding, lv);
+         },
+         LHSLiteralPart::Variable(vi) => {
+            dprintln!("{}v#{}", padding, vi);
+         },
+      }
+   }
    pub fn equals(&self, other: &LHSLiteralPart) -> bool {
       match (self,other) {
          (LHSLiteralPart::Literal(lcs),LHSLiteralPart::Literal(rcs)) => { lcs == rcs },
@@ -457,7 +468,18 @@ impl LHSPart {
       let padding = std::iter::repeat("  ").take(indent).collect::<String>();
       match self {
          LHSPart::Tuple(_) => unimplemented!("dump_l1ir LHSPart::Tuple"),
-         LHSPart::UnpackLiteral(_,_,_) => unimplemented!("dump_l1ir LHSPart::Tuple"),
+         LHSPart::UnpackLiteral(pre,mid,suff) => {
+            dprintln!("{}LHS unpack", padding);
+            for p in pre.iter() {
+               p.dump_l1ir(indent+1);
+            }
+            if let Some(vi) = mid {
+               dprintln!("{}  Bind LHS v#{}", padding, vi);
+            }
+            for s in suff.iter() {
+               s.dump_l1ir(indent+1);
+            }
+         },
          LHSPart::Literal(l) => {
             dprintln!("{}LHS '{}'", padding, l);
          },

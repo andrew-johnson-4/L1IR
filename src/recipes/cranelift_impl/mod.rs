@@ -34,3 +34,5 @@ pub mod tuple_push;
 pub mod tuple_flatten;
 
 pub mod cast_u64_as_string;
+pub mod cast_u64_as_i64;
+pub mod cast_i64_as_u64;
