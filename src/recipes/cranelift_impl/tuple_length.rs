@@ -15,9 +15,7 @@ pub fn f_u64<'f>(frefs: &HashMap<String,FuncRef>, ctx: &mut FunctionBuilder<'f>,
    let arg1 = val[1].clone();
    let fref = frefs.get(".length:(Tuple)->U64").unwrap();
    let call = ctx.ins().call(*fref, &[arg0,arg1]);
-   let lo = ctx.inst_results(call)[0];
-   let hi = ctx.inst_results(call)[1];
-   ctx.ins().iconcat(lo,hi)
+   ctx.inst_results(call)[0]
 }
 
 pub fn import() -> Vec<FFI> {vec![

@@ -265,8 +265,9 @@ impl Value {
       v
    }
    pub fn start(&self) -> usize {
-      assert!(self.tag() == Tag::Tuple ||
-              self.tag() == Tag::String, ".start must be `Tuple or `String");
+      assert!(self.tag() == Tag::Unit ||
+              self.tag() == Tag::Tuple ||
+              self.tag() == Tag::String, ".start must be `Unit or `Tuple or `String");
       let mut raw = self.0;
       raw <<= 32; raw >>= 32;
       raw >>= 80;
@@ -285,8 +286,9 @@ impl Value {
       self.0 = Value::from_parts(Tag::Tuple as u16, 0, raw).0;
    }
    pub fn end(&self) -> usize {
-      assert!(self.tag() == Tag::Tuple ||
-              self.tag() == Tag::String, ".end must be `Tuple or `String");
+      assert!(self.tag() == Tag::Unit ||
+              self.tag() == Tag::Tuple ||
+              self.tag() == Tag::String, ".end must be `Unit or `Tuple or `String");
       let mut raw = self.0;
       raw <<= 48; raw >>= 48;
       raw >>= 64;
