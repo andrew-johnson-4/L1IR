@@ -47,7 +47,7 @@ pub fn type_by_name(tn: &ast::Type) -> types::Type {
       "Tuple" => types::I128,
       "Value" => types::I128,
       _ => unimplemented!("type_by_name({})", tn),
-   }} else { types::I128 }
+   }} else { unimplemented!("type_by_name({:?})", tn) }
 }
 pub fn jtype_by_name(tn: &ast::Type) -> JType {
    if let Some(ref tn) = tn.name {
@@ -59,7 +59,7 @@ pub fn jtype_by_name(tn: &ast::Type) -> JType {
       "Tuple" => JType { name: tn.clone(), jtype: types::I128 },
       "Value" => JType { name: tn.clone(), jtype: types::I128 },
       _ => unimplemented!("jtype_by_name({})", tn),
-   }} else { JType { name: "Value".to_string(), jtype: types::I128 } }
+   }} else { unimplemented!("jtype_by_name({:?})", tn) }
 }
 
 pub fn type_cast<'f>(ctx: &mut FunctionBuilder<'f>, ot: &str, nt: &str, v: Value) -> Value {
@@ -192,7 +192,7 @@ pub fn compile_lhs<'f>(type_context: &mut HashMap<usize, String>, ctx: &mut Func
       LHSPart::Tuple(_lts) => unimplemented!("compile_lhs(Tuple)"),
       LHSPart::Literal(lts) => {
          let cond = if typ=="U8" {
-            let v = lts.parse::<u64>().unwrap() as i64;
+            let v = lts.parse::<u8>().unwrap() as i64;
             ctx.ins().icmp_imm(IntCC::Equal, val, v)
          } else if typ=="U64" {
             let v = lts.parse::<u64>().unwrap();
@@ -323,7 +323,6 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
          match (*lhs).borrow() {
             LHSPart::Any => {},
             LHSPart::Variable(vi) => {
-               println!("declare variable: {}", vi);
                let jv = Variable::from_u32(*vi as u32);
                ctx.declare_var(jv, types::I128);
                type_context.insert(*vi, "Value".to_string());
@@ -334,7 +333,6 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
          let x_val = match x.borrow() {
             TIPart::Tuple(_ts) => unimplemented!(".flatmap Tuple"),
             TIPart::Variable(vi) => {
-               println!("use variable: {}", vi);
                let jv = Variable::from_u32(*vi as u32);
                ctx.use_var(jv)
             }
@@ -438,6 +436,32 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
             }, JType {
                name: "Value".to_string(),
                jtype: types::I128,
+            })
+         } else if tt.nom() == "U8" {
+            let mut val = ctx.ins().iconst(types::I8, 0);
+            for li in lis.iter() {
+            match li {
+               LIPart::Expression(e) => {
+                  let (je,_jt) = compile_expr(type_context, stdlib, finfs, jmod, ctx, blk, p, e);
+                  blk = je.block;
+                  val = ctx.ins().iadd(val, je.value);
+               },
+               LIPart::Literal(cs) => {
+                  let v = cs.parse::<u8>().expect("U8");
+                  val = ctx.ins().iadd_imm(val, v as i64);
+               },
+               LIPart::InlineVariable(vi) => {
+                  let jv = Variable::from_u32(*vi as u32);
+                  let jv = ctx.use_var(jv);
+                  val = ctx.ins().iadd(val, jv);
+               },
+            }}
+            (JExpr {
+               block: blk,
+               value: val,
+            }, JType {
+               name: "U8".to_string(),
+               jtype: types::I8,
             })
          } else if tt.nom() == "U64" {
             let mut val = ctx.ins().iconst(types::I64, 0);
@@ -664,7 +688,7 @@ pub fn apply_fn<'f, S: Clone + Debug>(stdlib: &mut HashMap<String,FFI>, finfs: &
          *fnref
       } else {
          let fnref = jmod.declare_func_in_func(fnid, ctx.func);
-         finfs.insert(fi, fnref);
+         finfs.insert(fi.clone(), fnref);
          fnref
       };
       let mut cargs = Vec::new();
@@ -682,7 +706,7 @@ pub fn apply_fn<'f, S: Clone + Debug>(stdlib: &mut HashMap<String,FFI>, finfs: &
          &cargs
       );
       let ftype = pf.body[pf.body.len()-1].typ();
-      let rname = ftype.name.clone().unwrap_or("Value".to_string());
+      let rname = ftype.name.clone().expect(&format!("return type of function f#{} not specified",fi));
       let rtype = type_by_name(&ftype);
       let cval = if rtype == types::I128 {
          let clo = ctx.inst_results(call)[0];
@@ -846,11 +870,11 @@ impl JProgram {
             let (je,_jt) = compile_expr(&mut type_context, &mut stdlib, &mut finfs, &mut module, &mut main, blk, p, &p.expressions[pi]);
             blk = je.block;
          }
-         let (mut je,jt) = compile_expr(&mut type_context, &mut stdlib, &mut finfs, &mut module, &mut main, blk, p, &p.expressions[p.expressions.len()-1]);
-         je.value = type_cast(&mut main, &jt.name, "Value", je.value);
+         let (je,jt) = compile_expr(&mut type_context, &mut stdlib, &mut finfs, &mut module, &mut main, blk, p, &p.expressions[p.expressions.len()-1]);
+         let je_value = type_cast(&mut main, &jt.name, "Value", je.value);
          blk = je.block;
 
-         let (jlo,jhi) = main.ins().isplit(je.value);
+         let (jlo,jhi) = main.ins().isplit(je_value);
          main.ins().return_(&[jlo,jhi]);
       }
 
