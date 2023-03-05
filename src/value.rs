@@ -188,10 +188,10 @@ impl Value {
    pub fn unit(_nom: &str) -> Value {
       Value::from_parts(Tag::Unit as u16, 0, 0)
    }
-   pub fn range(from: u64, to: u64, step: u64) -> Value {
+   pub fn range(from: i64, to: i64, step: i64) -> Value {
       let mut vs = Vec::new();
       for i in (from..to).step_by(step as usize) {
-         vs.push(Value::u64(i,"U64"));
+         vs.push(Value::i64(i,"I64"));
       }
       Value::tuple(&vs,"Tuple")
    }

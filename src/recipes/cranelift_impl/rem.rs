@@ -9,6 +9,11 @@ fn f_u64<'f>(_frefs: &HashMap<String,FuncRef>, ctx: &mut FunctionBuilder<'f>, va
    let val1 = val[1].clone();
    ctx.ins().urem(val0, val1)
 }
+fn f_i64<'f>(_frefs: &HashMap<String,FuncRef>, ctx: &mut FunctionBuilder<'f>, val: &[Value]) -> Value {
+   let val0 = val[0].clone();
+   let val1 = val[1].clone();
+   ctx.ins().srem(val0, val1)
+}
 
 pub fn import() -> Vec<FFI> {vec![
    FFI {
@@ -18,6 +23,15 @@ pub fn import() -> Vec<FFI> {vec![
       cons: f_u64,
       symbol: None,
       rname: "U64".to_string(),
+      rtype: types::I64,
+   },
+   FFI {
+      args: vec![types::I64,types::I64],
+      arg_types: vec![Type::nominal("I64"), Type::nominal("I64")],
+      name: "%:(I64,I64)->I64".to_string(),
+      cons: f_i64,
+      symbol: None,
+      rname: "I64".to_string(),
       rtype: types::I64,
    }
 ]}

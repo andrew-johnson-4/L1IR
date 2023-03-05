@@ -64,6 +64,8 @@ pub fn jtype_by_name(tn: &ast::Type) -> JType {
 
 pub fn type_cast<'f>(ctx: &mut FunctionBuilder<'f>, ot: &str, nt: &str, v: Value) -> Value {
    if ot == nt { v }
+   else if ot=="U64" && nt=="I64" { v }
+   else if ot=="I64" && nt=="U64" { v }
    else if ot=="Value" && nt=="U64" {
       let (low64,high64) = ctx.ins().isplit(v);
       let high16 = ctx.ins().ushr_imm(high64, 48);
@@ -194,9 +196,8 @@ pub fn compile_lhs<'f>(type_context: &mut HashMap<usize, String>, ctx: &mut Func
          let cond = if typ=="U8" {
             let v = lts.parse::<u8>().unwrap() as i64;
             ctx.ins().icmp_imm(IntCC::Equal, val, v)
-         } else if typ=="U64" {
-            let v = lts.parse::<u64>().unwrap();
-            let v = unsafe { std::mem::transmute::<u64,i64>(v) };
+         } else if typ=="I64" {
+            let v = lts.parse::<i64>().unwrap();
             ctx.ins().icmp_imm(IntCC::Equal, val, v)
          } else {
             unimplemented!("compile_lhs(Literal:{})", typ)
@@ -207,13 +208,12 @@ pub fn compile_lhs<'f>(type_context: &mut HashMap<usize, String>, ctx: &mut Func
       LHSPart::UnpackLiteral(pres,mid,sufs) => {
          for p in pres.iter() {
          if let LHSLiteralPart::Literal(cs) = p {
-            let sub = if typ=="U64" {
-               let v = cs.parse::<u64>().unwrap();
-               unsafe { std::mem::transmute::<u64,i64>(v) }
+            let sub = if typ=="I64" {
+               cs.parse::<i64>().unwrap()
             } else {
                unimplemented!("compile_lhs(Literal:{})", typ)
             };
-            let cond = ctx.ins().icmp_imm(IntCC::UnsignedLessThan, val, sub);
+            let cond = ctx.ins().icmp_imm(IntCC::SignedLessThan, val, sub);
             let bb = ctx.create_block(); //basic blocks can't compute after jump
             ctx.ins().brnz(cond, nblk, &[]);
             ctx.ins().jump(bb, &[]);
@@ -225,7 +225,7 @@ pub fn compile_lhs<'f>(type_context: &mut HashMap<usize, String>, ctx: &mut Func
          } else if let LHSLiteralPart::Variable(vi) = p {
             let jv = Variable::from_u32(*vi as u32);
             let jv = ctx.use_var(jv);
-            let cond = ctx.ins().icmp(IntCC::UnsignedLessThan, val, jv);
+            let cond = ctx.ins().icmp(IntCC::SignedLessThan, val, jv);
             let bb = ctx.create_block(); //basic blocks can't compute after jump
             ctx.ins().brnz(cond, nblk, &[]);
             ctx.ins().jump(bb, &[]);
@@ -236,7 +236,7 @@ pub fn compile_lhs<'f>(type_context: &mut HashMap<usize, String>, ctx: &mut Func
          }}
          for s in sufs.iter() {
          if let LHSLiteralPart::Literal(cs) = s {
-            let cond = ctx.ins().icmp_imm(IntCC::UnsignedLessThan, val, cs.len() as i64);
+            let cond = ctx.ins().icmp_imm(IntCC::SignedLessThan, val, cs.len() as i64);
             let bb = ctx.create_block(); //basic blocks can't compute after jump
             ctx.ins().brnz(cond, nblk, &[]);
             ctx.ins().jump(bb, &[]);
@@ -248,7 +248,7 @@ pub fn compile_lhs<'f>(type_context: &mut HashMap<usize, String>, ctx: &mut Func
          } else if let LHSLiteralPart::Variable(vi) = s {
             let jv = Variable::from_u32(*vi as u32);
             let jv = ctx.use_var(jv);
-            let cond = ctx.ins().icmp(IntCC::UnsignedLessThan, val, jv);
+            let cond = ctx.ins().icmp(IntCC::SignedLessThan, val, jv);
             let bb = ctx.create_block(); //basic blocks can't compute after jump
             ctx.ins().brnz(cond, nblk, &[]);
             ctx.ins().jump(bb, &[]);
@@ -308,7 +308,7 @@ pub fn compile_expr<'f,S: Clone + Debug>(type_context: &mut HashMap<usize, Strin
 
          ctx.switch_to_block(loop_controller);     //loop while i < map_len
          let i = ctx.block_params(loop_controller)[0];
-         let cond = ctx.ins().icmp(IntCC::UnsignedLessThan, i, map_len);
+         let cond = ctx.ins().icmp(IntCC::SignedLessThan, i, map_len);
          ctx.ins().brnz(cond, in_loop, &[i]);
          ctx.ins().jump(after_loop, &[]);
          //seal loop_controller
